@@ -3,8 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "packageManager": "npm@12.0.2",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "postinstall": "wxt prepare",
@@ -32,7 +33,7 @@
     "jsdom": "30.0.1",
     "typescript": "6.0.3",
     "typescript-eslint": "8.67.0",
-    "vitest": "4.1.10",
+    "vitest": "4.1.11",
     "wxt": "0.21.4"
   }
 }
