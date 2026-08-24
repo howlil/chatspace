@@ -27,10 +27,20 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
+        id: install
+        continue-on-error: true
         run: npm install --no-audit --no-fund
 
+      - name: Report install failure
+        if: steps.install.outcome == 'failure'
+        run: |
+          log_file="$(ls -t ~/.npm/_logs/*-debug-0.log | head -n 1)"
+          echo "npm debug log: ${log_file}"
+          cat "${log_file}"
+          exit 1
+
       - name: Preserve generated lockfile
-        if: always()
+        if: steps.install.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: package-lock
