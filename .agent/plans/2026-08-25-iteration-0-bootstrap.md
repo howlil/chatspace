@@ -6,7 +6,7 @@
 
 **Architecture:** Chromium Manifest V3 extension built with WXT. The content script owns only a Shadow DOM-isolated Chatspace shell; provider-specific behavior is intentionally absent from Iteration 0. React renders one harmless status surface. Runtime code remains thin and testable; future workspace/domain features are not introduced.
 
-**Tech Stack:** Node 22, npm, WXT 0.21.4, React 19.2.8, TypeScript 6.0.3, ESLint 10.9.0 + typescript-eslint 8.67.0, Vitest 4.1.10, Testing Library, jsdom 30.0.1.
+**Tech Stack:** Node >=22.12, npm 12.0.2, WXT 0.21.4, React 19.2.8, TypeScript 6.0.3, ESLint 10.9.0 + typescript-eslint 8.67.0, Vitest 4.1.11, Testing Library, jsdom 30.0.1.
 
 **Spec:** `.agent/STATE.md`, `.agent/ARCHITECTURE.md`, `.agent/WORKFLOW.md`, `.agent/TESTING.md`
 
@@ -30,7 +30,7 @@
 
 **Behavior under test:** the bootstrap shell exposes a visible `Chatspace` label and a non-interactive `Foundation ready` status.
 
-1. Add exact dependency versions and scripts: `prepare`, `dev`, `build`, `lint`, `typecheck`, `test`, `test:watch`, `verify`.
+1. Add exact dependency versions and scripts: `postinstall`, `dev`, `build`, `lint`, `typecheck`, `test`, `test:watch`, `verify`.
 2. Configure WXT React module and minimal MV3 manifest metadata.
 3. Configure strict TypeScript extending WXT-generated config after `wxt prepare`.
 4. Configure Vitest + jsdom and ESLint flat config.
@@ -53,7 +53,7 @@
 **Files:** `.github/workflows/ci.yml`, `.gitignore`, `README.md`
 
 1. CI on pushes to `master` and pull requests.
-2. Use Node 22 and npm dependency cache where a lockfile exists; until lockfile creation is available, install exact top-level versions with `npm install`.
+2. Pin npm 12.0.2. Use `npm ci` and npm dependency caching once the generated lockfile is committed.
 3. Run `npm run verify` and `npm run build` as distinct evidence-producing steps.
 4. Ignore WXT/build/node artifacts.
 5. Document local commands and Chrome unpacked-extension workflow.
