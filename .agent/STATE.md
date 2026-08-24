@@ -4,9 +4,27 @@ Last updated: 2026-08-25
 
 ## Current
 
-Repository foundation/planning stage.
+Agent operating model is established on `master` through PR #1 (`chore: establish Chatspace agent operating model`).
 
-The repository was empty before this `.agent` operating model was created. No production extension code, package manifest, CI, test runner, or runtime architecture has been implemented yet.
+The repository started empty. No production extension code, package manifest, CI, test runner, or runtime implementation exists yet.
+
+## Last merged outcome
+
+The repository now has:
+
+- root `AGENTS.md` router
+- product scope and MVP boundaries
+- browser-extension architecture and provider compatibility boundary
+- pragmatic TypeScript/React code patterns
+- compact Obsidian/IDE-inspired design rules
+- TDD iteration workflow and git/PR discipline
+- staged delivery roadmap through v1.0
+- local-fixture testing strategy
+- security/privacy/compliance constraints
+- quality/merge/release gates
+- agent roles and coordination rules
+- architecture decision log
+- task-specific skills for architecture, feature delivery, debugging, UI, provider compatibility, refactor, research, review, and release
 
 ## Product direction accepted
 
@@ -42,11 +60,12 @@ Proposed for Iteration 0 validation:
 - Playwright for controlled extension E2E
 - React Flow only when graph iteration begins
 
-## Evidence currently available
+## Verification evidence
 
-- repository exists and was empty at planning start
-- `.agent` planning/operating documents are being established on `chore/agent-foundation`
-- current OpenAI Terms of Use were checked during planning; provider compliance boundary documented
+- PR #1 merged into `master`
+- `.agent/` directory is present on `master` with the planned operating documents and `skills/`
+- placeholder scan of the PR patch found only rule text referring to `TODO/TBD`, not unfinished plan placeholders
+- current OpenAI Terms of Use were checked during planning and the provider compliance boundary is documented
 
 ## Not implemented / not verified
 
@@ -86,11 +105,21 @@ Do not implement folders/tabs/graph during bootstrap.
 
 Resolve with the smallest working evidence; avoid speculative platform design.
 
-## Blockers
+## Known risks
 
-No technical blocker is known yet.
+- provider web UI changes can break compatibility assumptions; all such knowledge must stay inside the adapter
+- desired semantic/graph capabilities may remain constrained until a provider-supported data path exists
+- extension permissions and host coexistence must be validated before workspace features build on the shell
 
-Provider capabilities beyond safe UI coexistence/navigation remain constrained by current policy and must be reviewed per feature.
+## Compatibility state
+
+Not implemented. No provider adapter exists yet.
+
+## Blocked
+
+No technical blocker is known for Iteration 0.
+
+Provider capabilities beyond safe UI coexistence/navigation remain policy-dependent and must be reviewed per feature.
 
 ## State update template
 
