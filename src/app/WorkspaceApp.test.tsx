@@ -151,11 +151,13 @@ describe('WorkspaceApp', () => {
     render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
 
     await screen.findByText('Local workspace ready.');
-    fireEvent.keyDown(screen.getByRole('separator', { name: 'Resize explorer' }), { key: 'ArrowRight' });
+    const separator = screen.getByRole('separator', { name: 'Resize explorer' });
+    const initialWidth = Number(separator.getAttribute('aria-valuenow'));
+    fireEvent.keyDown(separator, { key: 'ArrowRight' });
 
     await waitFor(async () => {
       const saved = await repository.load();
-      expect(saved?.layout.treeWidth).toBe(256);
+      expect(saved?.layout.treeWidth).toBe(initialWidth + 16);
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle explorer' }));
