@@ -6,6 +6,12 @@
   --color-cs-surface: #151517;
   --color-cs-raised: #1b1b1e;
   --color-cs-border: #29292d;
+  --color-cs-control: #171719;
+  --color-cs-hover: #202023;
+  --color-cs-active: #27272b;
+  --color-cs-focus: #a1a1aa;
+  --color-cs-primary: #eeeeef;
+  --color-cs-primary-contrast: #111113;
   --color-cs-text: #eeeeef;
   --color-cs-muted: #9999a2;
   --color-cs-subtle: #686872;
@@ -33,6 +39,25 @@
     color-scheme: dark;
   }
 
+  html[data-theme="light"] {
+    color-scheme: light;
+    --color-cs-bg: #f7f7f8;
+    --color-cs-panel: #ffffff;
+    --color-cs-surface: #f1f1f3;
+    --color-cs-raised: #e9e9ec;
+    --color-cs-border: #d8d8dd;
+    --color-cs-control: #ffffff;
+    --color-cs-hover: #ececef;
+    --color-cs-active: #e2e2e6;
+    --color-cs-focus: #52525b;
+    --color-cs-primary: #18181b;
+    --color-cs-primary-contrast: #fafafa;
+    --color-cs-text: #18181b;
+    --color-cs-muted: #60606a;
+    --color-cs-subtle: #8a8a94;
+    --color-cs-danger: #b42318;
+  }
+
   body {
     overflow: hidden;
     background: var(--color-cs-bg);
@@ -41,7 +66,7 @@
     font-size: 12px;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    scrollbar-color: #303035 transparent;
+    scrollbar-color: var(--color-cs-border) transparent;
     scrollbar-width: thin;
   }
 
@@ -57,7 +82,7 @@
   }
 
   ::selection {
-    background: rgb(255 255 255 / 16%);
+    background: color-mix(in srgb, var(--color-cs-focus) 20%, transparent);
   }
 }
 
