@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 
 import { ChatspaceShell } from '../src/app/shell/ChatspaceShell';
 import { WorkspaceErrorBoundary } from '../src/app/shell/WorkspaceErrorBoundary';
+import { SpatialWorkspace } from '../src/features/workspace-layout/SpatialWorkspace';
 import '../src/app/shell/bootstrap-shell.css';
 
 export default defineContentScript({
@@ -17,7 +18,9 @@ export default defineContentScript({
         const root = createRoot(container);
         root.render(
           <WorkspaceErrorBoundary>
-            <ChatspaceShell />
+            <ChatspaceShell>
+              <SpatialWorkspace />
+            </ChatspaceShell>
           </WorkspaceErrorBoundary>,
         );
         return root;
