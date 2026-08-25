@@ -23,10 +23,7 @@ import { LocalNoteEditor } from '../features/local-notes/LocalNoteEditor';
 import '../features/local-notes/local-notes.css';
 import { ObsidianBridgePanel, type BridgeConnectionState } from '../features/obsidian-bridge/ObsidianBridgePanel';
 import '../features/obsidian-bridge/obsidian-bridge.css';
-import {
-  SaveConversationDialog,
-  type SaveConversationInput,
-} from '../features/save-conversation/SaveConversationDialog';
+import { SaveConversationDialog, type SaveConversationInput } from '../features/save-conversation/SaveConversationDialog';
 import '../features/save-conversation/save-conversation.css';
 import { SettingsPanel } from '../features/settings/SettingsPanel';
 import '../features/settings/settings.css';
@@ -56,11 +53,7 @@ function messageFromError(error: unknown): string {
 
 function recoveryText(raw: unknown | null): string | null {
   if (raw === null) return null;
-  try {
-    return JSON.stringify(raw, null, 2);
-  } catch {
-    return String(raw);
-  }
+  try { return JSON.stringify(raw, null, 2); } catch { return String(raw); }
 }
 
 function defaultDownloadText(filename: string, content: string): void {
@@ -81,10 +74,7 @@ export function WorkspaceApp({
   bridge,
   requestBridgePermission = requestLocalBridgePermission,
 }: WorkspaceAppProps) {
-  const workspaceRepository = useMemo(
-    () => repository ?? createDefaultWorkspaceRepository(),
-    [repository],
-  );
+  const workspaceRepository = useMemo(() => repository ?? createDefaultWorkspaceRepository(), [repository]);
   const vaultBridge = useMemo(() => bridge ?? new HttpLocalVaultBridge(), [bridge]);
   const [workspace, dispatch] = useReducer(workspaceReducer, undefined, () => createInitialWorkspace());
   const [persistenceState, setPersistenceState] = useState<PersistenceState>('loading');
@@ -111,30 +101,20 @@ export function WorkspaceApp({
       } catch (error) {
         if (cancelled) return;
         let raw: unknown | null = null;
-        try {
-          raw = await workspaceRepository.readRaw();
-        } catch {
-          raw = null;
-        }
+        try { raw = await workspaceRepository.readRaw(); } catch { raw = null; }
         setRecoveryJson(recoveryText(raw));
         setPersistenceError(`Storage recovery required. ${messageFromError(error)}`);
         setPersistenceState('blocked');
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [workspaceRepository]);
 
   useEffect(() => {
     if (persistenceState !== 'ready') return;
     void workspaceRepository.save(workspace).catch(async (error) => {
       let raw: unknown | null = null;
-      try {
-        raw = await workspaceRepository.readRaw();
-      } catch {
-        raw = null;
-      }
+      try { raw = await workspaceRepository.readRaw(); } catch { raw = null; }
       setRecoveryJson(recoveryText(raw));
       setPersistenceError(`Saving was blocked. ${messageFromError(error)}`);
       setPersistenceState('blocked');
@@ -157,41 +137,20 @@ export function WorkspaceApp({
   }
 
   function chatTab(chat: ChatReference): WorkspaceTab {
-    return {
-      id: `tab-chat-${chat.id}`,
-      kind: 'chat',
-      entityId: chat.id,
-      title: chat.label,
-      pinned: false,
-    };
+    return { id: `tab-chat-${chat.id}`, kind: 'chat', entityId: chat.id, title: chat.label, pinned: false };
   }
 
   function noteTab(note: LocalNote): WorkspaceTab {
-    return {
-      id: `tab-note-${note.id}`,
-      kind: 'note',
-      entityId: note.id,
-      title: note.title,
-      pinned: false,
-    };
+    return { id: `tab-note-${note.id}`, kind: 'note', entityId: note.id, title: note.title, pinned: false };
   }
 
   function updateLayout(next: Partial<typeof workspace.layout>): void {
-    dispatch({
-      type: 'layout/update',
-      layout: { ...workspace.layout, ...next },
-      now: Date.now(),
-    });
+    dispatch({ type: 'layout/update', layout: { ...workspace.layout, ...next }, now: Date.now() });
   }
 
   function addFolder(): void {
     const now = Date.now();
-    const folder = createFolder({
-      id: createEntityId('folder'),
-      name: 'New folder',
-      parentId: selectedFolderId,
-      now,
-    });
+    const folder = createFolder({ id: createEntityId('folder'), name: 'New folder', parentId: selectedFolderId, now });
     dispatch({ type: 'folder/create', folder });
     setSelectedFolderId(folder.id);
     setStatus('Folder created locally.');
@@ -200,29 +159,18 @@ export function WorkspaceApp({
   function renameFolder(folder: WorkspaceFolder): void {
     const nextName = window.prompt('Rename folder', folder.name);
     if (nextName === null || nextName.trim() === '') return;
-    dispatch({
-      type: 'folder/update',
-      folder: { ...folder, name: nextName.trim() },
-      now: Date.now(),
-    });
+    dispatch({ type: 'folder/update', folder: { ...folder, name: nextName.trim() }, now: Date.now() });
   }
 
   function deleteFolder(folder: WorkspaceFolder): void {
-    if (!window.confirm(`Delete folder “${folder.name}”? Its children will move to the parent folder.`)) {
-      return;
-    }
+    if (!window.confirm(`Delete folder “${folder.name}”? Its children will move to the parent folder.`)) return;
     dispatch({ type: 'folder/delete', folderId: folder.id, now: Date.now() });
     if (selectedFolderId === folder.id) setSelectedFolderId(folder.parentId);
   }
 
   function addNote(): void {
     const now = Date.now();
-    const note = createLocalNote({
-      id: createEntityId('note'),
-      title: 'Untitled note',
-      folderId: selectedFolderId,
-      now,
-    });
+    const note = createLocalNote({ id: createEntityId('note'), title: 'Untitled note', folderId: selectedFolderId, now });
     dispatch({ type: 'note/create', note });
     dispatch({ type: 'tab/open', tab: noteTab(note), now });
     setStatus('Note created locally.');
@@ -234,14 +182,12 @@ export function WorkspaceApp({
       setStatus('Open a ChatGPT conversation before saving a reference.');
       return;
     }
-
     const existing = workspace.chatRefs.find((chat) => chat.target === capability.currentTarget);
     if (existing !== undefined) {
       openTab(chatTab(existing));
       setStatus('Conversation reference is already saved.');
       return;
     }
-
     setSaveDialogTarget(capability.currentTarget);
   }
 
@@ -254,16 +200,9 @@ export function WorkspaceApp({
       setStatus('Conversation reference is already saved.');
       return;
     }
-
     const now = Date.now();
     const chat = {
-      ...createChatReference({
-        id: createEntityId('chat'),
-        label: input.label,
-        target: saveDialogTarget,
-        folderId: input.folderId,
-        now,
-      }),
+      ...createChatReference({ id: createEntityId('chat'), label: input.label, target: saveDialogTarget, folderId: input.folderId, now }),
       pinned: input.pinned,
     };
     dispatch({ type: 'chat/create', chat });
@@ -274,33 +213,37 @@ export function WorkspaceApp({
   }
 
   function togglePinChat(chat: ChatReference): void {
-    dispatch({
-      type: 'chat/update',
-      chat: { ...chat, pinned: !chat.pinned },
-      now: Date.now(),
-    });
+    dispatch({ type: 'chat/update', chat: { ...chat, pinned: !chat.pinned }, now: Date.now() });
+  }
+
+  function renameChat(chat: ChatReference): void {
+    const nextName = window.prompt('Rename conversation', chat.label);
+    if (nextName === null || nextName.trim() === '') return;
+    dispatch({ type: 'chat/update', chat: { ...chat, label: nextName.trim() }, now: Date.now() });
+    setStatus(`Renamed conversation to “${nextName.trim()}”.`);
+  }
+
+  function moveChat(chat: ChatReference, folderId: string | null): void {
+    dispatch({ type: 'chat/update', chat: { ...chat, folderId }, now: Date.now() });
+    setStatus(`Moved “${chat.label}”.`);
+  }
+
+  function deleteChat(chat: ChatReference): void {
+    if (!window.confirm(`Delete the local reference “${chat.label}”? The ChatGPT conversation is not deleted.`)) return;
+    dispatch({ type: 'chat/delete', chatId: chat.id, now: Date.now() });
+    setStatus(`Deleted local reference “${chat.label}”.`);
   }
 
   function openSavedChat(chat: ChatReference): void {
     openTab(chatTab(chat));
+    dispatch({ type: 'chat/update', chat, now: Date.now() });
     navigateToChatGptTarget(chat.target, navigate);
   }
 
-  function openNote(note: LocalNote): void {
-    openTab(noteTab(note));
-  }
-
-  function openGraph(): void {
-    openTab({ id: 'tab-graph', kind: 'graph', entityId: null, title: 'Graph', pinned: false });
-  }
-
-  function openSettings(): void {
-    openTab({ id: 'tab-settings', kind: 'settings', entityId: null, title: 'Settings', pinned: false });
-  }
-
-  function openHome(): void {
-    dispatch({ type: 'tab/activate', tabId: 'tab-home', now: Date.now() });
-  }
+  function openNote(note: LocalNote): void { openTab(noteTab(note)); }
+  function openGraph(): void { openTab({ id: 'tab-graph', kind: 'graph', entityId: null, title: 'Graph', pinned: false }); }
+  function openSettings(): void { openTab({ id: 'tab-settings', kind: 'settings', entityId: null, title: 'Settings', pinned: false }); }
+  function openHome(): void { dispatch({ type: 'tab/activate', tabId: 'tab-home', now: Date.now() }); }
 
   function openGraphNode(node: GraphNode): void {
     if (node.kind === 'chat') {
@@ -323,17 +266,7 @@ export function WorkspaceApp({
 
   function createManualEdge(sourceEntityId: string, targetEntityId: string): void {
     const now = Date.now();
-    dispatch({
-      type: 'edge/create',
-      edge: {
-        id: createEntityId('edge'),
-        sourceEntityId,
-        targetEntityId,
-        kind: 'related-manually',
-        createdAt: now,
-      },
-      now,
-    });
+    dispatch({ type: 'edge/create', edge: { id: createEntityId('edge'), sourceEntityId, targetEntityId, kind: 'related-manually', createdAt: now }, now });
   }
 
   async function importBackup(json: string): Promise<void> {
@@ -410,25 +343,13 @@ export function WorkspaceApp({
   }
 
   const activeTab = workspace.tabs.find((tab) => tab.id === workspace.activeTabId) ?? workspace.tabs[0];
-  const activeChat = activeTab?.kind === 'chat'
-    ? workspace.chatRefs.find((chat) => chat.id === activeTab.entityId)
-    : undefined;
-  const activeNote = activeTab?.kind === 'note'
-    ? workspace.notes.find((note) => note.id === activeTab.entityId)
-    : undefined;
+  const activeChat = activeTab?.kind === 'chat' ? workspace.chatRefs.find((chat) => chat.id === activeTab.entityId) : undefined;
+  const activeNote = activeTab?.kind === 'note' ? workspace.notes.find((note) => note.id === activeTab.entityId) : undefined;
   const capability = getChatGptCapability(currentUrl());
-  const compatibilityLabel = capability.canCaptureCurrentReference
-    ? 'Conversation detected'
-    : capability.supportedOrigin
-      ? 'ChatGPT detected'
-      : 'Open ChatGPT';
+  const compatibilityLabel = capability.canCaptureCurrentReference ? 'Conversation detected' : capability.supportedOrigin ? 'ChatGPT detected' : 'Open ChatGPT';
 
   const commands: WorkspaceCommand[] = [
-    {
-      id: 'explorer-toggle',
-      label: workspace.layout.treeCollapsed ? 'Show explorer' : 'Hide explorer',
-      run: () => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed }),
-    },
+    { id: 'explorer-toggle', label: workspace.layout.treeCollapsed ? 'Show explorer' : 'Hide explorer', run: () => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed }) },
     { id: 'folder-create', label: 'Create folder', run: addFolder },
     { id: 'note-create', label: 'Create note', run: addNote },
     { id: 'chat-save', label: 'Save current chat', run: saveCurrentChat },
@@ -439,105 +360,25 @@ export function WorkspaceApp({
 
   let surfaceContent;
   if (activeTab?.kind === 'settings') {
-    surfaceContent = (
-      <>
-        <SettingsPanel
-          exportJson={exportJson}
-          recoveryJson={recoveryJson}
-          persistenceError={persistenceError}
-          onImport={importBackup}
-          onReset={resetLocalData}
-          onDownload={downloadText}
-        />
-        <ObsidianBridgePanel
-          state={bridgeState}
-          message={bridgeMessage}
-          onConnect={connectBridge}
-          onDisconnect={disconnectBridge}
-        />
-      </>
-    );
+    surfaceContent = <><SettingsPanel exportJson={exportJson} recoveryJson={recoveryJson} persistenceError={persistenceError} onImport={importBackup} onReset={resetLocalData} onDownload={downloadText}/><ObsidianBridgePanel state={bridgeState} message={bridgeMessage} onConnect={connectBridge} onDisconnect={disconnectBridge}/></>;
   } else if (activeTab?.kind === 'graph') {
-    surfaceContent = (
-      <GraphNavigator
-        graph={graph}
-        onOpenNode={openGraphNode}
-        onCreateManualEdge={createManualEdge}
-      />
-    );
+    surfaceContent = <GraphNavigator graph={graph} onOpenNode={openGraphNode} onCreateManualEdge={createManualEdge}/>;
   } else if (activeNote !== undefined) {
-    surfaceContent = (
-      <div>
-        <LocalNoteEditor
-          note={activeNote}
-          chats={workspace.chatRefs}
-          onChange={(note) => dispatch({ type: 'note/update', note, now: Date.now() })}
-          onLinkChat={(chatId) => dispatch({
-            type: 'note/link-chat',
-            noteId: activeNote.id,
-            chatId,
-            now: Date.now(),
-          })}
-        />
-        <RelatedNotesPanel noteId={activeNote.id} notes={workspace.notes} onOpenNote={openNote} />
-        <div className="note-bridge-actions">
-          <button type="button" onClick={() => void syncNoteToVault(activeNote)}>Sync to local vault</button>
-          <span>{bridgeState === 'connected' ? 'Bridge connected' : 'Bridge disconnected'}</span>
-        </div>
-      </div>
-    );
+    surfaceContent = <div><LocalNoteEditor note={activeNote} chats={workspace.chatRefs} onChange={(note)=>dispatch({type:'note/update',note,now:Date.now()})} onLinkChat={(chatId)=>dispatch({type:'note/link-chat',noteId:activeNote.id,chatId,now:Date.now()})}/><RelatedNotesPanel noteId={activeNote.id} notes={workspace.notes} onOpenNote={openNote}/><div className="note-bridge-actions"><button type="button" onClick={()=>void syncNoteToVault(activeNote)}>Sync to local vault</button><span>{bridgeState==='connected'?'Bridge connected':'Bridge disconnected'}</span></div></div>;
   } else if (activeChat !== undefined) {
-    surfaceContent = (
-      <section className="workspace-home">
-        <strong>{activeChat.label}</strong>
-        <p>{activeChat.target}</p>
-        <button type="button" onClick={() => openSavedChat(activeChat)}>Open in ChatGPT</button>
-      </section>
-    );
+    surfaceContent = <section className="workspace-home"><strong>{activeChat.label}</strong><p>{activeChat.target}</p><button type="button" onClick={()=>openSavedChat(activeChat)}>Open in ChatGPT</button></section>;
   } else {
-    surfaceContent = (
-      <section className="workspace-home">
-        <strong>{workspace.name}</strong>
-        <p>{status}</p>
-        <dl className="workspace-stats">
-          <div><dt>Folders</dt><dd>{workspace.folders.length}</dd></div>
-          <div><dt>Chats</dt><dd>{workspace.chatRefs.length}</dd></div>
-          <div><dt>Notes</dt><dd>{workspace.notes.length}</dd></div>
-        </dl>
-      </section>
-    );
+    surfaceContent = <section className="workspace-home"><strong>{workspace.name}</strong><p>{status}</p><dl className="workspace-stats"><div><dt>Folders</dt><dd>{workspace.folders.length}</dd></div><div><dt>Chats</dt><dd>{workspace.chatRefs.length}</dd></div><div><dt>Notes</dt><dd>{workspace.notes.length}</dd></div></dl></section>;
   }
 
   const surface = (
     <div className="workspace-surface-stack">
       <div className="workbench-chrome">
-        <button
-          className="explorer-toggle"
-          type="button"
-          aria-label="Toggle explorer"
-          onClick={() => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed })}
-        >☰</button>
-        <WorkspaceTabs
-          tabs={workspace.tabs}
-          activeTabId={workspace.activeTabId}
-          onActivate={(tabId) => dispatch({ type: 'tab/activate', tabId, now: Date.now() })}
-          onClose={(tabId) => dispatch({ type: 'tab/close', tabId, now: Date.now() })}
-        />
-        <div
-          className="provider-presence"
-          data-supported={capability.supportedOrigin ? 'true' : 'false'}
-          title="Native ChatGPT stays in the main browser page"
-        >
-          <span className="compatibility-dot" aria-hidden="true" />
-          <span>{compatibilityLabel}</span>
-        </div>
+        <button className="explorer-toggle" type="button" aria-label="Toggle explorer" onClick={() => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed })}>☰</button>
+        <WorkspaceTabs tabs={workspace.tabs} activeTabId={workspace.activeTabId} onActivate={(tabId)=>dispatch({type:'tab/activate',tabId,now:Date.now()})} onClose={(tabId)=>dispatch({type:'tab/close',tabId,now:Date.now()})}/>
+        <div className="provider-presence" data-supported={capability.supportedOrigin ? 'true' : 'false'} title="Native ChatGPT stays in the main browser page"><span className="compatibility-dot" aria-hidden="true"/><span>{compatibilityLabel}</span></div>
       </div>
-      {persistenceError !== null && (
-        <div className="provider-storage-warning" role="alert">
-          <span>{persistenceError}</span>
-          <button type="button" onClick={openSettings}>Recover</button>
-        </div>
-      )}
+      {persistenceError !== null && <div className="provider-storage-warning" role="alert"><span>{persistenceError}</span><button type="button" onClick={openSettings}>Recover</button></div>}
       {surfaceContent}
     </div>
   );
@@ -545,10 +386,7 @@ export function WorkspaceApp({
   const tree = (
     <div className="workspace-explorer">
       <div className="tree-toolbar">
-        <div>
-          <button type="button" onClick={addFolder}>New folder</button>
-          <button type="button" onClick={addNote}>New note</button>
-        </div>
+        <div><button type="button" onClick={addFolder}>New folder</button><button type="button" onClick={addNote}>New note</button></div>
         <button type="button" onClick={saveCurrentChat}>Save current chat</button>
       </div>
       <WorkspaceTree
@@ -563,29 +401,12 @@ export function WorkspaceApp({
         onOpenChat={openSavedChat}
         onOpenNote={openNote}
         onTogglePinChat={togglePinChat}
+        onRenameChat={renameChat}
+        onDeleteChat={deleteChat}
+        onMoveChat={moveChat}
       />
     </div>
   );
 
-  return (
-    <>
-      <SpatialWorkspace
-        tree={tree}
-        surface={surface}
-        treeCollapsed={workspace.layout.treeCollapsed}
-        treeWidth={workspace.layout.treeWidth}
-        onTreeWidthChange={(treeWidth) => updateLayout({ treeWidth })}
-      />
-      {paletteOpen && <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />}
-      <SaveConversationDialog
-        open={saveDialogTarget !== null}
-        target={saveDialogTarget}
-        folders={workspace.folders}
-        defaultFolderId={selectedFolderId}
-        defaultLabel={`Conversation ${workspace.chatRefs.length + 1}`}
-        onCancel={() => setSaveDialogTarget(null)}
-        onSave={confirmSaveCurrentChat}
-      />
-    </>
-  );
+  return <><SpatialWorkspace tree={tree} surface={surface} treeCollapsed={workspace.layout.treeCollapsed} treeWidth={workspace.layout.treeWidth} onTreeWidthChange={(treeWidth) => updateLayout({ treeWidth })}/>{paletteOpen&&<CommandPalette commands={commands} onClose={()=>setPaletteOpen(false)}/>}<SaveConversationDialog open={saveDialogTarget!==null} target={saveDialogTarget} folders={workspace.folders} defaultFolderId={selectedFolderId} defaultLabel={`Conversation ${workspace.chatRefs.length+1}`} onCancel={()=>setSaveDialogTarget(null)} onSave={confirmSaveCurrentChat}/></>;
 }
