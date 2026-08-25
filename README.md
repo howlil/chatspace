@@ -43,30 +43,33 @@ It does **not** scrape conversations, crawl history, read provider cookies/sessi
 
 ## Development
 
-Requirements: Node 22.12+ and npm 12.0.2.
+Requirements: Node 22.12+ and pnpm 11.23.0.
 
 ```bash
-npm install
-npm run dev
-npm run lint
-npm run typecheck
-npm test
-npm run build
+pnpm install
+pnpm dev
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+pnpm zip
 ```
+
+`pnpm build` produces the unpacked Chromium extension under `.output/`. `pnpm zip` runs WXT packaging and produces the install/distribution ZIP under `.output/`.
 
 For Chromium development:
 
-1. run `npm run dev`
+1. run `pnpm dev`
 2. load the generated WXT development extension with **Load unpacked**
 3. open `chatgpt.com`
 4. click the Chatspace extension action; Chatspace opens in the browser Side Panel
 5. keep native ChatGPT in the main page and use the side panel for workspace navigation
 
-CI treats lint, strict typecheck, tests, and production build as separate gates.
+CI treats lint, strict typecheck, tests, production build, and ZIP packaging as separate gates and uses the same pnpm toolchain as local development.
 
 ## Release status
 
-The repository can be a development/daily-driver candidate after product-convergence verification. It should not be called public-store-ready yet: a committed transitive `package-lock.json` and distribution packaging/lifecycle checks are still required.
+The repository can be a development/daily-driver candidate after product-convergence verification. It should not be called public-store-ready yet: a committed transitive `pnpm-lock.yaml` and full distribution lifecycle checks remain release-hardening work.
 
 ## Safety and privacy
 
