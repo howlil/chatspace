@@ -1,8 +1,8 @@
 import { normalizeChatGptTarget } from './adapter';
 
 export interface ProviderTab {
-  id?: number;
-  url?: string;
+  id: number | undefined;
+  url: string | undefined;
 }
 
 export interface ProviderTabsPort {
