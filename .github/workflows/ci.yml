@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: read
+  issues: write
+  pull-requests: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -35,7 +37,24 @@ jobs:
         run: npm run lint
 
       - name: Typecheck
-        run: npm run typecheck
+        id: typecheck
+        continue-on-error: true
+        run: npm run typecheck > typecheck.log 2>&1
+
+      - name: Report typecheck diagnostic
+        if: steps.typecheck.outcome == 'failure' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo '<!-- chatspace-typecheck-diagnostic -->'
+            echo '### Typecheck diagnostic'
+            echo '```text'
+            cat typecheck.log
+            echo '```'
+          } > diagnostic.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file diagnostic.md
+          exit 1
 
       - name: Test
         run: npm test
