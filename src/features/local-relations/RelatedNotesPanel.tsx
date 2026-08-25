@@ -44,7 +44,7 @@ export function RelatedNotesPanel({ noteId, notes, onOpenNote }: RelatedNotesPan
           candidates.map(({ relation, note }) => (
             <button
               type="button"
-              className="group flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-2 text-left outline-none transition-colors hover:bg-white/[0.045] focus-visible:bg-white/[0.06]"
+              className="group flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-2 text-left outline-none transition-colors hover:bg-cs-hover focus-visible:bg-cs-active"
               key={note.id}
               onClick={() => onOpenNote(note)}
             >
