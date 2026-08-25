@@ -42,7 +42,7 @@ Compact ADR log. Update when a decision changes a meaningful boundary, dependenc
 
 **Status:** Accepted
 
-**Decision:** All provider-specific DOM/capability knowledge is isolated behind a narrow adapter and capability model.
+**Decision:** All provider-specific capability knowledge is isolated behind a narrow adapter and capability model.
 
 **Why:** Host web UIs change. Provider breakage must not contaminate workspace domain logic.
 
@@ -72,25 +72,21 @@ Compact ADR log. Update when a decision changes a meaningful boundary, dependenc
 
 ## ADR-007 — WXT + TypeScript + React for initial extension shell
 
-**Status:** Proposed baseline; validate during Iteration 0
+**Status:** Accepted after Iteration 0
 
-**Decision:** Bootstrap with WXT, strict TypeScript, React, Chromium MV3.
+**Decision:** Use WXT, strict TypeScript, React, Chromium MV3.
 
-**Why:** WXT reduces extension manifest/build/reload boilerplate, supports MV3 and cross-browser builds, while React fits interactive tree/tab/graph UI.
-
-**Exit condition:** Replace only if Iteration 0 spike finds a concrete blocker in host injection, style isolation, testing, or packaging.
+**Evidence:** Iteration 0 passed lint, strict typecheck, Vitest, and production WXT build in CI.
 
 ---
 
-## ADR-008 — IndexedDB behind repository port
+## ADR-008 — IndexedDB from the content script
 
-**Status:** Accepted direction; wrapper library undecided
+**Status:** Superseded by ADR-011
 
-**Decision:** Persist workspace data in IndexedDB behind a repository interface. Do not expose IndexedDB to components/domain.
+**Previous direction:** Persist workspace data in IndexedDB behind a repository interface.
 
-**Why:** Structured local data and future migrations need more than ad-hoc key/value state.
-
-**Open implementation choice:** native IndexedDB vs Dexie. Decide from smallest implementation that provides reliable transactions/migrations in Iteration 3.
+**Reason superseded:** Chrome documents that web storage APIs invoked from content scripts access host-page storage rather than the extension's storage origin. Chatspace must not place canonical workspace data into `chatgpt.com` web storage.
 
 ---
 
@@ -98,21 +94,35 @@ Compact ADR log. Update when a decision changes a meaningful boundary, dependenc
 
 **Status:** Accepted
 
-**Decision:** Mandatory CI uses synthetic/sanitized local fixtures for provider adapter contracts. Live ChatGPT compatibility is a manual release/review check unless an official permitted automation path exists.
+**Decision:** Mandatory CI uses pure local contract tests for provider adapters. Live ChatGPT compatibility is a manual release/review check unless an official permitted automation path exists.
 
 **Why:** Determinism, policy compliance, credentials, and external fragility.
 
 ---
 
-## ADR-010 — Obsidian bridge deferred
+## ADR-010 — Obsidian bridge deferred from MVP
+
+**Status:** Accepted for v1; revisit immediately after v1
+
+**Decision:** The localhost/filesystem companion is not a dependency of the v1 workspace core. It may ship as an optional post-v1 integration with explicit permissions and authentication.
+
+**Why:** It creates a new security/runtime/distribution boundary and must not block the browser-only product.
+
+---
+
+## ADR-011 — Extension-owned persistence via chrome.storage.local
 
 **Status:** Accepted
 
-**Decision:** Do not build localhost/filesystem companion in MVP.
+**Decision:** Persist canonical workspace state through a repository port backed by `chrome.storage.local` and request only the `storage` extension permission.
 
-**Why:** It creates a new security/runtime/distribution boundary before the workspace value is proven.
+**Why:** Chrome documents `chrome.storage` as extension-specific storage available to content scripts, while web storage used in content scripts belongs to the host page. This keeps Chatspace data in the extension security/storage boundary and avoids leaking canonical state into the provider origin.
 
-**Trigger to revisit:** repeated real-user need to maintain Markdown files shared with Obsidian/editor tooling.
+**Consequences:**
+- repository interface remains independent of storage implementation;
+- stored payloads stay JSON-serializable and schema-versioned;
+- workspace size is kept bounded for v1; large binary assets are out of scope;
+- future IndexedDB use, if needed, must run in an extension-origin context such as an extension page/service worker, not directly as host-origin web storage from the content script.
 
 ---
 
