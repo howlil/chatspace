@@ -29,7 +29,7 @@ function SettingsCard({
 }) {
   return (
     <Panel className="overflow-hidden">
-      <div className="flex items-start justify-between gap-3 border-b border-white/[0.055] px-3 py-2.5">
+      <div className="flex items-start justify-between gap-3 border-b border-cs-border px-3 py-2.5">
         <div className="grid gap-0.5">
           <strong className="text-[11px] font-medium">{title}</strong>
           {description !== undefined && <p className="m-0 text-[9px] leading-4 text-cs-muted">{description}</p>}
@@ -88,7 +88,7 @@ export function SettingsPanel({ exportJson, recoveryJson, persistenceError, onIm
         description="Workspace metadata, notes, graph relationships, tabs, and validated ChatGPT conversation URLs stay in extension-local storage."
       >
         {persistenceError !== null ? (
-          <div className="flex items-start gap-2 rounded-md border border-red-300/15 bg-red-300/[0.05] p-2 text-[9px] leading-4 text-red-100" role="alert">
+          <div className="flex items-start gap-2 rounded-md border border-red-500/20 bg-red-500/[0.06] p-2 text-[9px] leading-4 text-cs-danger" role="alert">
             <AlertTriangle size={11} className="mt-0.5 shrink-0" aria-hidden="true" />
             <span>{persistenceError}</span>
           </div>
@@ -150,7 +150,7 @@ export function SettingsPanel({ exportJson, recoveryJson, persistenceError, onIm
             </Button>
           ) : (
             <div className="grid gap-2">
-              <span className="text-[9px] leading-4 text-red-100">This deletes Chatspace-owned local data only.</span>
+              <span className="text-[9px] leading-4 text-cs-danger">This deletes Chatspace-owned local data only.</span>
               <div className="flex gap-1.5">
                 <Button variant="danger" disabled={busy} onClick={() => void confirmReset()}>Confirm reset</Button>
                 <Button variant="ghost" disabled={busy} onClick={() => setResetArmed(false)}>Cancel</Button>
@@ -161,7 +161,7 @@ export function SettingsPanel({ exportJson, recoveryJson, persistenceError, onIm
       </div>
 
       {actionError !== null && (
-        <div className="flex items-start gap-2 rounded-md border border-red-300/15 bg-red-300/[0.05] p-2 text-[9px] leading-4 text-red-100" role="alert">
+        <div className="flex items-start gap-2 rounded-md border border-red-500/20 bg-red-500/[0.06] p-2 text-[9px] leading-4 text-cs-danger" role="alert">
           <AlertTriangle size={11} className="mt-0.5 shrink-0" aria-hidden="true" />
           <span>{actionError}</span>
         </div>
