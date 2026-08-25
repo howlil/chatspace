@@ -1,35 +1,29 @@
-import { createShadowRootUi, defineContentScript } from '#imports';
-import { createRoot } from 'react-dom/client';
+import { browser } from 'wxt/browser';
 
-import { WorkspaceApp } from '../src/app/WorkspaceApp';
-import { ChatspaceShell } from '../src/app/shell/ChatspaceShell';
-import { WorkspaceErrorBoundary } from '../src/app/shell/WorkspaceErrorBoundary';
-import '../src/app/shell/bootstrap-shell.css';
+import { normalizeChatGptTarget } from '../src/providers/chatgpt/adapter';
+
+type ProviderMessage =
+  | { type: 'chatspace/provider/location' }
+  | { type: 'chatspace/provider/navigate'; target: string };
 
 export default defineContentScript({
   matches: ['https://chatgpt.com/*'],
-  cssInjectionMode: 'ui',
-  async main(ctx) {
-    const ui = await createShadowRootUi(ctx, {
-      name: 'chatspace-root',
-      position: 'inline',
-      anchor: 'body',
-      onMount(container) {
-        const root = createRoot(container);
-        root.render(
-          <WorkspaceErrorBoundary>
-            <ChatspaceShell>
-              <WorkspaceApp />
-            </ChatspaceShell>
-          </WorkspaceErrorBoundary>,
-        );
-        return root;
-      },
-      onRemove(root) {
-        root?.unmount();
-      },
-    });
+  main() {
+    browser.runtime.onMessage.addListener((message: ProviderMessage) => {
+      if (message.type === 'chatspace/provider/location') {
+        return { href: window.location.href };
+      }
 
-    ui.mount();
+      if (message.type === 'chatspace/provider/navigate') {
+        const target = normalizeChatGptTarget(message.target);
+        if (target === null) {
+          return { ok: false, error: 'Unsupported ChatGPT conversation target.' };
+        }
+        window.location.assign(target);
+        return { ok: true, target };
+      }
+
+      return undefined;
+    });
   },
 });

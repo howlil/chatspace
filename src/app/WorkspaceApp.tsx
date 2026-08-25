@@ -10,6 +10,7 @@ import {
   createLocalNote,
   type ChatReference,
   type LocalNote,
+  type WorkspaceFolder,
   type WorkspaceTab,
 } from '../domain/workspace/model';
 import { workspaceReducer } from '../domain/workspace/workspaceReducer';
@@ -20,10 +21,7 @@ import { RelatedNotesPanel } from '../features/local-relations/RelatedNotesPanel
 import '../features/local-relations/local-relations.css';
 import { LocalNoteEditor } from '../features/local-notes/LocalNoteEditor';
 import '../features/local-notes/local-notes.css';
-import {
-  ObsidianBridgePanel,
-  type BridgeConnectionState,
-} from '../features/obsidian-bridge/ObsidianBridgePanel';
+import { ObsidianBridgePanel, type BridgeConnectionState } from '../features/obsidian-bridge/ObsidianBridgePanel';
 import '../features/obsidian-bridge/obsidian-bridge.css';
 import { SettingsPanel } from '../features/settings/SettingsPanel';
 import '../features/settings/settings.css';
@@ -53,11 +51,7 @@ function messageFromError(error: unknown): string {
 
 function recoveryText(raw: unknown | null): string | null {
   if (raw === null) return null;
-  try {
-    return JSON.stringify(raw, null, 2);
-  } catch {
-    return String(raw);
-  }
+  try { return JSON.stringify(raw, null, 2); } catch { return String(raw); }
 }
 
 function defaultDownloadText(filename: string, content: string): void {
@@ -78,10 +72,7 @@ export function WorkspaceApp({
   bridge,
   requestBridgePermission = requestLocalBridgePermission,
 }: WorkspaceAppProps) {
-  const workspaceRepository = useMemo(
-    () => repository ?? createDefaultWorkspaceRepository(),
-    [repository],
-  );
+  const workspaceRepository = useMemo(() => repository ?? createDefaultWorkspaceRepository(), [repository]);
   const vaultBridge = useMemo(() => bridge ?? new HttpLocalVaultBridge(), [bridge]);
   const [workspace, dispatch] = useReducer(workspaceReducer, undefined, () => createInitialWorkspace());
   const [persistenceState, setPersistenceState] = useState<PersistenceState>('loading');
@@ -107,30 +98,20 @@ export function WorkspaceApp({
       } catch (error) {
         if (cancelled) return;
         let raw: unknown | null = null;
-        try {
-          raw = await workspaceRepository.readRaw();
-        } catch {
-          raw = null;
-        }
+        try { raw = await workspaceRepository.readRaw(); } catch { raw = null; }
         setRecoveryJson(recoveryText(raw));
         setPersistenceError(`Storage recovery required. ${messageFromError(error)}`);
         setPersistenceState('blocked');
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [workspaceRepository]);
 
   useEffect(() => {
     if (persistenceState !== 'ready') return;
     void workspaceRepository.save(workspace).catch(async (error) => {
       let raw: unknown | null = null;
-      try {
-        raw = await workspaceRepository.readRaw();
-      } catch {
-        raw = null;
-      }
+      try { raw = await workspaceRepository.readRaw(); } catch { raw = null; }
       setRecoveryJson(recoveryText(raw));
       setPersistenceError(`Saving was blocked. ${messageFromError(error)}`);
       setPersistenceState('blocked');
@@ -160,12 +141,28 @@ export function WorkspaceApp({
     return { id: `tab-note-${note.id}`, kind: 'note', entityId: note.id, title: note.title, pinned: false };
   }
 
+  function updateLayout(next: Partial<typeof workspace.layout>): void {
+    dispatch({ type: 'layout/update', layout: { ...workspace.layout, ...next }, now: Date.now() });
+  }
+
   function addFolder(): void {
     const now = Date.now();
     const folder = createFolder({ id: createEntityId('folder'), name: 'New folder', parentId: selectedFolderId, now });
     dispatch({ type: 'folder/create', folder });
     setSelectedFolderId(folder.id);
     setStatus('Folder created locally.');
+  }
+
+  function renameFolder(folder: WorkspaceFolder): void {
+    const nextName = window.prompt('Rename folder', folder.name);
+    if (nextName === null || nextName.trim() === '') return;
+    dispatch({ type: 'folder/update', folder: { ...folder, name: nextName.trim() }, now: Date.now() });
+  }
+
+  function deleteFolder(folder: WorkspaceFolder): void {
+    if (!window.confirm(`Delete folder “${folder.name}”? Its children will move to the parent folder.`)) return;
+    dispatch({ type: 'folder/delete', folderId: folder.id, now: Date.now() });
+    if (selectedFolderId === folder.id) setSelectedFolderId(folder.parentId);
   }
 
   function addNote(): void {
@@ -195,10 +192,15 @@ export function WorkspaceApp({
     setStatus('Conversation reference saved locally.');
   }
 
+  function togglePinChat(chat: ChatReference): void {
+    dispatch({ type: 'chat/update', chat: { ...chat, pinned: !chat.pinned }, now: Date.now() });
+  }
+
   function openSavedChat(chat: ChatReference): void {
     openTab(chatTab(chat));
     navigateToChatGptTarget(chat.target, navigate);
   }
+
   function openNote(note: LocalNote): void { openTab(noteTab(note)); }
   function openGraph(): void { openTab({ id: 'tab-graph', kind: 'graph', entityId: null, title: 'Graph', pinned: false }); }
   function openSettings(): void { openTab({ id: 'tab-settings', kind: 'settings', entityId: null, title: 'Settings', pinned: false }); }
@@ -207,7 +209,7 @@ export function WorkspaceApp({
   function openGraphNode(node: GraphNode): void {
     if (node.kind === 'chat') {
       const chat = workspace.chatRefs.find((item) => item.id === node.entityId);
-      if (chat !== undefined) openTab(chatTab(chat));
+      if (chat !== undefined) openSavedChat(chat);
       return;
     }
     if (node.kind === 'note') {
@@ -304,7 +306,11 @@ export function WorkspaceApp({
   const activeTab = workspace.tabs.find((tab) => tab.id === workspace.activeTabId) ?? workspace.tabs[0];
   const activeChat = activeTab?.kind === 'chat' ? workspace.chatRefs.find((chat) => chat.id === activeTab.entityId) : undefined;
   const activeNote = activeTab?.kind === 'note' ? workspace.notes.find((note) => note.id === activeTab.entityId) : undefined;
+  const capability = getChatGptCapability(currentUrl());
+  const compatibilityLabel = capability.canCaptureCurrentReference ? 'Conversation detected' : capability.supportedOrigin ? 'ChatGPT detected' : 'Open ChatGPT';
+
   const commands: WorkspaceCommand[] = [
+    { id: 'explorer-toggle', label: workspace.layout.treeCollapsed ? 'Show explorer' : 'Hide explorer', run: () => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed }) },
     { id: 'folder-create', label: 'Create folder', run: addFolder },
     { id: 'note-create', label: 'Create note', run: addNote },
     { id: 'chat-save', label: 'Save current chat', run: saveCurrentChat },
@@ -312,8 +318,6 @@ export function WorkspaceApp({
     { id: 'settings-open', label: 'Open settings', run: openSettings },
     { id: 'home-open', label: 'Open home', run: openHome },
   ];
-  const capability = getChatGptCapability(currentUrl());
-  const compatibilityLabel = capability.canCaptureCurrentReference ? 'Conversation detected' : capability.supportedOrigin ? 'ChatGPT page detected' : 'Unsupported host';
 
   let surfaceContent;
   if (activeTab?.kind === 'settings') {
@@ -328,8 +332,41 @@ export function WorkspaceApp({
     surfaceContent = <section className="workspace-home"><strong>{workspace.name}</strong><p>{status}</p><dl className="workspace-stats"><div><dt>Folders</dt><dd>{workspace.folders.length}</dd></div><div><dt>Chats</dt><dd>{workspace.chatRefs.length}</dd></div><div><dt>Notes</dt><dd>{workspace.notes.length}</dd></div></dl></section>;
   }
 
-  const surface = <div className="workspace-surface-stack"><WorkspaceTabs tabs={workspace.tabs} activeTabId={workspace.activeTabId} onActivate={(tabId)=>dispatch({type:'tab/activate',tabId,now:Date.now()})} onClose={(tabId)=>dispatch({type:'tab/close',tabId,now:Date.now()})}/>{surfaceContent}</div>;
-  const tree = <><div className="tree-toolbar tree-toolbar--stack"><div><button type="button" onClick={addFolder}>New folder</button><button type="button" onClick={addNote}>New note</button></div><button type="button" onClick={saveCurrentChat}>Save current chat</button></div><WorkspaceTree folders={workspace.folders} chatRefs={workspace.chatRefs} notes={workspace.notes} selectedFolderId={selectedFolderId} onSelectFolder={setSelectedFolderId} onOpenChat={openSavedChat} onOpenNote={openNote}/></>;
+  const surface = (
+    <div className="workspace-surface-stack">
+      <div className="workbench-chrome">
+        <button className="explorer-toggle" type="button" aria-label="Toggle explorer" onClick={() => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed })}>☰</button>
+        <WorkspaceTabs tabs={workspace.tabs} activeTabId={workspace.activeTabId} onActivate={(tabId)=>dispatch({type:'tab/activate',tabId,now:Date.now()})} onClose={(tabId)=>dispatch({type:'tab/close',tabId,now:Date.now()})}/>
+        <div className="provider-presence" data-supported={capability.supportedOrigin ? 'true' : 'false'} title="Native ChatGPT stays in the main browser page">
+          <span className="compatibility-dot" aria-hidden="true"/><span>{compatibilityLabel}</span>
+        </div>
+      </div>
+      {persistenceError !== null && <div className="provider-storage-warning" role="alert"><span>{persistenceError}</span><button type="button" onClick={openSettings}>Recover</button></div>}
+      {surfaceContent}
+    </div>
+  );
 
-  return <><SpatialWorkspace tree={tree} surface={surface} provider={<div className="provider-panel-content"><div className="compatibility-status" data-supported={capability.supportedOrigin?'true':'false'}><span className="compatibility-dot" aria-hidden="true"/><span>{compatibilityLabel}</span></div>{persistenceError!==null&&<div className="provider-storage-warning" role="alert">{persistenceError}<button type="button" onClick={openSettings}>Recover</button></div>}<p className="panel-empty">ChatGPT stays native on the host page. Only validated conversation URLs are stored.</p><button type="button" onClick={()=>setPaletteOpen(true)}>Commands</button><span className="keyboard-hint">Ctrl/⌘ K</span></div>}/>{paletteOpen&&<CommandPalette commands={commands} onClose={()=>setPaletteOpen(false)}/>}</>;
+  const tree = (
+    <div className="workspace-explorer">
+      <div className="tree-toolbar">
+        <div><button type="button" onClick={addFolder}>New folder</button><button type="button" onClick={addNote}>New note</button></div>
+        <button type="button" onClick={saveCurrentChat}>Save current chat</button>
+      </div>
+      <WorkspaceTree
+        folders={workspace.folders}
+        chatRefs={workspace.chatRefs}
+        notes={workspace.notes}
+        selectedFolderId={selectedFolderId}
+        onSelectFolder={setSelectedFolderId}
+        onToggleFolder={(folderId) => dispatch({ type: 'folder/toggle', folderId, now: Date.now() })}
+        onRenameFolder={renameFolder}
+        onDeleteFolder={deleteFolder}
+        onOpenChat={openSavedChat}
+        onOpenNote={openNote}
+        onTogglePinChat={togglePinChat}
+      />
+    </div>
+  );
+
+  return <><SpatialWorkspace tree={tree} surface={surface} treeCollapsed={workspace.layout.treeCollapsed} treeWidth={workspace.layout.treeWidth} onTreeWidthChange={(treeWidth) => updateLayout({ treeWidth })}/>{paletteOpen&&<CommandPalette commands={commands} onClose={()=>setPaletteOpen(false)}/>}</>;
 }

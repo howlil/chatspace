@@ -1,8 +1,9 @@
 import type { LocalNote } from '../workspace/model';
 
 const STOP_WORDS = new Set([
-  'about', 'after', 'also', 'and', 'atau', 'dalam', 'dari', 'dengan', 'for', 'from', 'how',
-  'ini', 'into', 'itu', 'karena', 'ketika', 'lebih', 'pada', 'the', 'this', 'untuk', 'yang',
+  'about', 'after', 'also', 'and', 'atau', 'chatspace', 'dalam', 'dari', 'dengan', 'for', 'from',
+  'how', 'ini', 'into', 'itu', 'karena', 'ketika', 'lebih', 'note', 'notes', 'pada', 'the', 'this',
+  'untitled', 'untuk', 'workspace', 'yang',
 ]);
 const MAX_RELATIONS_PER_NOTE = 3;
 
@@ -20,11 +21,7 @@ function normalizeTerm(value: string): string {
 function termsFor(note: LocalNote): Set<string> {
   const source = `${note.title}\n${note.tags.join(' ')}\n${note.content}`.toLocaleLowerCase();
   const tokens = source.match(/[a-z0-9][a-z0-9_-]{2,}/g) ?? [];
-  return new Set(
-    tokens
-      .map(normalizeTerm)
-      .filter((term) => term.length >= 3 && !STOP_WORDS.has(term)),
-  );
+  return new Set(tokens.map(normalizeTerm).filter((term) => term.length >= 3 && !STOP_WORDS.has(term)));
 }
 
 function normalizedTags(note: LocalNote): Set<string> {
@@ -62,22 +59,11 @@ export function deriveLocalNoteRelations(notes: LocalNote[]): LocalNoteRelation[
       if (score < 0.18) continue;
 
       const [sourceNoteId, targetNoteId] = [left.note.id, right.note.id].sort();
-      candidates.push({
-        sourceNoteId: sourceNoteId ?? left.note.id,
-        targetNoteId: targetNoteId ?? right.note.id,
-        score,
-        sharedTerms,
-      });
+      candidates.push({ sourceNoteId: sourceNoteId ?? left.note.id, targetNoteId: targetNoteId ?? right.note.id, score, sharedTerms });
     }
   }
 
-  candidates.sort(
-    (left, right) =>
-      right.score - left.score ||
-      pairKey(left.sourceNoteId, left.targetNoteId).localeCompare(
-        pairKey(right.sourceNoteId, right.targetNoteId),
-      ),
-  );
+  candidates.sort((left, right) => right.score - left.score || pairKey(left.sourceNoteId, left.targetNoteId).localeCompare(pairKey(right.sourceNoteId, right.targetNoteId)));
 
   const degree = new Map<string, number>();
   const accepted: LocalNoteRelation[] = [];
@@ -90,9 +76,5 @@ export function deriveLocalNoteRelations(notes: LocalNote[]): LocalNoteRelation[
     degree.set(candidate.targetNoteId, targetDegree + 1);
   }
 
-  return accepted.sort((left, right) =>
-    pairKey(left.sourceNoteId, left.targetNoteId).localeCompare(
-      pairKey(right.sourceNoteId, right.targetNoteId),
-    ),
-  );
+  return accepted.sort((left, right) => pairKey(left.sourceNoteId, left.targetNoteId).localeCompare(pairKey(right.sourceNoteId, right.targetNoteId)));
 }
