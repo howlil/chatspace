@@ -32,7 +32,12 @@ export function GraphNavigator({ graph, onOpenNode, onCreateManualEdge }: GraphN
           <h3>Nodes</h3>
           <div className="graph-node-list">
             {visibleNodes.map((node) => (
-              <button type="button" key={node.id} onClick={() => onOpenNode(node)}>
+              <button
+                type="button"
+                key={node.id}
+                aria-label={`${node.kind} ${node.label}`}
+                onClick={() => onOpenNode(node)}
+              >
                 <span className="graph-node-kind">{node.kind}</span>
                 <span>{node.label}</span>
               </button>
