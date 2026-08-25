@@ -1,3 +1,4 @@
+import { RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
@@ -5,14 +6,14 @@ import { browser } from 'wxt/browser';
 import { WorkspaceApp } from '../../src/app/WorkspaceApp';
 import { ChatspaceShell } from '../../src/app/shell/ChatspaceShell';
 import { WorkspaceErrorBoundary } from '../../src/app/shell/WorkspaceErrorBoundary';
-import '../../src/app/shell/bootstrap-shell.css';
 import {
   navigateActiveProvider,
   readActiveProviderState,
   type ProviderTabsPort,
   type ProviderTabState,
 } from '../../src/providers/chatgpt/browserTabProvider';
-import './style.css';
+import '../../src/styles/tailwind.css';
+import { Button } from '../../src/ui/primitives';
 
 const providerTabsPort: ProviderTabsPort = {
   async getActive() {
@@ -74,16 +75,20 @@ function SidepanelWorkspace() {
   const providerUrl = useMemo(() => stateUrl(providerState), [providerState]);
 
   return (
-    <div className="sidepanel-workspace">
+    <div className="h-full min-h-0 w-full">
       {providerState.kind === 'unavailable' && (
-        <div className="provider-reconnect" role="status">
-          <div>
-            <strong>ChatGPT tab not connected</strong>
-            <span>Open ChatGPT in the active tab, then reconnect.</span>
+        <div
+          className="flex min-w-0 items-center justify-between gap-3 border-b border-amber-200/10 bg-amber-200/[0.045] px-2.5 py-2"
+          role="status"
+        >
+          <div className="grid min-w-0 gap-0.5">
+            <strong className="truncate text-[11px] font-medium text-cs-text">ChatGPT tab not connected</strong>
+            <span className="truncate text-[10px] text-cs-muted">Open ChatGPT in the active tab, then reconnect.</span>
           </div>
-          <button type="button" onClick={() => void refreshProvider()} disabled={refreshing}>
-            {refreshing ? 'Checking…' : 'Reconnect'}
-          </button>
+          <Button onClick={() => void refreshProvider()} disabled={refreshing}>
+            <RefreshCw className={refreshing ? 'animate-spin' : ''} size={12} aria-hidden="true" />
+            {refreshing ? 'Checking' : 'Reconnect'}
+          </Button>
         </div>
       )}
       <WorkspaceApp
