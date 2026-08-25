@@ -6,9 +6,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
-  issues: write
-  pull-requests: write
+  contents: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -33,28 +31,23 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Persist initial lockfile
+        if: github.event_name == 'pull_request'
+        run: |
+          if git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json
+          git commit -m 'chore: lock dependency graph'
+          git push origin "HEAD:${GITHUB_HEAD_REF}"
+
       - name: Lint
         run: npm run lint
 
       - name: Typecheck
-        id: typecheck
-        continue-on-error: true
-        run: npm run typecheck > typecheck.log 2>&1
-
-      - name: Report typecheck diagnostic
-        if: steps.typecheck.outcome == 'failure' && github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          {
-            echo '<!-- chatspace-typecheck-diagnostic -->'
-            echo '### Typecheck diagnostic'
-            echo '```text'
-            cat typecheck.log
-            echo '```'
-          } > diagnostic.md
-          gh pr comment "${{ github.event.pull_request.number }}" --body-file diagnostic.md
-          exit 1
+        run: npm run typecheck
 
       - name: Test
         run: npm test
