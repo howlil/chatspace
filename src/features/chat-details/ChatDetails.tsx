@@ -17,7 +17,7 @@ export function ChatDetails({ chat, folder, folders, onRename, onTogglePin, onMo
     <section className="h-full min-h-0 overflow-y-auto">
       <div className="mx-auto grid w-full max-w-xl gap-4 px-4 py-5 sm:px-5">
         <div className="flex items-start gap-3">
-          <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-white/[0.075] bg-white/[0.03] text-cs-muted">
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-cs-border bg-cs-surface text-cs-muted">
             <MessageSquareText size={16} strokeWidth={1.7} aria-hidden="true" />
           </span>
           <div className="grid min-w-0 flex-1 gap-1">
