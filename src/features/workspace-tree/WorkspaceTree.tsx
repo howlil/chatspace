@@ -7,6 +7,7 @@ interface WorkspaceTreeProps {
   selectedFolderId: string | null;
   onSelectFolder: (folderId: string | null) => void;
   onOpenChat: (chat: ChatReference) => void;
+  onOpenNote: (note: LocalNote) => void;
 }
 
 interface FolderBranchProps extends WorkspaceTreeProps {
@@ -16,58 +17,32 @@ interface FolderBranchProps extends WorkspaceTreeProps {
 
 function ChatLeaf({ chat, depth, onOpenChat }: { chat: ChatReference; depth: number; onOpenChat: (chat: ChatReference) => void }) {
   return (
-    <button
-      type="button"
-      className="tree-leaf tree-leaf--button"
-      style={{ paddingLeft: `${28 + depth * 14}px` }}
-      title={chat.label}
-      onClick={() => onOpenChat(chat)}
-    >
-      <span aria-hidden="true">↗</span>
-      <span>{chat.label}</span>
+    <button type="button" className="tree-leaf tree-leaf--button" style={{ paddingLeft: `${28 + depth * 14}px` }} title={chat.label} onClick={() => onOpenChat(chat)}>
+      <span aria-hidden="true">↗</span><span>{chat.label}</span>
+    </button>
+  );
+}
+
+function NoteLeaf({ note, depth, onOpenNote }: { note: LocalNote; depth: number; onOpenNote: (note: LocalNote) => void }) {
+  return (
+    <button type="button" className="tree-leaf tree-leaf--button" style={{ paddingLeft: `${28 + depth * 14}px` }} title={note.title} onClick={() => onOpenNote(note)}>
+      <span aria-hidden="true">·</span><span>{note.title}</span>
     </button>
   );
 }
 
 function FolderBranch(props: FolderBranchProps) {
   const children = props.folders.filter((folder) => folder.parentId === props.parentId);
-
   return (
     <>
       {children.map((folder) => (
         <div key={folder.id}>
-          <button
-            className="tree-row"
-            data-active={props.selectedFolderId === folder.id ? 'true' : 'false'}
-            type="button"
-            style={{ paddingLeft: `${10 + props.depth * 14}px` }}
-            onClick={() => props.onSelectFolder(folder.id)}
-          >
-            <span aria-hidden="true">▸</span>
-            <span>{folder.name}</span>
+          <button className="tree-row" data-active={props.selectedFolderId === folder.id ? 'true' : 'false'} type="button" style={{ paddingLeft: `${10 + props.depth * 14}px` }} onClick={() => props.onSelectFolder(folder.id)}>
+            <span aria-hidden="true">▸</span><span>{folder.name}</span>
           </button>
-          {!folder.collapsed && (
-            <FolderBranch {...props} parentId={folder.id} depth={props.depth + 1} />
-          )}
-          {!folder.collapsed &&
-            props.chatRefs
-              .filter((chat) => chat.folderId === folder.id)
-              .map((chat) => (
-                <ChatLeaf key={chat.id} chat={chat} depth={props.depth} onOpenChat={props.onOpenChat} />
-              ))}
-          {!folder.collapsed &&
-            props.notes
-              .filter((note) => note.folderId === folder.id)
-              .map((note) => (
-                <div
-                  key={note.id}
-                  className="tree-leaf"
-                  style={{ paddingLeft: `${28 + props.depth * 14}px` }}
-                >
-                  <span aria-hidden="true">·</span>
-                  <span title={note.title}>{note.title}</span>
-                </div>
-              ))}
+          {!folder.collapsed && <FolderBranch {...props} parentId={folder.id} depth={props.depth + 1} />}
+          {!folder.collapsed && props.chatRefs.filter((chat) => chat.folderId === folder.id).map((chat) => <ChatLeaf key={chat.id} chat={chat} depth={props.depth} onOpenChat={props.onOpenChat} />)}
+          {!folder.collapsed && props.notes.filter((note) => note.folderId === folder.id).map((note) => <NoteLeaf key={note.id} note={note} depth={props.depth} onOpenNote={props.onOpenNote} />)}
         </div>
       ))}
     </>
@@ -77,28 +52,14 @@ function FolderBranch(props: FolderBranchProps) {
 export function WorkspaceTree(props: WorkspaceTreeProps) {
   const rootChats = props.chatRefs.filter((chat) => chat.folderId === null);
   const rootNotes = props.notes.filter((note) => note.folderId === null);
-
   return (
     <div className="workspace-tree-content">
-      <button
-        className="tree-row"
-        data-active={props.selectedFolderId === null ? 'true' : 'false'}
-        type="button"
-        onClick={() => props.onSelectFolder(null)}
-      >
-        <span aria-hidden="true">⌂</span>
-        <span>Workspace root</span>
+      <button className="tree-row" data-active={props.selectedFolderId === null ? 'true' : 'false'} type="button" onClick={() => props.onSelectFolder(null)}>
+        <span aria-hidden="true">⌂</span><span>Workspace root</span>
       </button>
       <FolderBranch {...props} parentId={null} depth={0} />
-      {rootChats.map((chat) => (
-        <ChatLeaf key={chat.id} chat={chat} depth={0} onOpenChat={props.onOpenChat} />
-      ))}
-      {rootNotes.map((note) => (
-        <div key={note.id} className="tree-leaf">
-          <span aria-hidden="true">·</span>
-          <span title={note.title}>{note.title}</span>
-        </div>
-      ))}
+      {rootChats.map((chat) => <ChatLeaf key={chat.id} chat={chat} depth={0} onOpenChat={props.onOpenChat} />)}
+      {rootNotes.map((note) => <NoteLeaf key={note.id} note={note} depth={0} onOpenNote={props.onOpenNote} />)}
     </div>
   );
 }
