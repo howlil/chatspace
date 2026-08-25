@@ -23,7 +23,7 @@ class CorruptWorkspaceRepository implements WorkspaceRepository {
     throw new WorkspaceCorruptionError();
   }
 
-  async save(_snapshot: WorkspaceSnapshot): Promise<void> {
+  async save(): Promise<void> {
     this.saveCalls += 1;
   }
 
