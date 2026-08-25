@@ -1,0 +1,33 @@
+.obsidian-bridge-panel {
+  margin: 18px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+}
+
+.obsidian-bridge-panel p {
+  margin: 6px 0 0;
+  opacity: 0.72;
+}
+
+.obsidian-bridge-connect {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.obsidian-bridge-connect input {
+  min-width: 0;
+  flex: 1;
+}
+
+.bridge-connected {
+  font-size: 12px;
+}
+
+.note-bridge-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px 18px;
+}

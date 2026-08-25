@@ -5,6 +5,7 @@ export default defineConfig({
   manifest: {
     name: 'Chatspace',
     description: 'A spatial workspace layer for long-form AI conversations.',
-    permissions: [],
+    permissions: ['storage'],
+    optional_host_permissions: ['http://127.0.0.1:27123/*'],
   },
 });

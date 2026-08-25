@@ -32,9 +32,7 @@ Compact ADR log. Update when a decision changes a meaningful boundary, dependenc
 
 **Decision:** No private endpoints, session-cookie reuse, network replay, protection bypass, or automated/programmatic extraction of ChatGPT data/output.
 
-**Why:** Reliability, security, maintainability, and current OpenAI Terms of Use.
-
-**Consequence:** Some desired graph/outline capabilities remain local/user-authored or deferred until an official supported path exists.
+**Why:** Reliability, security, maintainability, and current provider constraints.
 
 ---
 
@@ -42,11 +40,9 @@ Compact ADR log. Update when a decision changes a meaningful boundary, dependenc
 
 **Status:** Accepted
 
-**Decision:** All provider-specific DOM/capability knowledge is isolated behind a narrow adapter and capability model.
+**Decision:** All provider-specific capability knowledge is isolated behind a narrow adapter and capability model.
 
 **Why:** Host web UIs change. Provider breakage must not contaminate workspace domain logic.
-
-**Consequence:** Features depend on capabilities, not direct selectors.
 
 ---
 
@@ -72,25 +68,19 @@ Compact ADR log. Update when a decision changes a meaningful boundary, dependenc
 
 ## ADR-007 — WXT + TypeScript + React for initial extension shell
 
-**Status:** Proposed baseline; validate during Iteration 0
+**Status:** Accepted after Iteration 0
 
-**Decision:** Bootstrap with WXT, strict TypeScript, React, Chromium MV3.
-
-**Why:** WXT reduces extension manifest/build/reload boilerplate, supports MV3 and cross-browser builds, while React fits interactive tree/tab/graph UI.
-
-**Exit condition:** Replace only if Iteration 0 spike finds a concrete blocker in host injection, style isolation, testing, or packaging.
+**Decision:** Use WXT, strict TypeScript, React, Chromium MV3.
 
 ---
 
-## ADR-008 — IndexedDB behind repository port
+## ADR-008 — IndexedDB from the content script
 
-**Status:** Accepted direction; wrapper library undecided
+**Status:** Superseded by ADR-011
 
-**Decision:** Persist workspace data in IndexedDB behind a repository interface. Do not expose IndexedDB to components/domain.
+**Previous direction:** Persist workspace data in IndexedDB behind a repository interface.
 
-**Why:** Structured local data and future migrations need more than ad-hoc key/value state.
-
-**Open implementation choice:** native IndexedDB vs Dexie. Decide from smallest implementation that provides reliable transactions/migrations in Iteration 3.
+**Reason superseded:** Web storage APIs invoked from content scripts can belong to host-page storage. Chatspace canonical state must stay in the extension storage boundary.
 
 ---
 
@@ -98,21 +88,51 @@ Compact ADR log. Update when a decision changes a meaningful boundary, dependenc
 
 **Status:** Accepted
 
-**Decision:** Mandatory CI uses synthetic/sanitized local fixtures for provider adapter contracts. Live ChatGPT compatibility is a manual release/review check unless an official permitted automation path exists.
-
-**Why:** Determinism, policy compliance, credentials, and external fragility.
+**Decision:** Mandatory CI uses pure local contract tests for provider adapters. Live ChatGPT compatibility is a manual release/review check unless an official permitted automation path exists.
 
 ---
 
-## ADR-010 — Obsidian bridge deferred
+## ADR-010 — Obsidian bridge deferred from MVP
+
+**Status:** Superseded by ADR-012
+
+**Previous decision:** Keep the localhost/filesystem companion out of the v1 core.
+
+**Reason superseded:** The browser-only core reached its reliability gate first; the bridge can now ship as an optional, isolated integration without becoming a core dependency.
+
+---
+
+## ADR-011 — Extension-owned persistence via chrome.storage.local
 
 **Status:** Accepted
 
-**Decision:** Do not build localhost/filesystem companion in MVP.
+**Decision:** Persist canonical workspace state through a repository port backed by `chrome.storage.local` and request only the `storage` extension permission for core functionality.
 
-**Why:** It creates a new security/runtime/distribution boundary before the workspace value is proven.
+**Consequences:** Stored payloads remain JSON-serializable/schema-versioned; large binary assets remain out of scope.
 
-**Trigger to revisit:** repeated real-user need to maintain Markdown files shared with Obsidian/editor tooling.
+---
+
+## ADR-012 — Authenticated localhost bridge is opt-in and note-only
+
+**Status:** Accepted
+
+**Decision:** The optional filesystem/Obsidian companion binds only to `127.0.0.1`, requires a bearer token, writes only beneath the configured vault's `Chatspace/` directory, and receives only explicitly synced local note id/title/Markdown.
+
+**Why:** Filesystem access is a separate trust boundary. It must not receive provider cookies, sessions, conversation bodies, or broad browser credentials.
+
+**Consequences:** Localhost host permission is optional; the bearer token stays in extension memory and is never persisted in the workspace.
+
+---
+
+## ADR-013 — Semantic enrichment is deterministic local projection
+
+**Status:** Accepted
+
+**Decision:** Related-note enrichment is derived only from user-authored local note title, tags, and Markdown using bounded lexical overlap. Every generated edge is marked `derived-local`; explicit manual relationships take precedence for the same entity pair.
+
+**Why:** The feature remains explainable, offline, fast, testable, and does not introduce a second AI provider or accidental ChatGPT content extraction.
+
+**Consequences:** Results are intentionally conservative. Future embedding/model enrichment requires a separate explicit ADR and consent boundary.
 
 ---
 
