@@ -9,11 +9,15 @@ Requirements: Node 22.12+ and npm 12.0.2.
 ```bash
 npm install
 npm run dev
-npm run verify
+npm run lint
+npm run typecheck
+npm test
 npm run build
 ```
 
 For Chromium development, run `npm run dev`, then load the generated WXT development extension from Chrome/Edge's **Load unpacked** flow.
+
+CI reports lint, typecheck, tests, and production build as separate gates so failures remain diagnosable.
 
 ## Safety boundary
 
