@@ -1,4 +1,4 @@
-import { CloudUpload, HardDrive } from 'lucide-react';
+import { CloudUpload, HardDrive, Settings2 } from 'lucide-react';
 
 import type { LocalNote } from '../../domain/workspace/model';
 import { Button, Panel, SectionLabel } from '../../ui/primitives';
@@ -29,8 +29,9 @@ export function NoteContextRail({ note, notes, bridgeConnected, onOpenNote, onSy
               </span>
             </div>
           </div>
-          <Button className="justify-self-start" disabled={!bridgeConnected} onClick={onSync}>
-            <CloudUpload size={11} aria-hidden="true" /> Sync to local vault
+          <Button className="justify-self-start" onClick={onSync}>
+            {bridgeConnected ? <CloudUpload size={11} aria-hidden="true" /> : <Settings2 size={11} aria-hidden="true" />}
+            {bridgeConnected ? 'Sync to local vault' : 'Configure bridge'}
           </Button>
         </Panel>
       </section>
