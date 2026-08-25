@@ -1,7 +1,8 @@
-import { createRoot, type Root } from 'react-dom/client';
-import { createShadowRootUi } from 'wxt/utils/content-script-ui/shadow-root';
+import { createShadowRootUi, defineContentScript } from '#imports';
+import { createRoot } from 'react-dom/client';
 
 import { BootstrapShell } from '../src/app/shell/BootstrapShell';
+import '../src/app/shell/bootstrap-shell.css';
 
 export default defineContentScript({
   matches: ['https://chatgpt.com/*'],
@@ -16,7 +17,7 @@ export default defineContentScript({
         root.render(<BootstrapShell />);
         return root;
       },
-      onRemove(root: Root | undefined) {
+      onRemove(root) {
         root?.unmount();
       },
     });
