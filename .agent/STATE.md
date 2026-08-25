@@ -4,7 +4,7 @@ Last updated: 2026-08-25
 
 ## Current
 
-Iterations 1–10 are implemented on `feat/v1-workspace`. Iterations 1–9 have fresh green CI evidence; Iteration 10 is the final gated increment on the same branch and must pass lint, strict typecheck, tests, and production build before merge.
+Iterations 1–10 are implemented and verified green on `feat/v1-workspace`. Iteration 10 head `974f2d7fe26c50d7da70bfbeff81027a3922d7cd` passed lint, strict typecheck, tests, and production build in CI run `32831037064`.
 
 ## Implemented
 
@@ -37,11 +37,11 @@ Origin-scoped mount plus explicit URL-only ChatGPT navigation reference support.
 
 ## Release note
 
-Direct dependency versions are exact-pinned and CI is green through Iteration 9. A committed npm lockfile remains desirable before public package/store distribution; it is not generated or committed by CI because CI intentionally has read-only repository permissions.
+Direct dependency versions are exact-pinned. A committed npm lockfile remains desirable before public package/store distribution; CI intentionally has read-only repository permissions and does not write generated lockfiles back to the repository.
 
 ## Next single priority
 
-**Close Iteration 10 gate, perform final PR verification, then merge.**
+**Final PR mergeability verification and merge of PR #3.**
 
 ## Blocked
 
