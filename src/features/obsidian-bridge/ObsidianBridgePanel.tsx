@@ -41,7 +41,7 @@ export function ObsidianBridgePanel({
       <SectionLabel className="px-1">Optional integration</SectionLabel>
       <Panel className="p-3">
         <div className="flex items-start gap-2.5">
-          <span className="grid size-7 shrink-0 place-items-center rounded-md border border-white/[0.075] bg-white/[0.025] text-cs-subtle">
+          <span className="grid size-7 shrink-0 place-items-center rounded-md border border-cs-border bg-cs-surface text-cs-subtle">
             <Cable size={13} strokeWidth={1.7} aria-hidden="true" />
           </span>
           <div className="grid min-w-0 flex-1 gap-0.5">
@@ -81,7 +81,7 @@ export function ObsidianBridgePanel({
         </div>
 
         {(localError ?? message) !== null && (
-          <p className="mb-0 mt-2 text-[9px] leading-4 text-red-200" role="alert">{localError ?? message}</p>
+          <p className="mb-0 mt-2 text-[9px] leading-4 text-cs-danger" role="alert">{localError ?? message}</p>
         )}
         {state === 'connected' && (
           <p className="mb-0 mt-2 text-[9px] text-cs-subtle">Connected for this session.</p>
