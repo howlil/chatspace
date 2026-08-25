@@ -40,9 +40,11 @@ function dataTransfer(): DataTransfer {
   return {
     effectAllowed: 'none',
     dropEffect: 'none',
-    setData: (type: string, value: string) => values.set(type, value),
+    setData: (type: string, value: string) => {
+      values.set(type, value);
+    },
     getData: (type: string) => values.get(type) ?? '',
-  } as DataTransfer;
+  } as unknown as DataTransfer;
 }
 
 describe('WorkspaceApp', () => {
