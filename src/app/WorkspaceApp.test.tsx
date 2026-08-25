@@ -47,7 +47,7 @@ describe('WorkspaceApp', () => {
 
     expect(await screen.findByText('Databases')).toBeVisible();
     fireEvent.click(screen.getByText('Backend'));
-    fireEvent.click(screen.getByRole('button', { name: 'New folder' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Folder' }));
 
     await waitFor(async () => {
       const saved = await repository.load();
@@ -68,7 +68,7 @@ describe('WorkspaceApp', () => {
       />,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Save current chat' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Save chat' }));
     expect(screen.getByRole('dialog', { name: 'Save conversation' })).toBeVisible();
     fireEvent.change(screen.getByRole('textbox', { name: 'Conversation name' }), {
       target: { value: 'PostgreSQL locking' },
@@ -146,7 +146,7 @@ describe('WorkspaceApp', () => {
 
     render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'New note' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Note' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), {
       target: { value: 'Transactions' },
     });
