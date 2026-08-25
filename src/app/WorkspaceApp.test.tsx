@@ -5,6 +5,7 @@ import {
   createChatReference,
   createFolder,
   createInitialWorkspace,
+  createLocalNote,
   type WorkspaceSnapshot,
 } from '../domain/workspace/model';
 import {
@@ -34,8 +35,18 @@ class CorruptWorkspaceRepository implements WorkspaceRepository {
   }
 }
 
+function dataTransfer(): DataTransfer {
+  const values = new Map<string, string>();
+  return {
+    effectAllowed: 'none',
+    dropEffect: 'none',
+    setData: (type: string, value: string) => values.set(type, value),
+    getData: (type: string) => values.get(type) ?? '',
+  } as DataTransfer;
+}
+
 describe('WorkspaceApp', () => {
-  it('hydrates nested local state and persists user-created folders', async () => {
+  it('creates root folders by default and subfolders only through the explicit folder action', async () => {
     const initial = createInitialWorkspace(1);
     initial.folders = [
       createFolder({ id: 'root-folder', name: 'Backend', parentId: null, now: 1 }),
@@ -52,7 +63,71 @@ describe('WorkspaceApp', () => {
     await waitFor(async () => {
       const saved = await repository.load();
       expect(saved?.folders).toHaveLength(3);
-      expect(saved?.folders[2]?.parentId).toBe('root-folder');
+      expect(saved?.folders[2]?.parentId).toBeNull();
+    });
+
+    fireEvent.click(screen.getByText('Backend'));
+    fireEvent.click(screen.getByRole('button', { name: 'New subfolder here' }));
+
+    await waitFor(async () => {
+      const saved = await repository.load();
+      expect(saved?.folders).toHaveLength(4);
+      expect(saved?.folders[3]?.parentId).toBe('root-folder');
+    });
+  });
+
+  it('moves chats, notes, and folders through explorer drag and drop while preventing folder cycles', async () => {
+    const initial = createInitialWorkspace(1);
+    const backend = createFolder({ id: 'backend', name: 'Backend', parentId: null, now: 1 });
+    const database = createFolder({ id: 'database', name: 'Database', parentId: 'backend', now: 1 });
+    const platform = createFolder({ id: 'platform', name: 'Platform', parentId: null, now: 1 });
+    const chat = createChatReference({ id: 'chat-one', label: 'Production debugging', target: 'https://chatgpt.com/c/debug', folderId: null, now: 1 });
+    const note = createLocalNote({ id: 'note-one', title: 'Runbook', folderId: null, now: 1 });
+    initial.folders = [backend, database, platform];
+    initial.chatRefs = [chat];
+    initial.notes = [note];
+    const repository = new MemoryWorkspaceRepository(initial);
+
+    render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
+    await screen.findByText('Production debugging');
+
+    const backendRow = screen.getByTitle('Backend').parentElement;
+    const platformRow = screen.getByTitle('Platform').parentElement;
+    const databaseRow = screen.getByTitle('Database').parentElement;
+    const chatRow = screen.getByRole('button', { name: 'Production debugging' }).parentElement;
+    const noteRow = screen.getByRole('button', { name: 'Runbook' });
+    if (backendRow === null || platformRow === null || databaseRow === null || chatRow === null) throw new Error('Explorer drag targets missing');
+
+    const chatTransfer = dataTransfer();
+    fireEvent.dragStart(chatRow, { dataTransfer: chatTransfer });
+    fireEvent.dragOver(backendRow, { dataTransfer: chatTransfer });
+    fireEvent.drop(backendRow, { dataTransfer: chatTransfer });
+
+    const noteTransfer = dataTransfer();
+    fireEvent.dragStart(noteRow, { dataTransfer: noteTransfer });
+    fireEvent.dragOver(backendRow, { dataTransfer: noteTransfer });
+    fireEvent.drop(backendRow, { dataTransfer: noteTransfer });
+
+    const folderTransfer = dataTransfer();
+    fireEvent.dragStart(platformRow, { dataTransfer: folderTransfer });
+    fireEvent.dragOver(backendRow, { dataTransfer: folderTransfer });
+    fireEvent.drop(backendRow, { dataTransfer: folderTransfer });
+
+    await waitFor(async () => {
+      const saved = await repository.load();
+      expect(saved?.chatRefs.find((item) => item.id === 'chat-one')?.folderId).toBe('backend');
+      expect(saved?.notes.find((item) => item.id === 'note-one')?.folderId).toBe('backend');
+      expect(saved?.folders.find((item) => item.id === 'platform')?.parentId).toBe('backend');
+    });
+
+    const invalidTransfer = dataTransfer();
+    fireEvent.dragStart(backendRow, { dataTransfer: invalidTransfer });
+    fireEvent.dragOver(databaseRow, { dataTransfer: invalidTransfer });
+    fireEvent.drop(databaseRow, { dataTransfer: invalidTransfer });
+
+    await waitFor(async () => {
+      const saved = await repository.load();
+      expect(saved?.folders.find((item) => item.id === 'backend')?.parentId).toBeNull();
     });
   });
 
