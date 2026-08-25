@@ -114,7 +114,11 @@ export function SettingsPanel({ exportJson, recoveryJson, persistenceError, onIm
           title="Raw recovery payload"
           description="The stored payload failed schema validation and will not be overwritten automatically."
           action={(
-            <Button variant="danger" onClick={() => onDownload('chatspace-recovery.json', recoveryJson)}>
+            <Button
+              aria-label="Download recovery"
+              variant="danger"
+              onClick={() => onDownload('chatspace-recovery.json', recoveryJson)}
+            >
               <Download size={11} aria-hidden="true" /> Recovery
             </Button>
           )}
