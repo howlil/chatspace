@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react';
 
 import type { ChatReference, LocalNote } from '../../domain/workspace/model';
 import { cn } from '../../ui/cn';
-import { Button, IconButton, Input, Select } from '../../ui/primitives';
+import { Button, Input, Select } from '../../ui/primitives';
 
 interface LocalNoteEditorProps {
   note: LocalNote;
