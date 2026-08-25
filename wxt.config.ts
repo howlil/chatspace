@@ -6,6 +6,7 @@ export default defineConfig({
     name: 'Chatspace',
     description: 'A local-first workspace layer that lives beside ChatGPT.',
     permissions: ['storage', 'sidePanel'],
+    host_permissions: ['https://chatgpt.com/*'],
     action: {
       default_title: 'Open Chatspace',
     },
