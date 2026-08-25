@@ -1,4 +1,4 @@
-import { ArrowRight, Maximize2, Network, Search, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowDown, ArrowRight, Maximize2, Network, Search, ZoomIn, ZoomOut } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import type { GraphNode, WorkspaceGraph } from '../../domain/graph/projectGraph';
@@ -41,10 +41,10 @@ function positionNodes(nodes: GraphNode[]): PositionedNode[] {
 }
 
 function nodeKindClass(kind: GraphNode['kind']): string {
-  if (kind === 'workspace') return 'border-white/25 bg-white/[0.10] text-cs-text';
-  if (kind === 'folder') return 'border-blue-200/15 bg-blue-200/[0.045] text-blue-100/90';
-  if (kind === 'chat') return 'border-emerald-200/15 bg-emerald-200/[0.045] text-emerald-100/90';
-  return 'border-violet-200/15 bg-violet-200/[0.045] text-violet-100/90';
+  if (kind === 'workspace') return 'border-cs-focus bg-cs-active text-cs-text';
+  if (kind === 'folder') return 'border-cs-border bg-cs-raised text-cs-text';
+  if (kind === 'chat') return 'border-cs-border bg-cs-surface text-cs-text';
+  return 'border-cs-border bg-cs-control text-cs-text';
 }
 
 export function GraphNavigator({ graph, onOpenNode, onCreateManualEdge }: GraphNavigatorProps) {
@@ -67,11 +67,11 @@ export function GraphNavigator({ graph, onOpenNode, onCreateManualEdge }: GraphN
 
   return (
     <section className="grid h-full min-h-0 grid-rows-[38px_minmax(0,1fr)] bg-cs-bg" aria-label="Workspace graph">
-      <header className="flex min-w-0 items-center gap-2 border-b border-white/[0.065] bg-cs-panel/70 px-2.5">
+      <header className="flex min-w-0 items-center gap-2 border-b border-cs-border bg-cs-panel/70 px-2.5">
         <div className="relative min-w-0 flex-1 max-w-xs">
           <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-cs-subtle" size={11} aria-hidden="true" />
           <input
-            className="h-7 w-full rounded-md border border-white/[0.08] bg-cs-bg pl-7 pr-2 text-[10px] text-cs-text outline-none placeholder:text-cs-subtle focus:border-white/20 focus:ring-1 focus:ring-white/15"
+            className="h-7 w-full rounded-md border border-cs-border bg-cs-bg pl-7 pr-2 text-[10px] text-cs-text outline-none placeholder:text-cs-subtle focus:border-cs-focus focus:ring-1 focus:ring-cs-focus/20"
             aria-label="Search graph"
             placeholder="Find a node"
             value={query}
@@ -96,7 +96,7 @@ export function GraphNavigator({ graph, onOpenNode, onCreateManualEdge }: GraphN
 
       <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_240px] max-[720px]:grid-cols-1 max-[720px]:grid-rows-[minmax(0,1fr)_auto]">
         <div
-          className="relative min-h-0 overflow-auto bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] bg-[length:18px_18px]"
+          className="relative min-h-0 overflow-auto bg-[radial-gradient(circle_at_center,color-mix(in_srgb,var(--color-cs-border)_55%,transparent)_1px,transparent_1px)] bg-[length:18px_18px]"
           role="application"
           aria-label="Spatial graph canvas"
         >
@@ -104,7 +104,7 @@ export function GraphNavigator({ graph, onOpenNode, onCreateManualEdge }: GraphN
             className="relative origin-center transition-transform duration-150"
             style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT, transform: `scale(${zoom})` }}
           >
-            <svg className="pointer-events-none absolute inset-0 text-white/15" width={CANVAS_WIDTH} height={CANVAS_HEIGHT} aria-hidden="true">
+            <svg className="pointer-events-none absolute inset-0 text-cs-border" width={CANVAS_WIDTH} height={CANVAS_HEIGHT} aria-hidden="true">
               {graph.edges.map((edge) => {
                 const source = positionById.get(edge.sourceId);
                 const target = positionById.get(edge.targetId);
@@ -121,9 +121,9 @@ export function GraphNavigator({ graph, onOpenNode, onCreateManualEdge }: GraphN
                 data-muted={visibleNodeIds.has(node.id) ? 'false' : 'true'}
                 aria-label={`${node.kind} ${node.label}`}
                 className={cn(
-                  'absolute grid min-w-28 max-w-40 -translate-x-1/2 -translate-y-1/2 gap-0.5 rounded-lg border px-3 py-2 text-left shadow-lg outline-none transition-all duration-150 hover:brightness-125 focus-visible:ring-1 focus-visible:ring-white/40',
+                  'absolute grid min-w-28 max-w-40 -translate-x-1/2 -translate-y-1/2 gap-0.5 rounded-lg border px-3 py-2 text-left shadow-lg outline-none transition-all duration-150 hover:brightness-105 focus-visible:ring-1 focus-visible:ring-cs-focus/50',
                   nodeKindClass(node.kind),
-                  node.id === selectedNode?.id && 'ring-1 ring-white/40 shadow-[0_8px_30px_rgba(0,0,0,0.35)]',
+                  node.id === selectedNode?.id && 'ring-1 ring-cs-focus/50 shadow-[0_8px_30px_rgba(0,0,0,0.2)]',
                   !visibleNodeIds.has(node.id) && 'opacity-20',
                 )}
                 style={{ left: x, top: y }}
@@ -137,7 +137,7 @@ export function GraphNavigator({ graph, onOpenNode, onCreateManualEdge }: GraphN
           </div>
         </div>
 
-        <aside className="min-h-0 overflow-y-auto border-l border-white/[0.065] bg-cs-panel p-3 max-[720px]:max-h-56 max-[720px]:border-l-0 max-[720px]:border-t" aria-label="Graph selection details">
+        <aside className="min-h-0 overflow-y-auto border-l border-cs-border bg-cs-panel p-3 max-[720px]:max-h-56 max-[720px]:border-l-0 max-[720px]:border-t" aria-label="Graph selection details">
           {selectedNode === undefined ? (
             <div className="grid min-h-28 place-items-center text-[9px] text-cs-subtle">Select a node.</div>
           ) : (
@@ -156,7 +156,7 @@ export function GraphNavigator({ graph, onOpenNode, onCreateManualEdge }: GraphN
                   const otherId = edge.sourceId === selectedNode.id ? edge.targetId : edge.sourceId;
                   const other = graph.nodes.find((node) => node.id === otherId);
                   return (
-                    <div key={edge.id} className="grid gap-0.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-1.5">
+                    <div key={edge.id} className="grid gap-0.5 rounded-md border border-cs-border bg-cs-control px-2 py-1.5">
                       <span className="text-[8px] text-cs-subtle">{edge.kind}</span>
                       <strong className="truncate text-[9px] font-medium text-cs-muted">{other?.label ?? otherId}</strong>
                       <small className="text-[8px] text-cs-subtle">{edge.provenance}</small>
@@ -170,7 +170,7 @@ export function GraphNavigator({ graph, onOpenNode, onCreateManualEdge }: GraphN
 
           {entityNodes.length >= 2 && (
             <form
-              className="mt-4 grid gap-1.5 border-t border-white/[0.06] pt-3"
+              className="mt-4 grid gap-1.5 border-t border-cs-border pt-3"
               onSubmit={(event) => {
                 event.preventDefault();
                 if (sourceEntityId !== '' && targetEntityId !== '' && sourceEntityId !== targetEntityId) onCreateManualEdge(sourceEntityId, targetEntityId);
@@ -183,7 +183,7 @@ export function GraphNavigator({ graph, onOpenNode, onCreateManualEdge }: GraphN
               <Select aria-label="Relationship source" value={sourceEntityId} onChange={(event) => setSourceEntityId(event.target.value)}>
                 {entityNodes.map((node) => <option key={node.id} value={node.entityId}>{node.label}</option>)}
               </Select>
-              <div className="text-center text-[9px] text-cs-subtle">↓</div>
+              <div className="grid place-items-center text-cs-subtle" aria-hidden="true"><ArrowDown size={10} /></div>
               <Select aria-label="Relationship target" value={targetEntityId} onChange={(event) => setTargetEntityId(event.target.value)}>
                 {entityNodes.map((node) => <option key={node.id} value={node.entityId}>{node.label}</option>)}
               </Select>
