@@ -66,9 +66,16 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
         />
         <div className="command-palette__list">
           {visibleCommands.map((command, index) => (
-            <button type="button" data-active={index === activeIndex ? 'true' : 'false'} key={command.id} onMouseEnter={() => setActiveIndex(index)} onClick={() => runCommand(command)}>
+            <button
+              type="button"
+              aria-label={command.label}
+              data-active={index === activeIndex ? 'true' : 'false'}
+              key={command.id}
+              onMouseEnter={() => setActiveIndex(index)}
+              onClick={() => runCommand(command)}
+            >
               <span>{command.label}</span>
-              {index === activeIndex && <kbd>Enter</kbd>}
+              {index === activeIndex && <kbd aria-hidden="true">Enter</kbd>}
             </button>
           ))}
           {visibleCommands.length === 0 && <p>No matching commands.</p>}
