@@ -1,4 +1,4 @@
-import { Command, Search } from 'lucide-react';
+import { Command, CornerDownLeft, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { cn } from '../../ui/cn';
@@ -46,18 +46,18 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-center bg-black/55 px-3 pt-14 backdrop-blur-[1px]"
+      className="fixed inset-0 z-50 flex justify-center bg-black/35 px-3 pt-14 backdrop-blur-[1px]"
       role="presentation"
       onMouseDown={onClose}
     >
       <section
-        className="h-fit w-full max-w-lg overflow-hidden rounded-xl border border-white/[0.10] bg-cs-panel shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
+        className="h-fit w-full max-w-lg overflow-hidden rounded-xl border border-cs-border bg-cs-panel shadow-[0_24px_80px_rgba(0,0,0,0.35)]"
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="flex h-10 items-center gap-2 border-b border-white/[0.075] px-3">
+        <div className="flex h-10 items-center gap-2 border-b border-cs-border px-3">
           <Search size={14} className="shrink-0 text-cs-subtle" aria-hidden="true" />
           <input
             autoFocus
@@ -80,7 +80,7 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
               }
             }}
           />
-          <kbd className="rounded border border-white/[0.08] bg-white/[0.035] px-1.5 py-0.5 text-[9px] text-cs-subtle">Esc</kbd>
+          <kbd className="rounded border border-cs-border bg-cs-control px-1.5 py-0.5 text-[9px] text-cs-subtle">Esc</kbd>
         </div>
         <div className="max-h-[340px] overflow-y-auto p-1.5">
           {visibleCommands.map((command, index) => (
@@ -89,8 +89,8 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
               aria-label={command.label}
               data-active={index === activeIndex ? 'true' : 'false'}
               className={cn(
-                'flex h-8 w-full items-center justify-between gap-3 rounded-md px-2.5 text-left text-[11px] text-cs-muted outline-none transition-colors hover:bg-white/[0.05] hover:text-cs-text',
-                index === activeIndex && 'bg-white/[0.065] text-cs-text',
+                'flex h-8 w-full items-center justify-between gap-3 rounded-md px-2.5 text-left text-[11px] text-cs-muted outline-none transition-colors hover:bg-cs-hover hover:text-cs-text',
+                index === activeIndex && 'bg-cs-active text-cs-text',
               )}
               key={command.id}
               onMouseEnter={() => setActiveIndex(index)}
@@ -100,7 +100,11 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
                 <Command size={11} className="shrink-0 text-cs-subtle" aria-hidden="true" />
                 <span className="truncate">{command.label}</span>
               </span>
-              {index === activeIndex && <kbd aria-hidden="true" className="text-[9px] text-cs-subtle">Enter ↵</kbd>}
+              {index === activeIndex && (
+                <kbd aria-hidden="true" className="flex items-center gap-1 text-[9px] text-cs-subtle">
+                  Enter <CornerDownLeft size={9} />
+                </kbd>
+              )}
             </button>
           ))}
           {visibleCommands.length === 0 && (
