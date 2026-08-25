@@ -1,0 +1,90 @@
+.save-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 0, 0, 0.58);
+}
+
+.save-dialog {
+  width: min(420px, 100%);
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--cs-border, rgba(255,255,255,.12));
+  border-radius: 8px;
+  background: #151515;
+  color: #f4f4f4;
+  box-shadow: 0 18px 50px rgba(0,0,0,.45);
+}
+
+.save-dialog header,
+.save-dialog footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.save-dialog header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.save-dialog header span,
+.save-dialog label > span,
+.save-dialog__target {
+  color: #9d9d9d;
+  font-size: 12px;
+}
+
+.save-dialog label:not(.save-dialog__check) {
+  display: grid;
+  gap: 6px;
+}
+
+.save-dialog input[type='text'],
+.save-dialog input:not([type]),
+.save-dialog select {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 5px;
+  background: #101010;
+  color: inherit;
+  padding: 0 9px;
+}
+
+.save-dialog__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.save-dialog__target {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.save-dialog button {
+  min-height: 30px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 5px;
+  background: #202020;
+  color: inherit;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.save-dialog__primary {
+  background: #ededed !important;
+  color: #111 !important;
+}
+
+.save-dialog button:disabled {
+  opacity: .45;
+  cursor: default;
+}

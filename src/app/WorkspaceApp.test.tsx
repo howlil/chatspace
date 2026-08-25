@@ -56,8 +56,11 @@ describe('WorkspaceApp', () => {
     });
   });
 
-  it('saves an explicit URL-only reference and opens it as a workspace tab', async () => {
-    const repository = new MemoryWorkspaceRepository();
+  it('saves a named conversation into a chosen folder and optionally pins it', async () => {
+    const initial = createInitialWorkspace(1);
+    initial.folders = [createFolder({ id: 'database', name: 'Database', parentId: null, now: 1 })];
+    const repository = new MemoryWorkspaceRepository(initial);
+
     render(
       <WorkspaceApp
         repository={repository}
@@ -66,10 +69,24 @@ describe('WorkspaceApp', () => {
     );
 
     fireEvent.click(await screen.findByRole('button', { name: 'Save current chat' }));
+    expect(screen.getByRole('dialog', { name: 'Save conversation' })).toBeVisible();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Conversation name' }), {
+      target: { value: 'PostgreSQL locking' },
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Conversation folder' }), {
+      target: { value: 'database' },
+    });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Pin this conversation' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(async () => {
       const saved = await repository.load();
-      expect(saved?.chatRefs[0]?.target).toBe('https://chatgpt.com/c/abc-123');
+      expect(saved?.chatRefs[0]).toMatchObject({
+        label: 'PostgreSQL locking',
+        target: 'https://chatgpt.com/c/abc-123',
+        folderId: 'database',
+        pinned: true,
+      });
       expect(saved?.tabs.some((tab) => tab.kind === 'chat')).toBe(true);
     });
   });

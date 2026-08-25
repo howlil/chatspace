@@ -4,53 +4,84 @@ Last updated: 2026-08-25
 
 ## Current
 
-PR #4 `refactor: converge Chatspace into the intended workspace` corrects the product-composition mismatch discovered after the first v1 merge.
+PR #5 `feat: make Chatspace a daily-driver workspace` implements the P0–P4 vertical slice requested after live browser acceptance showed that the side-panel shell was structurally correct but the core daily workflow still lacked useful actions.
 
-The latest product-acceptance implementation on `feat/product-convergence` has passed the full engineering gate through commit `60280a539ecc32936b586ad635950dab60fac6fb` in CI run `32869477561`.
+P0–P4 are implemented sequentially and each stage passed lint, strict TypeScript, tests, and the WXT production build before work proceeded to the next stage.
 
-## Corrected product architecture
+## Daily-driver product loop
 
-- Chatspace primary UI moved from fixed host-page overlay to browser Side Panel
-- native ChatGPT remains fully owned/rendered by the main browser page
-- content script is now a URL-only location/navigation bridge
-- fake Provider column removed
-- extension-owned surface is Explorer + Workbench
-- Explorer resize/collapse is canonical persisted layout state
+```text
+active ChatGPT conversation
+        ↓
+reliable URL-only detection
+        ↓
+Save conversation
+        ↓
+name + folder + optional pin
+        ↓
+Explorer management
+        ↓
+Continue / Pinned / Recent home
+        ↓
+chat tab / Explorer click
+        ↓
+native ChatGPT context switch
+```
 
-## Implemented product convergence
+## P0 — reliable provider connection
 
-- compact side-panel shell
-- searchable workspace Explorer
-- nested folder disclosure
-- folder rename/delete controls
-- pinned saved-chat section
-- saved-chat URL-only navigation to native ChatGPT
-- persisted Explorer width/collapse
-- keyboard-complete command palette
-- Markdown note Edit/Preview modes
-- explicit local note tags and linked-chat references
-- safe Markdown preview without raw HTML injection
-- spatial graph canvas with visible edges
-- zoom/reset controls
-- selection inspector and open action
-- edge provenance
-- manual relationships
-- false-positive protection for placeholder `Untitled note` semantic relations
-- existing corruption recovery/import/export/reset retained
-- optional authenticated localhost note bridge retained
+- active ChatGPT tab detection no longer depends on a freshly injected content script
+- ChatGPT-scoped host permission exposes only the active tab URL for `https://chatgpt.com/*`
+- URL classification remains provider-adapter based and does not read conversation content
+- reconnect state is actionable when the active tab is not ChatGPT
+- side panel refreshes on activation/update/focus and a bounded polling interval
+- validated navigation updates the active ChatGPT tab or opens the saved target in a new tab when needed
 
-## Verification evidence
+Evidence: CI run `32875404826` — PASS.
 
-Latest code acceptance gate before documentation convergence:
+## P1 — explicit Save Conversation flow
 
-- dependency install: PASS
-- ESLint: PASS
-- strict TypeScript: PASS
-- Vitest/product acceptance tests: PASS
-- WXT production build: PASS
-- CI run: `32869477561`
+- Save Current Chat opens a proper dialog instead of immediately creating `Conversation N`
+- editable name
+- folder selection
+- optional pin
+- duplicate URL handling
+- normalized URL-only target persists locally
+- successful save opens the local chat workbench context
 
-A final docs/state commit must run the same gate again before PR #4 is merged.
+Evidence: CI run `32875776222` — PASS.
+
+## P2 — Explorer conversation management
+
+- rename local conversation reference
+- move reference between folders or Workspace root
+- pin/unpin
+- delete local reference with explicit wording that the ChatGPT conversation itself is not deleted
+- management actions are available from the Explorer
+- opening a saved chat updates its local activity timestamp
+
+Evidence: CI run `32876098024` — PASS.
+
+## P3 — resume-oriented Home
+
+- Home no longer uses folder/chat/note counters as the primary experience
+- `Continue` shows recently active saved chats
+- `Pinned` exposes pinned saved chats
+- `Recent notes` exposes recently updated local notes
+- empty state directs the user toward the useful capture/curation loop
+
+Evidence: CI run `32876345722` — PASS.
+
+## P4 — native ChatGPT context switching
+
+- activating a saved chat tab navigates native ChatGPT to its validated target
+- Explorer and Home chat actions use the same navigation path
+- duplicate-save handling resumes the existing saved conversation
+- active chat workbench shows local metadata/actions rather than presenting the raw URL as the feature
+- chat rename keeps an existing chat tab title synchronized
+- acceptance tests verify native navigation and absence of raw URL workbench output
+
+Evidence: CI run `32876632234` — PASS.
 
 ## Hard constraints retained
 
@@ -60,22 +91,33 @@ A final docs/state commit must run the same gate again before PR #4 is merged.
 - no history crawling
 - no provider DOM scraping
 - no protection/rate-limit bypass
-- semantic relationships are local, deterministic, and provenanced
+- provider interaction is URL-only and origin-scoped
+- canonical workspace state remains extension-owned `chrome.storage.local`
+
+## Product status
+
+Chatspace is now a **daily-driver candidate** for its core local workflow: capture, organize, resume, and switch saved ChatGPT contexts while native ChatGPT remains the conversation runtime.
+
+Graph, local notes, backup/recovery, optional Obsidian bridge, and deterministic local relationships remain secondary capabilities and do not sit on the critical capture/navigation path.
 
 ## Manual acceptance
 
-Live visual browser acceptance cannot be executed by repository CI. After merge, reload the unpacked extension and verify the side panel beside ChatGPT. A screenshot/use pass remains the correct final visual check rather than inferring UI quality from unit tests.
+Repository CI cannot perform the final live-browser visual/use acceptance. After merge, reload the unpacked extension and verify:
+
+1. current ChatGPT conversation is detected without reloading the conversation tab manually
+2. Save Conversation dialog accepts name/folder/pin
+3. saved reference can be renamed/moved/pinned/deleted in Explorer
+4. Home shows Continue/Pinned/Recent Notes after data exists
+5. activating a saved chat tab switches native ChatGPT conversation
 
 ## Release status
 
-This convergence targets a **daily-driver candidate**, not public store readiness.
-
-A committed npm lockfile and full public-distribution packaging/lifecycle checks remain separate release-hardening work.
+This is a daily-driver candidate, not public store readiness. A committed npm lockfile and full public-distribution packaging/lifecycle checks remain separate release-hardening work.
 
 ## Next single priority
 
-**Run final PR #4 engineering gate after documentation convergence, merge if green, then perform live side-panel visual acceptance.**
+**Run the final PR #5 gate on this state commit, squash-merge if green, then perform live browser acceptance.**
 
 ## Blocked
 
-No known code blocker. Manual browser visual acceptance remains external to CI.
+No known code blocker. Live browser acceptance remains external to CI.
