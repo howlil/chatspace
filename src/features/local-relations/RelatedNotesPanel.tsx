@@ -18,7 +18,10 @@ export function RelatedNotesPanel({ noteId, notes, onOpenNote }: RelatedNotesPan
     .filter((candidate): candidate is { relation: typeof candidate.relation; note: LocalNote } =>
       candidate.note !== undefined,
     )
-    .sort((left, right) => right.relation.score - left.relation.score || left.note.title.localeCompare(right.note.title));
+    .sort(
+      (left, right) =>
+        right.relation.score - left.relation.score || left.note.title.localeCompare(right.note.title),
+    );
 
   return (
     <section className="related-notes-panel" aria-label="Related local notes">
@@ -34,7 +37,7 @@ export function RelatedNotesPanel({ noteId, notes, onOpenNote }: RelatedNotesPan
             <button type="button" key={note.id} onClick={() => onOpenNote(note)}>
               <span>{note.title}</span>
               <small>
-                {Math.round(relation.score * 100)}% · {relation.sharedTerms.slice(0, 4).join(', ')}
+                {Math.round(relation.score * 100)}% · {relation.sharedTerms.slice(0, 5).join(', ')}
               </small>
             </button>
           ))}
