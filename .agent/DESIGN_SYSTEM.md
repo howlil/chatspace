@@ -20,18 +20,16 @@ The primary Chatspace surface is the browser Side Panel.
 
 ```text
 ┌──────────────────────────────────────────────────────┐
-│ Chatspace header                                     │
+│ Chatspace header                         theme toggle │
 ├──────────────────┬─┬─────────────────────────────────┤
 │ Explorer         │ │ Workbench                       │
 │ search           │ │ tabs                            │
-│ pinned           │ │ note / graph / settings        │
-│ workspace tree   │ │                                 │
+│ workspace root   │ │ note / graph / settings        │
+│ nested tree      │ │                                 │
 └──────────────────┴─┴─────────────────────────────────┘
 ```
 
-Native ChatGPT remains outside this surface in the main browser page.
-
-There is no fake Provider column inside Chatspace.
+Native ChatGPT remains outside this surface in the main browser page. There is no fake Provider column inside Chatspace.
 
 ## 3. Hierarchy
 
@@ -45,50 +43,92 @@ Use, in order:
 
 Do not add colors to compensate for weak hierarchy.
 
-## 4. Semantic tokens
+## 4. Tailwind semantic tokens
 
-Components use semantic variables such as:
+Feature components should compose Tailwind classes from semantic `cs-*` tokens rather than hard-coded dark-only white alpha values.
 
-```css
---cs-bg
---cs-surface-1
---cs-surface-2
---cs-text
---cs-text-muted
---cs-border
---cs-hover
---cs-active
---cs-focus
---cs-danger
---cs-grid-dot
---cs-edge
+Current palette primitives include:
+
+```text
+cs-bg
+cs-panel
+cs-surface
+cs-raised
+cs-border
+cs-control
+cs-hover
+cs-active
+cs-focus
+cs-primary
+cs-primary-contrast
+cs-text
+cs-muted
+cs-subtle
+cs-danger
 ```
 
-## 5. Explorer
+`html[data-theme="light"]` changes these tokens. Components should not need separate light-mode markup.
 
-Explorer is the primary navigation instrument.
+Use hard-coded colors only when color itself carries stable semantics, such as destructive/error state, and ensure contrast works in both themes.
+
+## 5. Theme behavior
+
+- support explicit light and dark modes
+- use Lucide Sun/Moon for the appearance toggle
+- persist the explicit preference
+- use `prefers-color-scheme` only as the initial fallback when no preference exists
+- update `color-scheme` so native controls and browser rendering follow the active mode
+- verify every primary surface in both themes before accepting a visual change
+
+## 6. Explorer
+
+Explorer is the primary navigation and hierarchy instrument.
 
 Required:
 
 - workspace search
+- an explicit `Workspace root` location
 - nested folder disclosure
 - clear selected state
 - pinned chats
 - note/chat type distinction
+- compact rows
 - basic rename/delete management for selected folders
 - secondary actions hidden until relevant where possible
-- compact rows
+- drag/drop folder, saved-chat reference, and Markdown note between folders and root
+
+Creation semantics must be predictable:
+
+- global/top-level `Folder` always creates at Workspace root
+- nesting must be explicit through `New subfolder here`
+- current selection must never silently change the meaning of a global create action
+
+Hierarchy safety:
+
+- reject folder → self
+- reject folder → descendant
+- moving a folder changes only its parent relation
+- moving saved chats/notes changes only their local workspace location
 
 Do not put a permanent toolbar of icons on every row.
 
-## 6. Workbench tabs
+## 7. Icons
+
+Lucide is the UI icon system.
+
+- use Lucide for actions, navigation affordances, status icons, arrows used as controls, list markers used as UI decoration, theme toggle, and file/folder/chat identities
+- do not substitute Unicode glyphs such as decorative arrows or bullets when an icon is functioning as an affordance
+- ordinary punctuation inside user/content text is not an icon and should remain text
+- decorative icons should be `aria-hidden`; icon-only buttons require an accessible name
+
+## 8. Workbench tabs
 
 - active tab visually clear but subtle
 - scroll overflow rather than unreadably shrinking labels
 - close affordance for non-pinned tabs
 - tab content is a local artifact/view, not a duplicate provider page
 
-## 7. Command palette
+## 9. Command palette
 
 `Ctrl/⌘ K` is a first-class control.
 
@@ -101,7 +141,7 @@ Keyboard behavior:
 
 Visible buttons and palette commands must invoke the same application behavior.
 
-## 8. Notes
+## 10. Notes
 
 Notes are first-class workbench artifacts.
 
@@ -114,10 +154,11 @@ Current surface:
 - linked saved-chat references
 - related-local navigation
 - optional explicit vault sync
+- draggable Explorer representation that can move between folders and Workspace root
 
 Do not evolve this into a full Obsidian clone unless real usage demands it.
 
-## 9. Graph
+## 11. Graph
 
 Graph is a navigation canvas.
 
@@ -135,7 +176,7 @@ Required:
 
 A node/relationship table alone is not considered a graph view.
 
-## 10. Responsive behavior
+## 12. Responsive behavior
 
 The browser can make side panels narrow. Preserve workbench usability:
 
@@ -146,7 +187,7 @@ The browser can make side panels narrow. Preserve workbench usability:
 
 Never force multiple tiny permanent columns.
 
-## 11. Accessibility
+## 13. Accessibility
 
 Minimum:
 
@@ -157,14 +198,17 @@ Minimum:
 - labelled graph canvas and inspector
 - no hover-only required actions
 - destructive actions explicit
+- drag/drop has a visible root destination; location-changing selects remain available where already present for critical saved-chat management
 
-## 12. Design acceptance
+## 14. Design acceptance
 
 A UI change is not complete until these questions are answered:
 
 - Does it make navigation/knowledge work easier?
 - Does it preserve native ChatGPT usability?
-- Can the primary path be completed with keyboard?
+- Can the primary path be completed with keyboard where applicable?
 - Does it survive a narrow side panel?
 - Are empty/error/recovery states clear?
+- Does light mode remain a designed surface rather than an inverted dark theme?
+- Are global create actions stable regardless of selection?
 - Is this a real user surface rather than a developer inspector disguised as UI?
