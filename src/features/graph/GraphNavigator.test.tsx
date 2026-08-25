@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { WorkspaceGraph } from '../../domain/graph/projectGraph';
 import { GraphNavigator } from './GraphNavigator';
@@ -15,11 +15,13 @@ const graph: WorkspaceGraph = {
   ],
 };
 
+afterEach(() => cleanup());
+
 describe('GraphNavigator', () => {
   it('uses graph nodes for navigation and exposes provenance on relationships', () => {
     const onOpenNode = vi.fn();
     render(<GraphNavigator graph={graph} onOpenNode={onOpenNode} onCreateManualEdge={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name:/note Transactions/i }));
+    fireEvent.click(screen.getByRole('button', { name:'note Transactions' }));
     expect(onOpenNode).toHaveBeenCalledWith(graph.nodes[1]);
     expect(screen.getByText('canonical')).toBeVisible();
   });
