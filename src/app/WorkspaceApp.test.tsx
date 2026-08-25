@@ -91,7 +91,7 @@ describe('WorkspaceApp', () => {
     const repository = new MemoryWorkspaceRepository(initial);
 
     render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
-    await screen.findByText('Production debugging');
+    await screen.findByRole('button', { name: 'Production debugging' });
 
     const backendRow = screen.getByTitle('Backend').parentElement;
     const platformRow = screen.getByTitle('Platform').parentElement;
