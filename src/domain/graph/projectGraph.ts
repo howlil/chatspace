@@ -1,3 +1,4 @@
+import { deriveLocalNoteRelations, localRelationPairKey } from './localRelations';
 import type { WorkspaceSnapshot } from '../workspace/model';
 
 export type GraphNodeKind = 'workspace' | 'folder' | 'chat' | 'note';
@@ -101,10 +102,12 @@ export function projectWorkspaceGraph(snapshot: WorkspaceSnapshot): WorkspaceGra
     }
   }
 
+  const manualPairs = new Set<string>();
   for (const edge of snapshot.manualEdges) {
     const sourceId = graphIdByEntityId.get(edge.sourceEntityId);
     const targetId = graphIdByEntityId.get(edge.targetEntityId);
     if (sourceId !== undefined && targetId !== undefined) {
+      manualPairs.add(localRelationPairKey(edge.sourceEntityId, edge.targetEntityId));
       edges.push({
         id: `manual:${edge.id}`,
         sourceId,
@@ -113,6 +116,17 @@ export function projectWorkspaceGraph(snapshot: WorkspaceSnapshot): WorkspaceGra
         provenance: 'manual',
       });
     }
+  }
+
+  for (const relation of deriveLocalNoteRelations(snapshot.notes)) {
+    if (manualPairs.has(localRelationPairKey(relation.sourceNoteId, relation.targetNoteId))) continue;
+    edges.push({
+      id: `local:${relation.sourceNoteId}:${relation.targetNoteId}`,
+      sourceId: nodeId('note', relation.sourceNoteId),
+      targetId: nodeId('note', relation.targetNoteId),
+      kind: 'related-local',
+      provenance: 'derived-local',
+    });
   }
 
   return { nodes, edges };

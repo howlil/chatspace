@@ -4,24 +4,21 @@ Last updated: 2026-08-25
 
 ## Current
 
-Iteration 1 — Safe Extension Shell is implemented on `feat/v1-workspace` after the verified v1 domain core.
-
-## Last verified outcome
-
-Commit `71900f9f5289fe39a19cdb341a397fd0def95c69` passed CI with dependency installation, ESLint, strict TypeScript, Vitest, and WXT production build all green.
+Iterations 1–10 are implemented on `feat/v1-workspace`. Iterations 1–9 have fresh green CI evidence; Iteration 10 is the final gated increment on the same branch and must pass lint, strict typecheck, tests, and production build before merge.
 
 ## Implemented
 
-- WXT + React Chromium MV3 foundation
-- strict TypeScript
-- Shadow DOM-isolated content UI on `https://chatgpt.com/*`
-- provider-independent workspace domain model
-- workspace reducer and schema validation/import/export contracts
-- graph projection with canonical/manual provenance
-- safe ChatGPT URL-reference adapter
-- `chrome.storage.local` repository abstraction
-- Iteration 1 recoverable shell with explicit hide/restore controls
-- top-level error boundary that fails closed while leaving ChatGPT usable
+- recoverable WXT + React Chromium MV3 shell on `https://chatgpt.com/*`
+- strict TypeScript and Shadow DOM isolation
+- extension-owned `chrome.storage.local` workspace persistence
+- nested folders, saved URL-only ChatGPT references, tabs, and command palette
+- Markdown notes linked to saved conversation references
+- graph projection with canonical, manual, and deterministic `derived-local` provenance
+- validated import/export/reset plus corruption recovery that blocks unsafe overwrite
+- privacy and security documentation
+- optional authenticated localhost Obsidian/filesystem bridge with session-only token
+- deterministic local semantic enrichment based only on user-authored note title/tags/content
+- related-note navigation in both graph and note workspace
 
 ## Hard constraints retained
 
@@ -31,21 +28,20 @@ Commit `71900f9f5289fe39a19cdb341a397fd0def95c69` passed CI with dependency inst
 - no protection/rate-limit bypass
 - provider-specific behavior remains isolated
 - ChatGPT remains usable if Chatspace fails or is hidden
+- semantic enrichment is deterministic/local and carries explicit provenance
 - TDD/evidence before completion claims
-
-## Known reliability gap
-
-`package-lock.json` is not yet committed. Exact direct dependency versions are pinned; close this during Iteration 8 store-readiness without granting persistent repository write permission to CI.
 
 ## Compatibility state
 
 Origin-scoped mount plus explicit URL-only ChatGPT navigation reference support. No provider DOM selectors, conversation scraping, history crawling, private endpoints, or provider credentials.
 
+## Release note
+
+Direct dependency versions are exact-pinned and CI is green through Iteration 9. A committed npm lockfile remains desirable before public package/store distribution; it is not generated or committed by CI because CI intentionally has read-only repository permissions.
+
 ## Next single priority
 
-**Iteration 2 — Spatial Workspace Layout.**
-
-Build the three-panel editor-like workspace shell while preserving the recoverable hide/restore behavior and host coexistence.
+**Close Iteration 10 gate, perform final PR verification, then merge.**
 
 ## Blocked
 

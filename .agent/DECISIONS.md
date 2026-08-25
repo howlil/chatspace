@@ -32,9 +32,7 @@ Compact ADR log. Update when a decision changes a meaningful boundary, dependenc
 
 **Decision:** No private endpoints, session-cookie reuse, network replay, protection bypass, or automated/programmatic extraction of ChatGPT data/output.
 
-**Why:** Reliability, security, maintainability, and current OpenAI Terms of Use.
-
-**Consequence:** Some desired graph/outline capabilities remain local/user-authored or deferred until an official supported path exists.
+**Why:** Reliability, security, maintainability, and current provider constraints.
 
 ---
 
@@ -45,8 +43,6 @@ Compact ADR log. Update when a decision changes a meaningful boundary, dependenc
 **Decision:** All provider-specific capability knowledge is isolated behind a narrow adapter and capability model.
 
 **Why:** Host web UIs change. Provider breakage must not contaminate workspace domain logic.
-
-**Consequence:** Features depend on capabilities, not direct selectors.
 
 ---
 
@@ -76,8 +72,6 @@ Compact ADR log. Update when a decision changes a meaningful boundary, dependenc
 
 **Decision:** Use WXT, strict TypeScript, React, Chromium MV3.
 
-**Evidence:** Iteration 0 passed lint, strict typecheck, Vitest, and production WXT build in CI.
-
 ---
 
 ## ADR-008 — IndexedDB from the content script
@@ -86,7 +80,7 @@ Compact ADR log. Update when a decision changes a meaningful boundary, dependenc
 
 **Previous direction:** Persist workspace data in IndexedDB behind a repository interface.
 
-**Reason superseded:** Chrome documents that web storage APIs invoked from content scripts access host-page storage rather than the extension's storage origin. Chatspace must not place canonical workspace data into `chatgpt.com` web storage.
+**Reason superseded:** Web storage APIs invoked from content scripts can belong to host-page storage. Chatspace canonical state must stay in the extension storage boundary.
 
 ---
 
@@ -96,17 +90,15 @@ Compact ADR log. Update when a decision changes a meaningful boundary, dependenc
 
 **Decision:** Mandatory CI uses pure local contract tests for provider adapters. Live ChatGPT compatibility is a manual release/review check unless an official permitted automation path exists.
 
-**Why:** Determinism, policy compliance, credentials, and external fragility.
-
 ---
 
 ## ADR-010 — Obsidian bridge deferred from MVP
 
-**Status:** Accepted for v1; revisit immediately after v1
+**Status:** Superseded by ADR-012
 
-**Decision:** The localhost/filesystem companion is not a dependency of the v1 workspace core. It may ship as an optional post-v1 integration with explicit permissions and authentication.
+**Previous decision:** Keep the localhost/filesystem companion out of the v1 core.
 
-**Why:** It creates a new security/runtime/distribution boundary and must not block the browser-only product.
+**Reason superseded:** The browser-only core reached its reliability gate first; the bridge can now ship as an optional, isolated integration without becoming a core dependency.
 
 ---
 
@@ -114,15 +106,33 @@ Compact ADR log. Update when a decision changes a meaningful boundary, dependenc
 
 **Status:** Accepted
 
-**Decision:** Persist canonical workspace state through a repository port backed by `chrome.storage.local` and request only the `storage` extension permission.
+**Decision:** Persist canonical workspace state through a repository port backed by `chrome.storage.local` and request only the `storage` extension permission for core functionality.
 
-**Why:** Chrome documents `chrome.storage` as extension-specific storage available to content scripts, while web storage used in content scripts belongs to the host page. This keeps Chatspace data in the extension security/storage boundary and avoids leaking canonical state into the provider origin.
+**Consequences:** Stored payloads remain JSON-serializable/schema-versioned; large binary assets remain out of scope.
 
-**Consequences:**
-- repository interface remains independent of storage implementation;
-- stored payloads stay JSON-serializable and schema-versioned;
-- workspace size is kept bounded for v1; large binary assets are out of scope;
-- future IndexedDB use, if needed, must run in an extension-origin context such as an extension page/service worker, not directly as host-origin web storage from the content script.
+---
+
+## ADR-012 — Authenticated localhost bridge is opt-in and note-only
+
+**Status:** Accepted
+
+**Decision:** The optional filesystem/Obsidian companion binds only to `127.0.0.1`, requires a bearer token, writes only beneath the configured vault's `Chatspace/` directory, and receives only explicitly synced local note id/title/Markdown.
+
+**Why:** Filesystem access is a separate trust boundary. It must not receive provider cookies, sessions, conversation bodies, or broad browser credentials.
+
+**Consequences:** Localhost host permission is optional; the bearer token stays in extension memory and is never persisted in the workspace.
+
+---
+
+## ADR-013 — Semantic enrichment is deterministic local projection
+
+**Status:** Accepted
+
+**Decision:** Related-note enrichment is derived only from user-authored local note title, tags, and Markdown using bounded lexical overlap. Every generated edge is marked `derived-local`; explicit manual relationships take precedence for the same entity pair.
+
+**Why:** The feature remains explainable, offline, fast, testable, and does not introduce a second AI provider or accidental ChatGPT content extraction.
+
+**Consequences:** Results are intentionally conservative. Future embedding/model enrichment requires a separate explicit ADR and consent boundary.
 
 ---
 

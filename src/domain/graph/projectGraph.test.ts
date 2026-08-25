@@ -38,4 +38,26 @@ describe('projectWorkspaceGraph', () => {
       ]),
     );
   });
+
+  it('projects deterministic local relations with derived-local provenance', () => {
+    const snapshot = createInitialWorkspace(1);
+    const first = createLocalNote({ id: 'note-a', title: 'Postgres MVCC', folderId: null, now: 2 });
+    first.content = 'transactions isolation locking production';
+    const second = createLocalNote({ id: 'note-b', title: 'MVCC isolation', folderId: null, now: 3 });
+    second.content = 'postgres transactions locking behavior';
+    snapshot.notes = [first, second];
+
+    const graph = projectWorkspaceGraph(snapshot);
+
+    expect(graph.edges).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sourceId: 'note:note-a',
+          targetId: 'note:note-b',
+          kind: 'related-local',
+          provenance: 'derived-local',
+        }),
+      ]),
+    );
+  });
 });
