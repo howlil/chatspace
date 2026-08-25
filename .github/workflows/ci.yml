@@ -16,7 +16,6 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,40 +26,13 @@ jobs:
           node-version: 22
 
       - name: Pin npm
-        run: |
-          npm install --global npm@12.0.2
-          npm --version
+        run: npm install --global npm@12.0.2
 
       - name: Install dependencies
-        id: install
-        continue-on-error: true
         run: npm install --no-audit --no-fund
 
-      - name: Report install failure
-        if: steps.install.outcome == 'failure'
-        run: |
-          log_file="$(ls -t ~/.npm/_logs/*-debug-0.log | head -n 1)"
-          echo "npm debug log: ${log_file}"
-          cat "${log_file}"
-          exit 1
+      - name: Unit verification
+        run: npm run verify
 
-      - name: Preserve generated lockfile
-        if: steps.install.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: package-lock
-          path: package-lock.json
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Test
-        run: npm test
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Build
+      - name: Production build
         run: npm run build
