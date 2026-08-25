@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createFolder, createInitialWorkspace } from '../domain/workspace/model';
+import { createChatReference, createFolder, createInitialWorkspace } from '../domain/workspace/model';
 import { MemoryWorkspaceRepository } from '../persistence/workspaceRepository';
 import { WorkspaceApp } from './WorkspaceApp';
 
@@ -9,7 +9,7 @@ afterEach(() => {
   cleanup();
 });
 
-describe('WorkspaceApp persistence', () => {
+describe('WorkspaceApp persistence and provider navigation', () => {
   it('hydrates nested local state and persists user-created folders', async () => {
     const initial = createInitialWorkspace(1);
     initial.folders = [
@@ -60,5 +60,30 @@ describe('WorkspaceApp persistence', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open graph' }));
     expect(screen.getByRole('tab', { name: 'Graph' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('navigates a saved chat only through the validated URL adapter', async () => {
+    const initial = createInitialWorkspace(1);
+    initial.chatRefs = [
+      createChatReference({
+        id: 'chat-one',
+        label: 'Production debugging',
+        target: 'https://chatgpt.com/c/abc-123',
+        folderId: null,
+        now: 1,
+      }),
+    ];
+    const navigate = vi.fn();
+    render(
+      <WorkspaceApp
+        repository={new MemoryWorkspaceRepository(initial)}
+        currentUrl={() => 'https://chatgpt.com/c/current'}
+        navigate={navigate}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Production debugging' }));
+    expect(navigate).toHaveBeenCalledWith('https://chatgpt.com/c/abc-123');
+    expect(screen.getByText('Conversation detected')).toBeVisible();
   });
 });

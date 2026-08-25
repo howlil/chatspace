@@ -5,28 +5,31 @@ import {
   createEntityId,
   createFolder,
   createInitialWorkspace,
+  type ChatReference,
   type WorkspaceTab,
 } from '../domain/workspace/model';
 import { workspaceReducer } from '../domain/workspace/workspaceReducer';
-import {
-  CommandPalette,
-  type WorkspaceCommand,
-} from '../features/command-palette/CommandPalette';
+import { CommandPalette, type WorkspaceCommand } from '../features/command-palette/CommandPalette';
 import { SpatialWorkspace } from '../features/workspace-layout/SpatialWorkspace';
 import { WorkspaceTree } from '../features/workspace-tree/WorkspaceTree';
 import { WorkspaceTabs } from '../features/tabs/WorkspaceTabs';
 import { createDefaultWorkspaceRepository } from '../persistence/chromeStorageWorkspaceRepository';
 import type { WorkspaceRepository } from '../persistence/workspaceRepository';
-import { getChatGptCapability } from '../providers/chatgpt/adapter';
+import {
+  getChatGptCapability,
+  navigateToChatGptTarget,
+} from '../providers/chatgpt/adapter';
 
 interface WorkspaceAppProps {
   repository?: WorkspaceRepository;
   currentUrl?: () => string;
+  navigate?: (url: string) => void;
 }
 
 export function WorkspaceApp({
   repository,
   currentUrl = () => window.location.href,
+  navigate = (url) => window.location.assign(url),
 }: WorkspaceAppProps) {
   const workspaceRepository = useMemo(
     () => repository ?? createDefaultWorkspaceRepository(),
@@ -87,6 +90,16 @@ export function WorkspaceApp({
     setStatus('Folder created locally.');
   }
 
+  function chatTab(chat: ChatReference): WorkspaceTab {
+    return {
+      id: `tab-chat-${chat.id}`,
+      kind: 'chat',
+      entityId: chat.id,
+      title: chat.label,
+      pinned: false,
+    };
+  }
+
   function saveCurrentChat() {
     const capability = getChatGptCapability(currentUrl());
     if (capability.currentTarget === null) {
@@ -96,13 +109,7 @@ export function WorkspaceApp({
 
     const existing = workspace.chatRefs.find((chat) => chat.target === capability.currentTarget);
     if (existing !== undefined) {
-      openTab({
-        id: `tab-chat-${existing.id}`,
-        kind: 'chat',
-        entityId: existing.id,
-        title: existing.label,
-        pinned: false,
-      });
+      openTab(chatTab(existing));
       setStatus('Conversation reference is already saved.');
       return;
     }
@@ -116,18 +123,13 @@ export function WorkspaceApp({
       now,
     });
     dispatch({ type: 'chat/create', chat });
-    dispatch({
-      type: 'tab/open',
-      tab: {
-        id: `tab-chat-${chat.id}`,
-        kind: 'chat',
-        entityId: chat.id,
-        title: chat.label,
-        pinned: false,
-      },
-      now,
-    });
+    dispatch({ type: 'tab/open', tab: chatTab(chat), now });
     setStatus('Conversation reference saved locally.');
+  }
+
+  function openSavedChat(chat: ChatReference) {
+    openTab(chatTab(chat));
+    navigateToChatGptTarget(chat.target, navigate);
   }
 
   function openGraph() {
@@ -149,6 +151,12 @@ export function WorkspaceApp({
   const activeChat = activeTab?.kind === 'chat'
     ? workspace.chatRefs.find((chat) => chat.id === activeTab.entityId)
     : undefined;
+  const capability = getChatGptCapability(currentUrl());
+  const compatibilityLabel = capability.canCaptureCurrentReference
+    ? 'Conversation detected'
+    : capability.supportedOrigin
+      ? 'ChatGPT page detected'
+      : 'Unsupported host';
 
   const surface = (
     <div className="workspace-surface-stack">
@@ -167,6 +175,7 @@ export function WorkspaceApp({
         <section className="workspace-home">
           <strong>{activeChat.label}</strong>
           <p>{activeChat.target}</p>
+          <button type="button" onClick={() => openSavedChat(activeChat)}>Open in ChatGPT</button>
         </section>
       ) : (
         <section className="workspace-home">
@@ -194,6 +203,7 @@ export function WorkspaceApp({
         notes={workspace.notes}
         selectedFolderId={selectedFolderId}
         onSelectFolder={setSelectedFolderId}
+        onOpenChat={openSavedChat}
       />
     </>
   );
@@ -205,7 +215,11 @@ export function WorkspaceApp({
         surface={surface}
         provider={
           <div className="provider-panel-content">
-            <p className="panel-empty">ChatGPT stays native on the host page.</p>
+            <div className="compatibility-status" data-supported={capability.supportedOrigin ? 'true' : 'false'}>
+              <span className="compatibility-dot" aria-hidden="true" />
+              <span>{compatibilityLabel}</span>
+            </div>
+            <p className="panel-empty">ChatGPT stays native on the host page. Only validated conversation URLs are stored.</p>
             <button type="button" onClick={() => setPaletteOpen(true)}>Commands</button>
             <span className="keyboard-hint">Ctrl/⌘ K</span>
           </div>

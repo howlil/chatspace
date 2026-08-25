@@ -6,11 +6,27 @@ interface WorkspaceTreeProps {
   notes: LocalNote[];
   selectedFolderId: string | null;
   onSelectFolder: (folderId: string | null) => void;
+  onOpenChat: (chat: ChatReference) => void;
 }
 
 interface FolderBranchProps extends WorkspaceTreeProps {
   parentId: string | null;
   depth: number;
+}
+
+function ChatLeaf({ chat, depth, onOpenChat }: { chat: ChatReference; depth: number; onOpenChat: (chat: ChatReference) => void }) {
+  return (
+    <button
+      type="button"
+      className="tree-leaf tree-leaf--button"
+      style={{ paddingLeft: `${28 + depth * 14}px` }}
+      title={chat.label}
+      onClick={() => onOpenChat(chat)}
+    >
+      <span aria-hidden="true">↗</span>
+      <span>{chat.label}</span>
+    </button>
+  );
 }
 
 function FolderBranch(props: FolderBranchProps) {
@@ -37,14 +53,7 @@ function FolderBranch(props: FolderBranchProps) {
             props.chatRefs
               .filter((chat) => chat.folderId === folder.id)
               .map((chat) => (
-                <div
-                  key={chat.id}
-                  className="tree-leaf"
-                  style={{ paddingLeft: `${28 + props.depth * 14}px` }}
-                >
-                  <span aria-hidden="true">↗</span>
-                  <span title={chat.label}>{chat.label}</span>
-                </div>
+                <ChatLeaf key={chat.id} chat={chat} depth={props.depth} onOpenChat={props.onOpenChat} />
               ))}
           {!folder.collapsed &&
             props.notes
@@ -82,10 +91,7 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
       </button>
       <FolderBranch {...props} parentId={null} depth={0} />
       {rootChats.map((chat) => (
-        <div key={chat.id} className="tree-leaf">
-          <span aria-hidden="true">↗</span>
-          <span title={chat.label}>{chat.label}</span>
-        </div>
+        <ChatLeaf key={chat.id} chat={chat} depth={0} onOpenChat={props.onOpenChat} />
       ))}
       {rootNotes.map((note) => (
         <div key={note.id} className="tree-leaf">
