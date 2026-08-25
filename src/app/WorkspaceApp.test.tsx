@@ -1,9 +1,13 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { createFolder, createInitialWorkspace } from '../domain/workspace/model';
 import { MemoryWorkspaceRepository } from '../persistence/workspaceRepository';
 import { WorkspaceApp } from './WorkspaceApp';
+
+afterEach(() => {
+  cleanup();
+});
 
 describe('WorkspaceApp persistence', () => {
   it('hydrates nested local state and persists user-created folders', async () => {
