@@ -1,3 +1,4 @@
+import { AlertTriangle } from 'lucide-react';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 interface WorkspaceErrorBoundaryProps {
@@ -25,9 +26,15 @@ export class WorkspaceErrorBoundary extends Component<
   override render() {
     if (this.state.failed) {
       return (
-        <section className="chatspace-fallback" role="alert">
-          <strong>Chatspace stopped safely</strong>
-          <span>ChatGPT is still available. Reload the page to restore Chatspace.</span>
+        <section
+          className="m-3 flex items-start gap-2 rounded-lg border border-red-300/15 bg-red-300/[0.045] p-3 text-xs text-cs-text"
+          role="alert"
+        >
+          <AlertTriangle className="mt-0.5 shrink-0 text-red-200" size={15} aria-hidden="true" />
+          <div className="grid gap-1">
+            <strong>Chatspace stopped safely</strong>
+            <span className="text-cs-muted">ChatGPT is still available. Reload the page to restore Chatspace.</span>
+          </div>
         </section>
       );
     }
