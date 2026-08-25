@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 
@@ -6,78 +6,95 @@ import { WorkspaceApp } from '../../src/app/WorkspaceApp';
 import { ChatspaceShell } from '../../src/app/shell/ChatspaceShell';
 import { WorkspaceErrorBoundary } from '../../src/app/shell/WorkspaceErrorBoundary';
 import '../../src/app/shell/bootstrap-shell.css';
+import {
+  navigateActiveProvider,
+  readActiveProviderState,
+  type ProviderTabsPort,
+  type ProviderTabState,
+} from '../../src/providers/chatgpt/browserTabProvider';
 import './style.css';
 
-interface ProviderLocationResponse {
-  href?: string;
-}
+const providerTabsPort: ProviderTabsPort = {
+  async getActive() {
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+    const tab = tabs[0];
+    if (tab === undefined) return undefined;
+    return { id: tab.id, url: tab.url };
+  },
+  async update(tabId, url) {
+    await browser.tabs.update(tabId, { url });
+  },
+  async create(url) {
+    await browser.tabs.create({ url });
+  },
+};
 
-async function activeProviderTab() {
-  const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-  return tabs[0];
-}
-
-async function readProviderUrl(): Promise<string> {
-  const tab = await activeProviderTab();
-  if (tab?.id === undefined) return 'about:blank';
-
-  try {
-    const response = (await browser.tabs.sendMessage(tab.id, {
-      type: 'chatspace/provider/location',
-    })) as ProviderLocationResponse | undefined;
-    return response?.href ?? tab.url ?? 'about:blank';
-  } catch {
-    return tab.url ?? 'about:blank';
-  }
-}
-
-async function navigateProvider(target: string): Promise<void> {
-  const tab = await activeProviderTab();
-  if (tab?.id === undefined) throw new Error('No active browser tab is available.');
-
-  const response = (await browser.tabs.sendMessage(tab.id, {
-    type: 'chatspace/provider/navigate',
-    target,
-  })) as { ok?: boolean; error?: string } | undefined;
-
-  if (response?.ok !== true) {
-    throw new Error(response?.error ?? 'ChatGPT navigation is unavailable on the active tab.');
-  }
+function stateUrl(state: ProviderTabState): string {
+  return state.url ?? 'about:blank';
 }
 
 function SidepanelWorkspace() {
-  const [providerUrl, setProviderUrl] = useState('about:blank');
+  const [providerState, setProviderState] = useState<ProviderTabState>({
+    kind: 'unavailable',
+    url: null,
+  });
+  const [refreshing, setRefreshing] = useState(false);
 
-  const refreshProviderUrl = useCallback(() => {
-    void readProviderUrl().then(setProviderUrl).catch(() => setProviderUrl('about:blank'));
+  const refreshProvider = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      setProviderState(await readActiveProviderState(providerTabsPort));
+    } catch {
+      setProviderState({ kind: 'unavailable', url: null });
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
 
   useEffect(() => {
-    refreshProviderUrl();
-    const onActivated = () => refreshProviderUrl();
-    const onUpdated = () => refreshProviderUrl();
-    const onFocus = () => refreshProviderUrl();
+    void refreshProvider();
+
+    const onActivated = () => void refreshProvider();
+    const onUpdated = () => void refreshProvider();
+    const onFocus = () => void refreshProvider();
+    const interval = window.setInterval(() => void refreshProvider(), 1500);
 
     browser.tabs.onActivated.addListener(onActivated);
     browser.tabs.onUpdated.addListener(onUpdated);
     window.addEventListener('focus', onFocus);
 
     return () => {
+      window.clearInterval(interval);
       browser.tabs.onActivated.removeListener(onActivated);
       browser.tabs.onUpdated.removeListener(onUpdated);
       window.removeEventListener('focus', onFocus);
     };
-  }, [refreshProviderUrl]);
+  }, [refreshProvider]);
+
+  const providerUrl = useMemo(() => stateUrl(providerState), [providerState]);
 
   return (
-    <WorkspaceApp
-      currentUrl={() => providerUrl}
-      navigate={(target) => {
-        void navigateProvider(target)
-          .then(() => setProviderUrl(target))
-          .catch(() => refreshProviderUrl());
-      }}
-    />
+    <div className="sidepanel-workspace">
+      {providerState.kind === 'unavailable' && (
+        <div className="provider-reconnect" role="status">
+          <div>
+            <strong>ChatGPT tab not connected</strong>
+            <span>Open ChatGPT in the active tab, then reconnect.</span>
+          </div>
+          <button type="button" onClick={() => void refreshProvider()} disabled={refreshing}>
+            {refreshing ? 'Checking…' : 'Reconnect'}
+          </button>
+        </div>
+      )}
+      <WorkspaceApp
+        currentUrl={() => providerUrl}
+        navigate={(target) => {
+          void navigateActiveProvider(providerTabsPort, target)
+            .then(() => refreshProvider())
+            .catch(() => refreshProvider());
+        }}
+      />
+    </div>
   );
 }
 
