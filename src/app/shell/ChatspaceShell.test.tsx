@@ -1,18 +1,16 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ChatspaceShell } from './ChatspaceShell';
 import { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
 
 describe('ChatspaceShell', () => {
-  it('can hide and restore without taking ownership of the host page', () => {
-    render(<ChatspaceShell />);
+  it('renders as an extension-owned workspace surface instead of a host-page overlay control', () => {
+    render(<ChatspaceShell><span>Workbench</span></ChatspaceShell>);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Hide Chatspace' }));
-    expect(screen.queryByRole('complementary', { name: 'Chatspace workspace' })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Open Chatspace' }));
-    expect(screen.getByRole('complementary', { name: 'Chatspace workspace' })).toBeVisible();
+    expect(screen.getByRole('region', { name: 'Chatspace workspace' })).toBeVisible();
+    expect(screen.getByText('Workspace beside ChatGPT')).toBeVisible();
+    expect(screen.getByText('Workbench')).toBeVisible();
   });
 
   it('fails closed while leaving the provider page conceptually available', () => {

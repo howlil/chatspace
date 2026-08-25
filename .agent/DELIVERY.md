@@ -2,325 +2,119 @@
 
 ## Delivery philosophy
 
-Ship vertical slices that prove the architecture in real use. Do not build graph intelligence, Obsidian bridge, multi-provider abstractions, or sync before the workspace shell is stable and useful.
+Ship vertical user outcomes, not a checklist of component names.
 
-Each iteration below should end in a coherent, manually usable state.
-
----
-
-## Iteration 0 — Repository bootstrap
-
-### Goal
-Create a reproducible browser-extension development environment with fast verification.
-
-### Deliverables
-- WXT + React + TypeScript project
-- package manager + lockfile
-- strict TypeScript config
-- lint/format configuration
-- Vitest test runner
-- build scripts
-- Chromium unpacked-extension development flow
-- minimal CI
-- extension mounts a harmless isolated root on explicitly supported host pages
-
-### Acceptance
-- clean install works from README
-- focused dev command starts extension workflow
-- test command demonstrates a real passing bootstrap test
-- typecheck/lint/build pass
-- extension can be loaded unpacked in Chromium
-- disabling/removing extension leaves host page untouched
-
-### Non-scope
-No workspace UX beyond a small development marker/toggle.
-
----
-
-## Iteration 1 — Safe shell + compatibility health
-
-### Goal
-Prove Chatspace can coexist with the host application safely.
-
-### Deliverables
-- extension mount/unmount lifecycle
-- Shadow DOM or equivalent style-isolated root
-- top-level error boundary
-- provider page detection
-- compatibility state model
-- duplicate-mount prevention across SPA navigation
-- local sanitized host fixtures + contract tests
-- hide/disable Chatspace action
-
-### Acceptance
-- one Chatspace root after repeated route changes
-- no leaked observers/listeners after unmount
-- unsupported fixture becomes `unsupported/degraded`, not crash
-- host fixture remains interactive
-- normal live host remains usable during manual check
-
----
-
-## Iteration 2 — Three-panel workspace frame
-
-### Goal
-Deliver the core spatial interaction model.
-
-### Deliverables
-- left / center / right layout
-- resizable panel boundaries
-- collapse/restore left and center auxiliary surfaces as decided by final UX
-- persisted panel dimensions
-- reset layout command
-- keyboard focus transitions
-- narrow-width graceful degradation
-
-### Acceptance
-- resize persists across reload
-- impossible widths are normalized
-- keyboard can reach each workspace region
-- center takes remaining width
-- layout cannot make host conversation permanently inaccessible
-
----
-
-## Iteration 3 — Local workspace tree
-
-### Goal
-Make hierarchical organization independently useful.
-
-### Deliverables
-- workspace entity
-- nested folders
-- create/rename/move/delete folder behavior
-- local chat-reference entity created only through supported explicit action
-- pins
-- persistence + schema versioning
-- tree keyboard navigation
-
-### Acceptance
-- nested folder behavior covered by domain tests
-- reordering/moving cannot create cycles
-- deleting folder has defined child behavior
-- state restores after reload
-- malformed stored data surfaces recovery error rather than silent loss
-
----
-
-## Iteration 4 — Tabs + command palette
-
-### Goal
-Make context switching materially faster than the base feed interface.
-
-### Deliverables
-- local workspace tabs
-- open/close/activate/reorder
-- optional pin behavior if proven useful
-- command registry
-- command palette
-- shared commands between UI and keyboard
-- persisted active workspace state
-
-### Acceptance
-- no separate business logic for button vs keyboard actions
-- closed tab behavior deterministic
-- active tab restoration tested
-- command palette is keyboard complete
-
----
-
-## Iteration 5 — Provider navigation capability
-
-### Goal
-Connect local references to supported provider navigation without turning Chatspace into an undocumented client.
-
-### Preconditions
-- current provider terms/documentation rechecked
-- exact navigation behavior judged policy-safe
-- no automated extraction of data/output required
-
-### Deliverables
-- minimal provider target format
-- explicit user action to create/reference a current conversation only if supported
-- navigation adapter capability
-- degraded state when navigation cannot be safely resolved
-- compatibility diagnostics
-
-### Acceptance
-- provider-specific data remains inside adapter boundary
-- no session/auth material persisted
-- no private API usage
-- unavailable capability disables only dependent action
-- local workspace remains functional when provider navigation is degraded
-
----
-
-## Iteration 6 — Local notes
-
-### Goal
-Let Chatspace hold durable user-authored knowledge without yet becoming an Obsidian clone.
-
-### Deliverables
-- local Markdown note entity
-- create/edit/rename/delete
-- note tab/view
-- links between local note and local chat references
-- safe Markdown rendering
-- local export of Chatspace-owned notes/data
-
-### Acceptance
-- no executable Markdown/unsafe HTML by default
-- note persistence/migrations tested
-- links survive rename through stable IDs
-- export round-trip strategy defined/tested
-
----
-
-## Iteration 7 — Graph as navigation
-
-### Goal
-Represent local workspace relationships spatially.
-
-### Deliverables
-- pure `GraphProjector`
-- folder/chat-reference/note nodes from permitted local state
-- typed/provenanced edges
-- interactive renderer
-- search/focus
-- selection details/actions
-- graph opens relevant local entity/navigation command
-
-### Acceptance
-- graph is projection, not second source of truth
-- every edge has provenance
-- graph remains usable at defined scale
-- selected node has non-hover interaction path
-- graph rendering code does not import provider DOM adapter
-
-### Explicit non-goal
-No automatic semantic extraction of live ChatGPT output.
-
----
-
-## Iteration 8 — Reliability + store readiness
-
-### Goal
-Make daily use and distribution safe.
-
-### Deliverables
-- manifest permission audit
-- privacy disclosure
-- robust storage reset/export
-- migration failure recovery
-- compatibility diagnostics UI
-- release packaging
-- GitHub release workflow
-- Chrome/Edge store assets/process if publishing is desired
-- release checklist
-
-### Acceptance
-- full verification suite passes
-- manual live compatibility checklist recorded
-- permissions match implemented features only
-- no debug logging of private content
-- install/update/uninstall lifecycle tested
-
----
-
-## Iteration 9 — Obsidian/local filesystem bridge (conditional)
-
-### Gate
-Only build after local notes/workspaces show clear value and users need shared filesystem Markdown.
-
-### Required architecture first
-- separate threat model/design
-- localhost pairing/auth
-- vault root authorization
-- path traversal protections
-- atomic writes/version conflict model
-
-### Deliverables
-Potentially:
-- companion process
-- explicit vault selection
-- Markdown read/write bridge
-- backlinks/metadata mapping
-
-Do not bundle this into the browser extension MVP.
-
----
-
-## Iteration 10 — Provider-supported semantic enrichment (conditional)
-
-### Gate
-Only through a provider-supported path such as an official API/SDK/export or explicit permission compatible with intended behavior.
-
-Potential capabilities:
-- semantic outline
-- concept extraction
-- relationship suggestions
-- cross-conversation graph enrichment
-- summaries
-
-Requirements:
-- provenance on every derived entity
-- user can distinguish local/manual vs AI-derived relationships
-- derived data never becomes irreversible source of truth
-
----
-
-# Delivery priority order
+A feature is not complete merely because lint/typecheck/tests/build are green. Completion requires both:
 
 ```text
-0 Bootstrap
-  ↓
-1 Safe shell
-  ↓
-2 Spatial layout
-  ↓
-3 Local organization
-  ↓
-4 Fast navigation UX
-  ↓
-5 Supported provider navigation
-  ↓
-6 Durable local notes
-  ↓
-7 Local graph
-  ↓
-8 Reliability/distribution
-  ↓
-9+ Optional expansions based on evidence
+Engineering gate
+lint + strict typecheck + tests + production build
+
+             AND
+
+Product acceptance
+observable workflow behaves as intended
 ```
 
-Do not reorder graph/semantic features ahead of the workspace fundamentals because the core hypothesis is navigation, not AI extraction.
+## Product-convergence correction
 
-# Release milestones
+The first merged v1 proved domain/persistence foundations but exposed an acceptance failure: Chatspace rendered as a large fixed overlay with a fake provider panel, and the graph was a list/table rather than a spatial navigation surface.
 
-### v0.1 Developer shell
-Iterations 0–2.
+The corrected architecture therefore prioritizes:
 
-### v0.2 Useful local workspace
-Iterations 3–4.
+1. native ChatGPT remains unobscured
+2. Chatspace lives in the browser Side Panel
+3. Explorer + Workbench are extension-owned
+4. content script is URL-only provider bridge
+5. graph must be spatial
+6. layout behavior must be persisted and tested as a user outcome
 
-### v0.3 Provider-aware workspace
-Iteration 5 if supported.
+## Current core slices
 
-### v0.4 Knowledge workspace
-Iterations 6–7.
+### Slice A — Side-panel composition
 
-### v1.0 Daily-driver extension
-Iteration 8 plus demonstrated stability from real usage.
+Acceptance:
 
-# Iteration review
+- extension action opens Chatspace side panel
+- content script renders no Chatspace UI
+- no fake Provider panel
+- native ChatGPT remains the main-page conversation surface
 
-At the end of each iteration record in `STATE.md`:
+### Slice B — Explorer
 
-- what behavior is actually working
-- verification evidence
-- user friction discovered
-- architecture debt introduced intentionally
-- compatibility state
-- single next priority
+Acceptance:
 
-Do not start the next milestone merely because the planned code exists; the previous flow must be usable and verified.
+- search local workspace
+- nested folders expand/collapse
+- create note/folder
+- basic folder rename/delete
+- pin/unpin saved chats
+- opening a saved chat navigates native ChatGPT via validated target
+
+### Slice C — Layout
+
+Acceptance:
+
+- Explorer width is bounded and keyboard/pointer resizable
+- width persists through canonical workspace layout state
+- Explorer collapse persists
+- narrow width does not create unusable permanent columns
+
+### Slice D — Workbench
+
+Acceptance:
+
+- tabs switch local artifacts
+- command palette supports keyboard selection/Enter/Escape
+- note surface supports Markdown Edit/Preview, tags, linked chats
+- provider status is status only, not a duplicate provider UI
+
+### Slice E — Spatial graph
+
+Acceptance:
+
+- graph uses actual spatial node positions and visible edges
+- zoom/reset controls work
+- selection opens an inspector
+- selected artifact can be opened
+- edge provenance is visible
+- graph stays a projection of canonical state
+- placeholder notes do not create false semantic relationships
+
+### Slice F — Reliability
+
+Acceptance:
+
+- extension-owned storage
+- schema validation
+- corrupt storage blocks unsafe overwrite
+- import/export/reset available
+- provider bridge failure does not break local workspace
+
+## Quality gate order
+
+```text
+lint
+ ↓
+strict typecheck
+ ↓
+tests including product acceptance behavior
+ ↓
+production build
+ ↓
+manual live browser visual/use check when available
+ ↓
+merge
+```
+
+## Scope discipline
+
+Do not add more integrations, semantic sophistication, multi-provider abstraction, or design-system inventory while the core Explorer/Workbench/navigation experience has an unresolved product-acceptance issue.
+
+## Release distinction
+
+- **development-ready:** code gates green and core flows implemented
+- **daily-driver candidate:** development-ready + repeated manual live use without major UX blocker
+- **store-ready:** daily-driver candidate + reproducible lockfile/package, permission audit, packaging assets/process, and install/update lifecycle checks
+
+Do not collapse these three states into one “done” label.

@@ -18,10 +18,13 @@ const graph: WorkspaceGraph = {
 afterEach(() => cleanup());
 
 describe('GraphNavigator', () => {
-  it('uses graph nodes for navigation and exposes provenance on relationships', () => {
+  it('renders a spatial canvas and opens a selected node from the inspector', () => {
     const onOpenNode = vi.fn();
     render(<GraphNavigator graph={graph} onOpenNode={onOpenNode} onCreateManualEdge={vi.fn()} />);
+
+    expect(screen.getByRole('application', { name: 'Spatial graph canvas' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name:'note Transactions' }));
+    fireEvent.click(screen.getByRole('button', { name:'Open' }));
     expect(onOpenNode).toHaveBeenCalledWith(graph.nodes[1]);
     expect(screen.getByText('canonical')).toBeVisible();
   });

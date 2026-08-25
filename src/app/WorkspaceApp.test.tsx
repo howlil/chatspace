@@ -146,6 +146,29 @@ describe('WorkspaceApp', () => {
     });
   });
 
+  it('persists explorer collapse and resize state as workspace layout', async () => {
+    const repository = new MemoryWorkspaceRepository();
+    render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
+
+    await screen.findByText('Local workspace ready.');
+    const separator = screen.getByRole('separator', { name: 'Resize explorer' });
+    const initialWidth = Number(separator.getAttribute('aria-valuenow'));
+    fireEvent.keyDown(separator, { key: 'ArrowRight' });
+
+    await waitFor(async () => {
+      const saved = await repository.load();
+      expect(saved?.layout.treeWidth).toBe(initialWidth + 16);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle explorer' }));
+
+    await waitFor(async () => {
+      const saved = await repository.load();
+      expect(saved?.layout.treeCollapsed).toBe(true);
+    });
+    expect(screen.queryByRole('navigation', { name: 'Workspace explorer' })).not.toBeInTheDocument();
+  });
+
   it('does not overwrite corrupted storage and exposes the raw recovery payload', async () => {
     const repository = new CorruptWorkspaceRepository();
     render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);

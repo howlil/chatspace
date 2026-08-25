@@ -1,316 +1,170 @@
 # Design System & Interaction Rules
 
-## 1. Design direction
+## 1. Direction
 
-Chatspace should feel like a focused engineering workspace, not an AI SaaS landing page.
-
-Keywords:
+Chatspace should feel like a focused engineering workspace:
 
 - compact
-- spatial
 - calm
 - monochrome-first
 - high information density
-- subtle depth
+- editor/Obsidian-like
 - keyboard-friendly
-- IDE/Obsidian-like
 - minimal ornament
 
-Avoid:
+Avoid AI-SaaS styling: oversized gradients, glass cards everywhere, neon glow, floating pills, decorative dashboards, and excessive empty space.
 
-- oversized gradients
-- glass cards everywhere
-- floating pill overload
-- decorative dashboards
-- huge empty spacing
-- excessive rounded containers
-- neon AI aesthetics
-- animation without information value
+## 2. Composition
 
-## 2. Core layout
-
-Desktop-first three-panel shell:
+The primary Chatspace surface is the browser Side Panel.
 
 ```text
-┌────────────────┬───────────────────────────────┬───────────────────┐
-│ LEFT           │ CENTER                        │ RIGHT             │
-│ workspace tree │ workspace surface             │ conversation      │
-│                │ graph / note / outline / tabs │ provider surface  │
-└────────────────┴───────────────────────────────┴───────────────────┘
+┌──────────────────────────────────────────────────────┐
+│ Chatspace header                                     │
+├──────────────────┬─┬─────────────────────────────────┤
+│ Explorer         │ │ Workbench                       │
+│ search           │ │ tabs                            │
+│ pinned           │ │ note / graph / settings        │
+│ workspace tree   │ │                                 │
+└──────────────────┴─┴─────────────────────────────────┘
 ```
 
-Rules:
+Native ChatGPT remains outside this surface in the main browser page.
 
-- all panels are resizable
-- panel sizes persist locally
-- left/right panels can collapse
-- center gets remaining width
-- minimum useful widths prevent accidental unusable states
-- no layout shift in host conversation when Chatspace initializes
-- host page remains recoverable if Chatspace is hidden
+There is no fake Provider column inside Chatspace.
 
-## 3. Visual hierarchy
+## 3. Hierarchy
 
-Hierarchy comes from:
+Use, in order:
 
 1. typography
 2. spacing
-3. border/divider
+3. dividers
 4. surface contrast
-5. only then shadow/elevation
+5. restrained elevation
 
-Do not solve hierarchy with more colors.
+Do not add colors to compensate for weak hierarchy.
 
-## 4. Tokens
+## 4. Semantic tokens
 
-Use semantic CSS variables; components never hard-code theme colors.
+Components use semantic variables such as:
 
 ```css
-:host {
-  --cs-bg: ...;
-  --cs-surface-1: ...;
-  --cs-surface-2: ...;
-  --cs-text: ...;
-  --cs-text-muted: ...;
-  --cs-border: ...;
-  --cs-hover: ...;
-  --cs-active: ...;
-  --cs-focus: ...;
-  --cs-danger: ...;
-
-  --cs-space-1: 4px;
-  --cs-space-2: 8px;
-  --cs-space-3: 12px;
-  --cs-space-4: 16px;
-  --cs-space-5: 24px;
-
-  --cs-radius-sm: 4px;
-  --cs-radius-md: 8px;
-  --cs-radius-lg: 12px;
-}
+--cs-bg
+--cs-surface-1
+--cs-surface-2
+--cs-text
+--cs-text-muted
+--cs-border
+--cs-hover
+--cs-active
+--cs-focus
+--cs-danger
+--cs-grid-dot
+--cs-edge
 ```
 
-Exact color values are selected during visual implementation and tested in both host light/dark modes. Default should be neutral and adapt to host theme without copying fragile host CSS variables directly.
+## 5. Explorer
 
-## 5. Typography
+Explorer is the primary navigation instrument.
 
-- inherit/system UI fonts unless a product requirement justifies another font
-- body text compact but readable
-- labels and tree items should not look like marketing copy
-- use monospace for IDs/technical metadata only
-- truncate long tree labels with accessible full-title affordance
+Required:
 
-Suggested density targets:
+- workspace search
+- nested folder disclosure
+- clear selected state
+- pinned chats
+- note/chat type distinction
+- basic rename/delete management for selected folders
+- secondary actions hidden until relevant where possible
+- compact rows
 
-- primary UI body: 13–14px desktop
-- secondary metadata: 11–12px
-- section heading: 12–13px with weight/spacing instead of oversized font
+Do not put a permanent toolbar of icons on every row.
 
-## 6. Workspace tree
+## 6. Workbench tabs
 
-The tree is the primary navigation instrument.
+- active tab visually clear but subtle
+- scroll overflow rather than unreadably shrinking labels
+- close affordance for non-pinned tabs
+- tab content is a local artifact/view, not a duplicate provider page
 
-Expected interactions:
+## 7. Command palette
 
-- nested folders
-- disclosure arrows
-- active item indication
-- pin/favorite state
-- drag/drop only if accompanied by non-drag move action
-- rename in place
-- keyboard navigation
-- context menu with a small, task-focused action set
+`Ctrl/⌘ K` is a first-class control.
 
-Keyboard semantics should follow tree-view expectations:
+Keyboard behavior:
 
-- Up/Down: previous/next visible item
-- Left: collapse/go parent
-- Right: expand/go child
-- Enter: open
-- F2 or command: rename
-- Delete only with safe confirmation/undo where destructive
+- typing filters/ranks
+- Arrow Up/Down changes active command
+- Enter runs
+- Escape closes
 
-Do not put multiple always-visible icon buttons on every tree row. Reveal secondary actions on selection/context menu.
+Visible buttons and palette commands must invoke the same application behavior.
 
-## 7. Tabs
+## 8. Notes
 
-Tabs represent workspace context, not browser tabs.
+Notes are first-class workbench artifacts.
 
-Rules:
+Current surface:
 
-- active tab obvious but subtle
-- preserve user-defined order
-- support close, close others, pin when justified
-- remember local view state like graph position or note cursor only if cheap/reliable
-- use overflow menu instead of shrinking tabs to unreadable width
+- editable title
+- local tags
+- Markdown Edit/Preview modes
+- safe preview with no raw HTML injection
+- linked saved-chat references
+- related-local navigation
+- optional explicit vault sync
 
-## 8. Command palette
+Do not evolve this into a full Obsidian clone unless real usage demands it.
 
-The command palette is a first-class interface, not a power-user afterthought.
+## 9. Graph
 
-Actions should share the same application commands used by visible UI.
+Graph is a navigation canvas.
 
-Examples:
+Required:
 
-- Create folder
-- Move current chat reference
-- Open workspace
-- Toggle left panel
-- Toggle center panel
-- Focus conversation
-- Open graph
-- Open local note
-- Reset panel layout
+- spatial node positions
+- visible edges
+- pan/scrollable canvas area
+- zoom in/out/reset
+- node selection
+- inspector/actions
+- search/focus treatment
+- explicit edge provenance
+- open selected artifact
 
-Search ranking:
+A node/relationship table alone is not considered a graph view.
 
-1. exact/prefix match
-2. recent commands
-3. fuzzy match
+## 10. Responsive behavior
 
-No AI inference is needed for MVP command routing.
+The browser can make side panels narrow. Preserve workbench usability:
 
-## 9. Graph view
+- Explorer may collapse/overlay first
+- graph inspector stacks below the graph at narrow width
+- tabs horizontally overflow
+- note controls wrap vertically where needed
 
-Graph must answer a navigation question.
+Never force multiple tiny permanent columns.
 
-Node requirements:
+## 11. Accessibility
 
-- clear label
-- type encoded by shape/icon/secondary treatment, not rainbow color
-- selected state persistent
-- keyboard focusable where renderer allows
-- context panel/action opens via click/tap, not hover-only
+Minimum:
 
-Edges:
-
-- use subtle neutral lines by default
-- edge kind available on selection/legend
-- avoid dense edge labels unless zoom/selection requires them
-
-Graph controls:
-
-- fit
-- zoom
-- reset
-- search/focus node
-- optional layout switch only after a second layout has a real use case
-
-For large graphs, progressive disclosure beats rendering everything.
-
-## 10. Local note surface
-
-Use a simple Markdown-oriented editor/reader. Do not build an Obsidian clone inside the first release.
-
-MVP note actions:
-
-- create
-- rename
-- edit
-- save
-- link to local chat reference
-
-Later bridge may map to filesystem Markdown.
-
-## 11. Empty states
-
-Empty states teach one next action.
-
-Bad:
-
-> Welcome to the future of AI productivity! Unlock your knowledge graph.
-
-Good:
-
-> No workspace items yet. Add the current conversation or create a folder.
-
-## 12. Loading states
-
-Local operations should usually be optimistic/immediate. Use a loading indicator only where duration is perceptible.
-
-Do not block the entire workspace for one panel operation.
-
-## 13. Error states
-
-Errors state:
-
-1. what failed
-2. what is still safe/working
-3. concrete recovery action
-
-Example:
-
-> ChatGPT compatibility changed. Local folders and tabs are safe; conversation navigation is temporarily disabled. Reload Chatspace or open ChatGPT normally.
-
-## 14. Motion
-
-Motion communicates state change only.
-
-Allowed:
-
-- panel expand/collapse
-- context menu/popover transition
-- graph layout transition when useful
-
-Avoid:
-
-- continuous glow
-- bouncing AI indicators
-- unnecessary page entrance choreography
-
-Respect reduced motion.
-
-## 15. Accessibility
-
-Minimum requirements:
-
-- all core workflows keyboard reachable
-- visible focus ring
+- keyboard-reachable core workflows
+- visible focus treatment
 - semantic buttons/inputs
-- ARIA tree/tab semantics where custom widgets require them
-- no action available only by hover
-- text/background contrast checked
-- resize handles keyboard alternative where feasible
-- screen-reader labels for icon-only controls
+- labelled resize separator with keyboard alternative
+- labelled graph canvas and inspector
+- no hover-only required actions
+- destructive actions explicit
 
-## 16. Responsive behavior
+## 12. Design acceptance
 
-Primary target is desktop Chromium. Still prevent catastrophic narrow layouts.
+A UI change is not complete until these questions are answered:
 
-When width contracts:
-
-1. collapse left tree
-2. collapse/overlay optional center auxiliary surface if needed
-3. preserve conversation usability
-
-Do not force three tiny columns.
-
-## 17. Component primitive policy
-
-Start with project-owned primitives only when used by real features:
-
-- Button
-- IconButton
-- TextInput
-- TreeRow
-- Tabs
-- Divider/ResizeHandle
-- Popover/Menu
-- Dialog
-- Tooltip
-
-Do not create a full design-system catalog before product features require it.
-
-## 18. Design acceptance checklist
-
-Every UI PR answers:
-
-- Is the main action obvious without extra explanation?
-- Did information density improve or worsen?
-- Does it work with keyboard only?
-- Does it preserve host ChatGPT usability?
-- Does dark/light host mode remain readable?
-- Does it degrade at narrow width?
-- Are loading/error/empty states implemented?
-- Is the UI using semantic tokens rather than one-off styling?
-- Did we avoid decorative UI that does not support navigation?
+- Does it make navigation/knowledge work easier?
+- Does it preserve native ChatGPT usability?
+- Can the primary path be completed with keyboard?
+- Does it survive a narrow side panel?
+- Are empty/error/recovery states clear?
+- Is this a real user surface rather than a developer inspector disguised as UI?

@@ -20,29 +20,19 @@ describe('deriveLocalNoteRelations', () => {
 
     expect(first).toEqual(second);
     expect(first).toHaveLength(1);
-    expect(first[0]).toEqual(
-      expect.objectContaining({
-        sourceNoteId: 'a',
-        targetNoteId: 'b',
-        sharedTerms: expect.arrayContaining(['postgres', 'transactions', 'mvcc', 'isolation', 'locking']),
-      }),
-    );
+    expect(first[0]).toEqual(expect.objectContaining({ sourceNoteId: 'a', targetNoteId: 'b', sharedTerms: expect.arrayContaining(['postgres', 'transactions', 'mvcc', 'isolation', 'locking']) }));
   });
 
   it('does not invent a relationship for unrelated sparse notes', () => {
-    expect(
-      deriveLocalNoteRelations([
-        note('a', 'Redis', 'cache ttl eviction'),
-        note('b', 'Kubernetes', 'scheduler pod affinity'),
-      ]),
-    ).toEqual([]);
+    expect(deriveLocalNoteRelations([note('a', 'Redis', 'cache ttl eviction'), note('b', 'Kubernetes', 'scheduler pod affinity')])).toEqual([]);
   });
 
   it('uses an explicit shared tag as local evidence', () => {
-    const relations = deriveLocalNoteRelations([
-      note('a', 'Atomicity', 'commit rollback', ['database']),
-      note('b', 'Indexing', 'btree planner', ['database']),
-    ]);
+    const relations = deriveLocalNoteRelations([note('a', 'Atomicity', 'commit rollback', ['database']), note('b', 'Indexing', 'btree planner', ['database'])]);
     expect(relations).toHaveLength(1);
+  });
+
+  it('does not relate empty default notes just because they share placeholder words', () => {
+    expect(deriveLocalNoteRelations([note('a', 'Untitled note', ''), note('b', 'Untitled note', '')])).toEqual([]);
   });
 });
