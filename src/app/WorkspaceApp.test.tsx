@@ -155,9 +155,10 @@ describe('WorkspaceApp', () => {
     expect(repository.saveCalls).toBe(0);
 
     fireEvent.click(screen.getByRole('button', { name: 'Recover' }));
-    expect(screen.getByRole('textbox', { name: 'Raw recovery payload' })).toHaveValue(
-      expect.stringContaining('"broken": true'),
-    );
+    const rawRecovery = screen.getByRole('textbox', {
+      name: 'Raw recovery payload',
+    }) as HTMLTextAreaElement;
+    expect(rawRecovery.value).toContain('"broken": true');
     expect(repository.saveCalls).toBe(0);
   });
 });
