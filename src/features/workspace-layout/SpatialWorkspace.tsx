@@ -1,5 +1,7 @@
 import { useRef, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 
+import { cn } from '../../ui/cn';
+
 interface SpatialWorkspaceProps {
   tree?: ReactNode;
   surface?: ReactNode;
@@ -24,7 +26,7 @@ export function SpatialWorkspace({
 }: SpatialWorkspaceProps) {
   const lastPointerX = useRef<number | null>(null);
   const normalizedTreeWidth = clampTreeWidth(treeWidth);
-  const style = { '--cs-tree-width': `${normalizedTreeWidth}px` } as CSSProperties;
+  const style = { '--explorer-width': `${normalizedTreeWidth}px` } as CSSProperties;
 
   function resizeBy(delta: number) {
     onTreeWidthChange(clampTreeWidth(normalizedTreeWidth + delta));
@@ -58,15 +60,27 @@ export function SpatialWorkspace({
   }
 
   return (
-    <div className="spatial-workspace" data-tree-collapsed={treeCollapsed ? 'true' : 'false'} style={style}>
+    <div
+      className={cn(
+        'relative grid h-full min-h-0 overflow-hidden bg-cs-bg',
+        treeCollapsed
+          ? 'grid-cols-1'
+          : 'grid-cols-[var(--explorer-width)_4px_minmax(0,1fr)] max-[520px]:grid-cols-1',
+      )}
+      data-tree-collapsed={treeCollapsed ? 'true' : 'false'}
+      style={style}
+    >
       {!treeCollapsed && (
-        <nav className="spatial-workspace__tree" aria-label="Workspace explorer">
-          {tree ?? <p className="panel-empty">Folders, chats, and notes appear here.</p>}
+        <nav
+          className="min-h-0 overflow-hidden border-r border-white/[0.065] bg-cs-panel max-[520px]:absolute max-[520px]:inset-y-0 max-[520px]:left-0 max-[520px]:z-20 max-[520px]:w-[min(84vw,320px)] max-[520px]:shadow-2xl"
+          aria-label="Workspace explorer"
+        >
+          {tree ?? <p className="p-3 text-[11px] text-cs-muted">Folders, chats, and notes appear here.</p>}
         </nav>
       )}
       {!treeCollapsed && (
         <div
-          className="workspace-resize-handle"
+          className="group relative z-10 cursor-col-resize bg-transparent outline-none transition-colors hover:bg-white/[0.08] focus-visible:bg-white/[0.10] max-[520px]:hidden"
           role="separator"
           aria-label="Resize explorer"
           aria-orientation="vertical"
@@ -78,13 +92,17 @@ export function SpatialWorkspace({
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-        />
+        >
+          <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent group-hover:bg-white/20" />
+        </div>
       )}
-      <main className="spatial-workspace__surface" aria-label="Workspace workbench">
+      <main className="min-h-0 min-w-0 overflow-hidden bg-cs-bg" aria-label="Workspace workbench">
         {surface ?? (
-          <section className="workspace-home">
-            <strong>Local workspace</strong>
-            <p>Open notes, graph views, and saved conversation references here.</p>
+          <section className="mx-auto max-w-xl p-5">
+            <strong className="text-sm">Local workspace</strong>
+            <p className="mt-1 text-[11px] leading-5 text-cs-muted">
+              Open notes, graph views, and saved conversation references here.
+            </p>
           </section>
         )}
       </main>
