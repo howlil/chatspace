@@ -68,6 +68,17 @@ function defaultDownloadText(filename: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
+function isFolderDescendant(folders: WorkspaceFolder[], folderId: string, candidateParentId: string): boolean {
+  let cursor: string | null = candidateParentId;
+  const visited = new Set<string>();
+  while (cursor !== null && !visited.has(cursor)) {
+    if (cursor === folderId) return true;
+    visited.add(cursor);
+    cursor = folders.find((folder) => folder.id === cursor)?.parentId ?? null;
+  }
+  return false;
+}
+
 export function WorkspaceApp({
   repository,
   currentUrl = () => window.location.href,
@@ -160,18 +171,28 @@ export function WorkspaceApp({
     dispatch({ type: 'layout/update', layout: { ...workspace.layout, ...next }, now: Date.now() });
   }
 
-  function addFolder(): void {
+  function addFolder(parentId: string | null = null): void {
     const now = Date.now();
-    const folder = createFolder({ id: createEntityId('folder'), name: 'New folder', parentId: selectedFolderId, now });
+    const folder = createFolder({ id: createEntityId('folder'), name: 'New folder', parentId, now });
     dispatch({ type: 'folder/create', folder });
     setSelectedFolderId(folder.id);
-    setStatus('Folder created locally.');
+    setStatus(parentId === null ? 'Folder created at workspace root.' : 'Subfolder created.');
   }
 
   function renameFolder(folder: WorkspaceFolder): void {
     const nextName = window.prompt('Rename folder', folder.name);
     if (nextName === null || nextName.trim() === '') return;
     dispatch({ type: 'folder/update', folder: { ...folder, name: nextName.trim() }, now: Date.now() });
+  }
+
+  function moveFolder(folder: WorkspaceFolder, parentId: string | null): void {
+    if (parentId === folder.id || (parentId !== null && isFolderDescendant(workspace.folders, folder.id, parentId))) {
+      setStatus('A folder cannot be moved into itself or one of its descendants.');
+      return;
+    }
+    dispatch({ type: 'folder/update', folder: { ...folder, parentId }, now: Date.now() });
+    setSelectedFolderId(folder.id);
+    setStatus(`Moved “${folder.name}” ${parentId === null ? 'to workspace root' : 'into folder'}.`);
   }
 
   function deleteFolder(folder: WorkspaceFolder): void {
@@ -186,6 +207,11 @@ export function WorkspaceApp({
     dispatch({ type: 'note/create', note });
     dispatch({ type: 'tab/open', tab: noteTab(note), now });
     setStatus('Note created locally.');
+  }
+
+  function moveNote(note: LocalNote, folderId: string | null): void {
+    dispatch({ type: 'note/update', note: { ...note, folderId }, now: Date.now() });
+    setStatus(`Moved “${note.title}”.`);
   }
 
   function saveCurrentChat(): void {
@@ -416,7 +442,7 @@ export function WorkspaceApp({
       label: workspace.layout.treeCollapsed ? 'Show explorer' : 'Hide explorer',
       run: () => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed }),
     },
-    { id: 'folder-create', label: 'Create folder', run: addFolder },
+    { id: 'folder-create', label: 'Create folder at root', run: () => addFolder(null) },
     { id: 'note-create', label: 'Create note', run: addNote },
     { id: 'chat-save', label: 'Save current chat', run: saveCurrentChat },
     { id: 'graph-open', label: 'Open graph', run: openGraph },
@@ -515,8 +541,8 @@ export function WorkspaceApp({
 
   const tree = (
     <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
-      <div className="grid grid-cols-3 gap-1.5 border-b border-white/[0.065] p-2">
-        <Button className="min-w-0 px-1.5" onClick={addFolder}>
+      <div className="grid grid-cols-3 gap-1.5 border-b border-cs-border p-2">
+        <Button className="min-w-0 px-1.5" onClick={() => addFolder(null)}>
           <FolderPlus size={11} aria-hidden="true" /> <span className="truncate">Folder</span>
         </Button>
         <Button className="min-w-0 px-1.5" onClick={addNote}>
@@ -533,14 +559,17 @@ export function WorkspaceApp({
         selectedFolderId={selectedFolderId}
         onSelectFolder={setSelectedFolderId}
         onToggleFolder={(folderId) => dispatch({ type: 'folder/toggle', folderId, now: Date.now() })}
+        onCreateChildFolder={(folderId) => addFolder(folderId)}
         onRenameFolder={renameFolder}
         onDeleteFolder={deleteFolder}
+        onMoveFolder={moveFolder}
         onOpenChat={openSavedChat}
         onOpenNote={openNote}
         onTogglePinChat={togglePinChat}
         onRenameChat={renameChat}
         onDeleteChat={deleteChat}
         onMoveChat={moveChat}
+        onMoveNote={moveNote}
       />
     </div>
   );
