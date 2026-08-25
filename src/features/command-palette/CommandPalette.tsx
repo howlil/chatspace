@@ -1,4 +1,7 @@
+import { Command, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+
+import { cn } from '../../ui/cn';
 
 export interface WorkspaceCommand {
   id: string;
@@ -42,43 +45,67 @@ export function CommandPalette({ commands, onClose }: CommandPaletteProps) {
   }
 
   return (
-    <div className="command-palette-backdrop" role="presentation" onMouseDown={onClose}>
-      <section className="command-palette" role="dialog" aria-modal="true" aria-label="Command palette" onMouseDown={(event) => event.stopPropagation()}>
-        <input
-          autoFocus
-          aria-label="Search commands"
-          placeholder="Type a command"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') onClose();
-            else if (event.key === 'ArrowDown') {
-              event.preventDefault();
-              setActiveIndex((current) => visibleCommands.length === 0 ? 0 : (current + 1) % visibleCommands.length);
-            } else if (event.key === 'ArrowUp') {
-              event.preventDefault();
-              setActiveIndex((current) => visibleCommands.length === 0 ? 0 : (current - 1 + visibleCommands.length) % visibleCommands.length);
-            } else if (event.key === 'Enter') {
-              event.preventDefault();
-              runCommand(visibleCommands[activeIndex]);
-            }
-          }}
-        />
-        <div className="command-palette__list">
+    <div
+      className="fixed inset-0 z-50 flex justify-center bg-black/55 px-3 pt-14 backdrop-blur-[1px]"
+      role="presentation"
+      onMouseDown={onClose}
+    >
+      <section
+        className="h-fit w-full max-w-lg overflow-hidden rounded-xl border border-white/[0.10] bg-cs-panel shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="flex h-10 items-center gap-2 border-b border-white/[0.075] px-3">
+          <Search size={14} className="shrink-0 text-cs-subtle" aria-hidden="true" />
+          <input
+            autoFocus
+            className="min-w-0 flex-1 bg-transparent text-xs text-cs-text outline-none placeholder:text-cs-subtle"
+            aria-label="Search commands"
+            placeholder="Type a command"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') onClose();
+              else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                setActiveIndex((current) => visibleCommands.length === 0 ? 0 : (current + 1) % visibleCommands.length);
+              } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                setActiveIndex((current) => visibleCommands.length === 0 ? 0 : (current - 1 + visibleCommands.length) % visibleCommands.length);
+              } else if (event.key === 'Enter') {
+                event.preventDefault();
+                runCommand(visibleCommands[activeIndex]);
+              }
+            }}
+          />
+          <kbd className="rounded border border-white/[0.08] bg-white/[0.035] px-1.5 py-0.5 text-[9px] text-cs-subtle">Esc</kbd>
+        </div>
+        <div className="max-h-[340px] overflow-y-auto p-1.5">
           {visibleCommands.map((command, index) => (
             <button
               type="button"
               aria-label={command.label}
               data-active={index === activeIndex ? 'true' : 'false'}
+              className={cn(
+                'flex h-8 w-full items-center justify-between gap-3 rounded-md px-2.5 text-left text-[11px] text-cs-muted outline-none transition-colors hover:bg-white/[0.05] hover:text-cs-text',
+                index === activeIndex && 'bg-white/[0.065] text-cs-text',
+              )}
               key={command.id}
               onMouseEnter={() => setActiveIndex(index)}
               onClick={() => runCommand(command)}
             >
-              <span>{command.label}</span>
-              {index === activeIndex && <kbd aria-hidden="true">Enter</kbd>}
+              <span className="flex min-w-0 items-center gap-2">
+                <Command size={11} className="shrink-0 text-cs-subtle" aria-hidden="true" />
+                <span className="truncate">{command.label}</span>
+              </span>
+              {index === activeIndex && <kbd aria-hidden="true" className="text-[9px] text-cs-subtle">Enter ↵</kbd>}
             </button>
           ))}
-          {visibleCommands.length === 0 && <p>No matching commands.</p>}
+          {visibleCommands.length === 0 && (
+            <p className="m-0 px-3 py-5 text-center text-[10px] text-cs-subtle">No matching commands.</p>
+          )}
         </div>
       </section>
     </div>
