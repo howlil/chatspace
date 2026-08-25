@@ -1,9 +1,17 @@
 import type { WorkspaceSnapshot } from '../domain/workspace/model';
 
+export class WorkspaceCorruptionError extends Error {
+  constructor(message = 'Stored Chatspace workspace failed validation.') {
+    super(message);
+    this.name = 'WorkspaceCorruptionError';
+  }
+}
+
 export interface WorkspaceRepository {
   load(): Promise<WorkspaceSnapshot | null>;
   save(snapshot: WorkspaceSnapshot): Promise<void>;
   clear(): Promise<void>;
+  readRaw(): Promise<unknown | null>;
 }
 
 export class MemoryWorkspaceRepository implements WorkspaceRepository {
@@ -23,5 +31,9 @@ export class MemoryWorkspaceRepository implements WorkspaceRepository {
 
   async clear(): Promise<void> {
     this.snapshot = null;
+  }
+
+  async readRaw(): Promise<unknown | null> {
+    return this.snapshot;
   }
 }
