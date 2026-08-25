@@ -1,20 +1,12 @@
 {
   "extends": "./.wxt/tsconfig.json",
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "jsx": "react-jsx",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "useUnknownInCatchVariables": true,
     "noImplicitOverride": true
-  },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "entrypoints/**/*.ts",
-    "entrypoints/**/*.tsx",
-    "tests/**/*.ts",
-    "tests/**/*.tsx",
-    "wxt.config.ts",
-    "vitest.config.ts"
-  ]
+  }
 }
