@@ -2,7 +2,7 @@ import { FileText, MessageSquareText, Pin, Sparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import type { ChatReference, LocalNote } from '../../domain/workspace/model';
-import { Panel, SectionLabel } from '../../ui/primitives';
+import { Panel } from '../../ui/primitives';
 
 interface DailyHomeProps {
   chats: ChatReference[];
@@ -55,8 +55,13 @@ function NoteItem({ note, onOpen }: { note: LocalNote; onOpen: (note: LocalNote)
 
 function HomeSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section>
-      <SectionLabel className="mb-1.5 px-1">{title}</SectionLabel>
+    <section aria-labelledby={`home-section-${title.toLowerCase().replaceAll(' ', '-')}`}>
+      <h2
+        id={`home-section-${title.toLowerCase().replaceAll(' ', '-')}`}
+        className="mb-1.5 px-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-cs-subtle"
+      >
+        {title}
+      </h2>
       <Panel className="overflow-hidden p-1">{children}</Panel>
     </section>
   );
