@@ -16,7 +16,9 @@ function renderSafeMarkdown(markdown: string): ReactNode[] {
   const blocks: ReactNode[] = [];
   let codeLines: string[] | null = null;
 
-  lines.forEach((line, index) => {
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? '';
+
     if (line.trim().startsWith('```')) {
       if (codeLines === null) {
         codeLines = [];
@@ -24,12 +26,12 @@ function renderSafeMarkdown(markdown: string): ReactNode[] {
         blocks.push(<pre key={`code-${index}`}><code>{codeLines.join('\n')}</code></pre>);
         codeLines = null;
       }
-      return;
+      continue;
     }
 
     if (codeLines !== null) {
       codeLines.push(line);
-      return;
+      continue;
     }
 
     if (line.startsWith('### ')) {
@@ -47,7 +49,7 @@ function renderSafeMarkdown(markdown: string): ReactNode[] {
     } else {
       blocks.push(<p key={index}>{line}</p>);
     }
-  });
+  }
 
   if (codeLines !== null) {
     blocks.push(<pre key="code-unclosed"><code>{codeLines.join('\n')}</code></pre>);
