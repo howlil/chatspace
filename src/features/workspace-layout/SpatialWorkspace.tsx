@@ -72,7 +72,7 @@ export function SpatialWorkspace({
     >
       {!treeCollapsed && (
         <nav
-          className="min-h-0 overflow-hidden border-r border-white/[0.065] bg-cs-panel max-[520px]:absolute max-[520px]:inset-y-0 max-[520px]:left-0 max-[520px]:z-20 max-[520px]:w-[min(84vw,320px)] max-[520px]:shadow-2xl"
+          className="min-h-0 overflow-hidden border-r border-cs-border bg-cs-panel max-[520px]:absolute max-[520px]:inset-y-0 max-[520px]:left-0 max-[520px]:z-20 max-[520px]:w-[min(84vw,320px)] max-[520px]:shadow-2xl"
           aria-label="Workspace explorer"
         >
           {tree ?? <p className="p-3 text-[11px] text-cs-muted">Folders, chats, and notes appear here.</p>}
@@ -80,7 +80,7 @@ export function SpatialWorkspace({
       )}
       {!treeCollapsed && (
         <div
-          className="group relative z-10 cursor-col-resize bg-transparent outline-none transition-colors hover:bg-white/[0.08] focus-visible:bg-white/[0.10] max-[520px]:hidden"
+          className="group relative z-10 cursor-col-resize bg-transparent outline-none transition-colors hover:bg-cs-hover focus-visible:bg-cs-active max-[520px]:hidden"
           role="separator"
           aria-label="Resize explorer"
           aria-orientation="vertical"
@@ -93,7 +93,7 @@ export function SpatialWorkspace({
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
         >
-          <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent group-hover:bg-white/20" />
+          <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent group-hover:bg-cs-focus/30" />
         </div>
       )}
       <main className="min-h-0 min-w-0 overflow-hidden bg-cs-bg" aria-label="Workspace workbench">
