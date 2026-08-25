@@ -1,4 +1,7 @@
+import { AlertTriangle, Database, Download, RotateCcw, Upload } from 'lucide-react';
 import { useState } from 'react';
+
+import { Button, Panel, SectionLabel, Textarea } from '../../ui/primitives';
 
 interface SettingsPanelProps {
   exportJson: string;
@@ -11,6 +14,31 @@ interface SettingsPanelProps {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'The operation failed.';
+}
+
+function SettingsCard({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string;
+  description?: string;
+  action?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  return (
+    <Panel className="overflow-hidden">
+      <div className="flex items-start justify-between gap-3 border-b border-white/[0.055] px-3 py-2.5">
+        <div className="grid gap-0.5">
+          <strong className="text-[11px] font-medium">{title}</strong>
+          {description !== undefined && <p className="m-0 text-[9px] leading-4 text-cs-muted">{description}</p>}
+        </div>
+        {action}
+      </div>
+      {children !== undefined && <div className="p-3">{children}</div>}
+    </Panel>
+  );
 }
 
 export function SettingsPanel({ exportJson, recoveryJson, persistenceError, onImport, onReset, onDownload }: SettingsPanelProps) {
@@ -46,47 +74,97 @@ export function SettingsPanel({ exportJson, recoveryJson, persistenceError, onIm
   }
 
   return (
-    <section className="settings-panel" aria-label="Chatspace settings">
-      <div className="settings-section">
-        <h3>Local data</h3>
-        <p>Chatspace stores workspace metadata, notes, graph relationships, tabs, and validated ChatGPT conversation URLs in extension-local storage.</p>
-        {persistenceError !== null && <div className="settings-warning" role="alert">{persistenceError}</div>}
+    <section className="grid gap-4" aria-label="Chatspace settings">
+      <div className="flex items-center gap-2 px-1">
+        <Database size={13} className="text-cs-subtle" strokeWidth={1.7} aria-hidden="true" />
+        <div>
+          <SectionLabel>Local workspace</SectionLabel>
+          <p className="m-0 mt-0.5 text-[9px] text-cs-muted">Extension-owned storage and recovery.</p>
+        </div>
       </div>
 
-      <div className="settings-section">
-        <div className="settings-heading-row"><h3>Backup</h3><button type="button" onClick={() => onDownload('chatspace-workspace.json', exportJson)}>Download backup</button></div>
-        <textarea aria-label="Workspace export" readOnly value={exportJson} />
-      </div>
+      <SettingsCard
+        title="Local data"
+        description="Workspace metadata, notes, graph relationships, tabs, and validated ChatGPT conversation URLs stay in extension-local storage."
+      >
+        {persistenceError !== null ? (
+          <div className="flex items-start gap-2 rounded-md border border-red-300/15 bg-red-300/[0.05] p-2 text-[9px] leading-4 text-red-100" role="alert">
+            <AlertTriangle size={11} className="mt-0.5 shrink-0" aria-hidden="true" />
+            <span>{persistenceError}</span>
+          </div>
+        ) : (
+          <p className="m-0 text-[9px] leading-4 text-cs-muted">Storage is healthy. Provider credentials and ChatGPT output are not stored.</p>
+        )}
+      </SettingsCard>
+
+      <SettingsCard
+        title="Backup"
+        description="Export the canonical local workspace as JSON."
+        action={(
+          <Button onClick={() => onDownload('chatspace-workspace.json', exportJson)}>
+            <Download size={11} aria-hidden="true" /> Download
+          </Button>
+        )}
+      >
+        <Textarea className="h-28 w-full resize-none font-mono text-[9px] leading-4" aria-label="Workspace export" readOnly value={exportJson} />
+      </SettingsCard>
 
       {recoveryJson !== null && (
-        <div className="settings-section settings-section--warning">
-          <div className="settings-heading-row"><h3>Raw recovery payload</h3><button type="button" onClick={() => onDownload('chatspace-recovery.json', recoveryJson)}>Download recovery</button></div>
-          <p>The stored payload failed schema validation and will not be overwritten automatically.</p>
-          <textarea aria-label="Raw recovery payload" readOnly value={recoveryJson} />
-        </div>
+        <SettingsCard
+          title="Raw recovery payload"
+          description="The stored payload failed schema validation and will not be overwritten automatically."
+          action={(
+            <Button variant="danger" onClick={() => onDownload('chatspace-recovery.json', recoveryJson)}>
+              <Download size={11} aria-hidden="true" /> Recovery
+            </Button>
+          )}
+        >
+          <Textarea className="h-28 w-full resize-none font-mono text-[9px] leading-4" aria-label="Raw recovery payload" readOnly value={recoveryJson} />
+        </SettingsCard>
       )}
 
-      <div className="settings-section">
-        <h3>Import</h3>
-        <textarea aria-label="Workspace import" placeholder="Paste a Chatspace backup JSON" value={importText} onChange={(event) => setImportText(event.target.value)} />
-        <button type="button" disabled={busy || importText.trim() === ''} onClick={() => void importBackup()}>Import backup</button>
-      </div>
-
-      <div className="settings-section">
-        <h3>Reset</h3>
-        {!resetArmed ? (
-          <button type="button" disabled={busy} onClick={() => setResetArmed(true)}>Reset local data</button>
-        ) : (
-          <div className="reset-confirmation">
-            <span>This deletes Chatspace-owned local data only.</span>
-            <button type="button" disabled={busy} onClick={() => void confirmReset()}>Confirm reset</button>
-            <button type="button" disabled={busy} onClick={() => setResetArmed(false)}>Cancel</button>
+      <div className="grid gap-4 min-[760px]:grid-cols-2">
+        <SettingsCard title="Import" description="Restore a schema-valid Chatspace backup.">
+          <div className="grid gap-2">
+            <Textarea
+              className="h-24 w-full resize-none font-mono text-[9px] leading-4"
+              aria-label="Workspace import"
+              placeholder="Paste a Chatspace backup JSON"
+              value={importText}
+              onChange={(event) => setImportText(event.target.value)}
+            />
+            <Button className="justify-self-start" disabled={busy || importText.trim() === ''} onClick={() => void importBackup()}>
+              <Upload size={11} aria-hidden="true" /> Import backup
+            </Button>
           </div>
-        )}
+        </SettingsCard>
+
+        <SettingsCard title="Reset" description="Delete only Chatspace-owned local state.">
+          {!resetArmed ? (
+            <Button variant="danger" disabled={busy} onClick={() => setResetArmed(true)}>
+              <RotateCcw size={11} aria-hidden="true" /> Reset local data
+            </Button>
+          ) : (
+            <div className="grid gap-2">
+              <span className="text-[9px] leading-4 text-red-100">This deletes Chatspace-owned local data only.</span>
+              <div className="flex gap-1.5">
+                <Button variant="danger" disabled={busy} onClick={() => void confirmReset()}>Confirm reset</Button>
+                <Button variant="ghost" disabled={busy} onClick={() => setResetArmed(false)}>Cancel</Button>
+              </div>
+            </div>
+          )}
+        </SettingsCard>
       </div>
 
-      {actionError !== null && <div className="settings-warning" role="alert">{actionError}</div>}
-      <p className="settings-privacy">No provider cookies, auth tokens, private API responses, or automatically extracted ChatGPT output are stored by Chatspace.</p>
+      {actionError !== null && (
+        <div className="flex items-start gap-2 rounded-md border border-red-300/15 bg-red-300/[0.05] p-2 text-[9px] leading-4 text-red-100" role="alert">
+          <AlertTriangle size={11} className="mt-0.5 shrink-0" aria-hidden="true" />
+          <span>{actionError}</span>
+        </div>
+      )}
+      <p className="m-0 px-1 text-[9px] leading-4 text-cs-subtle">
+        No provider cookies, auth tokens, private API responses, or automatically extracted ChatGPT output are stored by Chatspace.
+      </p>
     </section>
   );
 }
