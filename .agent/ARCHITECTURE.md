@@ -2,357 +2,197 @@
 
 ## 1. Architecture goal
 
-Keep Chatspace useful even when provider capabilities are constrained. The browser extension owns workspace UX and local state; provider-specific behavior is isolated behind a compatibility boundary.
+Chatspace is an extension-owned workspace that lives **beside** native ChatGPT. ChatGPT remains the provider-owned conversation runtime. Chatspace owns local organization, navigation, notes, graph projections, and workspace state.
 
-## 2. Proposed stack
+The primary UI must never be a floating overlay that covers the provider page.
 
-Initial recommendation:
+## 2. Current stack
 
-- Browser extension framework: **WXT**
-- Manifest: **MV3**
-- Language: **TypeScript** with strict mode
-- UI: **React**
-- Styling: compiled CSS/Tailwind utilities plus project-owned design tokens; no large component kit by default
-- Local persistence: **IndexedDB**, wrapped behind a repository interface; Dexie may be adopted only if it materially reduces migration/transaction complexity
-- Testing: **Vitest** + Testing Library + Playwright for extension/local-fixture E2E
-- Graph rendering when needed: **React Flow** for interactive graph/editor scale; reevaluate if graph size becomes large
-- Packaging: WXT build outputs for Chromium first; Firefox only after core product stabilizes
-
-Why WXT: it generates manifests, supports MV3 and multiple browsers, TypeScript, entrypoint-based extension structure, and fast extension development/reload. The codebase must not depend on WXT-specific APIs outside the extension shell boundary.
+- WXT
+- Chromium Manifest V3
+- strict TypeScript
+- React
+- extension Side Panel as the primary UI surface
+- `chrome.storage.local` behind `WorkspaceRepository`
+- Vitest + Testing Library
+- WXT production build
+- optional authenticated localhost Markdown/vault companion
 
 ## 3. System context
 
 ```text
-┌──────────────────────────────── Browser ────────────────────────────────┐
-│                                                                         │
-│   ChatGPT Web                                                          │
-│   ┌─────────────────────────────────────────────────────────────────┐   │
-│   │ provider-owned application                                     │   │
-│   │ model / memory / tools / conversation behavior                 │   │
-│   └──────────────────────────┬──────────────────────────────────────┘   │
-│                              │                                          │
-│                     compatibility boundary                             │
-│                              │                                          │
-│   ┌──────────────────────────▼──────────────────────────────────────┐   │
-│   │ Chatspace content application                                 │   │
-│   │                                                                │   │
-│   │ shell ─ workspace ─ commands ─ graph/note views               │   │
-│   │                  │                                             │   │
-│   │                  ▼                                             │   │
-│   │            local domain state                                  │   │
-│   └──────────────────┬─────────────────────────────────────────────┘   │
-│                      │                                                  │
-│              extension messaging                                       │
-│                      │                                                  │
-│   ┌──────────────────▼─────────────────────────────────────────────┐   │
-│   │ background/service worker                                     │   │
-│   │ persistence coordination / settings / extension lifecycle     │   │
-│   └──────────────────┬─────────────────────────────────────────────┘   │
-│                      │                                                  │
-│                 IndexedDB/storage                                      │
-└─────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────── Browser window ──────────────────────────────┐
+│                                                                            │
+│  Chatspace Side Panel                 Native ChatGPT tab                    │
+│  ┌──────────────────────────────┐     ┌─────────────────────────────────┐  │
+│  │ Explorer │ Workbench         │     │ provider-owned conversation     │  │
+│  │          │                   │     │ messages / composer / tools     │  │
+│  │ folders  │ tabs              │     │                                 │  │
+│  │ pins     │ notes             │     │ minimal Chatspace content       │  │
+│  │ search   │ graph             │◀───▶│ script: URL bridge only         │  │
+│  └──────────────┬───────────────┘     └─────────────────────────────────┘  │
+│                 │                                                          │
+│        WorkspaceRepository                                                  │
+│                 │                                                          │
+│        chrome.storage.local                                                 │
+└────────────────────────────────────────────────────────────────────────────┘
 
-Future optional explicit bridge:
+Optional explicit integration:
 
-Browser extension -> localhost companion -> user-selected Markdown vault
+Side panel -> localhost bearer-authenticated companion -> user-selected Markdown vault
 ```
-
-The local companion is NOT part of MVP.
 
 ## 4. Runtime boundaries
 
-### A. Extension shell
+### A. Side-panel application
 
-Responsibilities:
-- boot only on explicitly supported origins/routes
-- mount/unmount Chatspace without taking ownership of the host application
-- own top-level error boundary
-- own panel resizing and workspace visibility
-- communicate with background via typed messages
+The side panel owns all Chatspace UI:
 
-Must not know provider DOM selectors.
+- Explorer
+- workbench tabs
+- Markdown notes
+- graph navigation
+- command palette
+- settings/recovery
+- local-vault bridge controls
 
-### B. Provider compatibility adapter
+It must remain useful even if provider navigation becomes unavailable.
 
-Single place where provider-specific DOM/capability knowledge may live.
+### B. Content-script provider bridge
 
-Conceptual interface:
+The ChatGPT content script is deliberately narrow. It may only:
 
-```ts
-type ProviderCapability =
-  | 'page-detection'
-  | 'conversation-navigation'
-  | 'explicit-reference-capture'
-  | 'host-layout-coexistence';
+- report the current page URL
+- validate and perform explicit navigation to a supported ChatGPT conversation target
 
-interface ProviderAdapter {
-  readonly id: string;
-  detectPage(): ProviderPage;
-  getCapabilities(): ReadonlySet<ProviderCapability>;
-  navigate(target: ProviderTarget): Promise<Result<void, ProviderError>>;
-  observeHostLifecycle(listener: HostLifecycleListener): Unsubscribe;
-}
+It must **not**:
+
+- render the Chatspace workspace
+- scrape conversation text or output
+- crawl history
+- inspect cookies/session credentials
+- call undocumented/private endpoints
+- intercept/replay provider network traffic
+
+### C. Provider adapter
+
+Provider-specific target validation and capability detection live in `src/providers/chatgpt/`.
+
+Current supported target shape is intentionally narrow:
+
+```text
+https://chatgpt.com/c/<conversation-id>
 ```
 
-Do not add a method merely because it might be useful. A capability must have a policy-safe implementation before becoming part of the interface.
+Provider capability failure disables dependent navigation only; local workspace functionality remains available.
 
-### C. Workspace domain
+### D. Workspace domain
 
-Provider-agnostic pure/domain logic:
+Provider-agnostic canonical state contains:
 
-- folder tree
+- folders
 - chat references
+- notes
 - tabs
 - pins
 - panel layout
-- command model
-- user annotations
-- graph nodes/edges from permitted local sources
+- manual graph edges
 
-Domain code must be testable without browser or ChatGPT DOM.
+UI behavior is expressed as domain actions/reducer transitions and remains testable without ChatGPT.
 
-### D. Persistence
-
-Expose repositories rather than raw IndexedDB access from components:
+### E. Persistence
 
 ```ts
 interface WorkspaceRepository {
-  load(workspaceId: WorkspaceId): Promise<WorkspaceSnapshot | null>;
+  load(): Promise<WorkspaceSnapshot | null>;
   save(snapshot: WorkspaceSnapshot): Promise<void>;
+  clear(): Promise<void>;
+  readRaw(): Promise<unknown | null>;
 }
 ```
 
 Rules:
-- schema version every persisted root object
-- migrations are deterministic and tested
-- writes are atomic at aggregate boundaries
-- corrupted data fails closed with recovery/export path
-- never persist auth/session secrets
 
-### E. UI views
+- extension-owned `chrome.storage.local`
+- schema-versioned JSON
+- corrupted data fails closed
+- failed loads/saves do not silently overwrite old data
+- recovery/export/reset remain explicit
+- never persist provider auth/session secrets
 
-UI consumes domain state and commands. Components do not directly call IndexedDB or provider adapters.
-
-```text
-UI event
-  ↓
-command/use-case
-  ↓
-domain transition
-  ↓
-repository/effect port
-  ↓
-new state
-  ↓
-render
-```
-
-## 5. Feature-oriented source layout
-
-Target structure after bootstrap:
+## 5. UI composition
 
 ```text
-src/
-├── app/
-│   ├── bootstrap/
-│   ├── shell/
-│   └── messaging/
-├── features/
-│   ├── workspace-tree/
-│   ├── tabs/
-│   ├── panel-layout/
-│   ├── command-palette/
-│   ├── local-notes/
-│   └── graph/
-├── domain/
-│   ├── workspace/
-│   └── shared/
-├── providers/
-│   └── chatgpt/
-│       ├── adapter.ts
-│       ├── capabilities.ts
-│       ├── host-observer.ts
-│       └── selectors.ts
-├── persistence/
-│   ├── indexeddb/
-│   └── migrations/
-├── ui/
-│   ├── primitives/
-│   └── tokens/
-└── shared/
-    ├── result/
-    ├── events/
-    └── diagnostics/
-
-tests/
-├── fixtures/
-│   └── chatgpt-host/
-├── contract/
-├── integration/
-└── e2e/
+Chatspace Side Panel
+┌───────────────────────────────────────────────────────────┐
+│ compact product header                                    │
+├─────────────────┬─┬───────────────────────────────────────┤
+│ Explorer        │ │ Workbench                             │
+│ search          │ │ tabs + provider-presence indicator   │
+│ pinned          │ │                                       │
+│ folders         │ │ home / note / graph / settings       │
+│ chat refs       │ │                                       │
+│ notes           │ │                                       │
+└─────────────────┴─┴───────────────────────────────────────┘
+                    resize handle
 ```
 
-Prefer colocating feature UI + hook + feature tests when they change together. The structure above is a boundary map, not permission to create empty folders.
+The provider-presence indicator is status only. It is not a fake provider panel. The real conversation always remains native in the main browser page.
 
-## 6. Canonical data model
+## 6. Graph architecture
 
-Example, not implementation mandate:
-
-```ts
-type WorkspaceId = string;
-type FolderId = string;
-type ChatRefId = string;
-type TabId = string;
-
-interface WorkspaceSnapshot {
-  schemaVersion: number;
-  id: WorkspaceId;
-  name: string;
-  folders: FolderNode[];
-  chatRefs: ChatReference[];
-  tabs: WorkspaceTab[];
-  activeTabId: TabId | null;
-  layout: PanelLayout;
-  updatedAt: string;
-}
-
-interface ChatReference {
-  id: ChatRefId;
-  provider: 'chatgpt';
-  target: string;
-  userLabel: string;
-  folderId: FolderId | null;
-  pinned: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-```
-
-`target` must contain only the minimum reference necessary for a supported navigation flow. Never put cookies, auth headers, raw response bodies, or undocumented provider payloads into domain objects.
-
-## 7. State model
-
-Avoid two competing sources of truth.
+Graph is a projection, never canonical storage.
 
 ```text
-Persisted workspace snapshot
-          ↓
-   workspace store
-          ↓
- derived selectors
-          ↓
-        UI
-```
-
-Host/provider state is external and transient:
-
-```text
-Provider host lifecycle event
-          ↓
- compatibility adapter
-          ↓
- normalized event
-          ↓
- application effect
-```
-
-Do not mirror entire provider state.
-
-## 8. Graph architecture
-
-Graph is a projection, not primary storage.
-
-```text
-local canonical entities
-         ↓
+WorkspaceSnapshot
+       ↓
 GraphProjector (pure)
-         ↓
-GraphModel { nodes, edges }
-         ↓
-GraphRenderer
+       ↓
+WorkspaceGraph
+       ↓
+Spatial canvas + selection inspector
 ```
 
-A graph edge must have a typed reason, e.g.:
+Edge provenance is explicit:
 
-```ts
-type EdgeKind =
-  | 'contains'
-  | 'references'
-  | 'related-manually'
-  | 'derived-from-supported-source';
-```
+- `canonical`
+- `manual`
+- `derived-local`
 
-Do not create opaque AI-generated edges without provenance.
+Deterministic local semantic relations use only user-authored local note title/tags/Markdown. Placeholder terms such as `untitled` and `note` are excluded to prevent false relationships.
 
-## 9. Compatibility strategy
+## 7. Trust boundaries
 
-ChatGPT UI changes are expected. Treat provider adaptation like an external API integration.
+1. Chatspace local state — trusted application data after validation
+2. extension messaging — validate message type/target
+3. provider page — external runtime; do not ingest content
+4. localhost bridge — separate explicit trust boundary with bearer authentication and path restrictions
 
-- isolate selectors
-- capability-detect; do not assume
-- use MutationObserver narrowly, never observe the entire document without filtering
-- debounce structural reconciliation
-- use local sanitized HTML fixtures for contract tests
-- maintain a provider health status
-- fail by disabling Chatspace feature, not by breaking host UI
-- no brittle CSS-position selectors such as `div:nth-child(...)`
+## 8. Failure behavior
 
-Provider compatibility status:
+### Provider bridge unavailable
+Local Explorer, tabs, notes, graph, backups, and settings keep working.
 
-```ts
-type CompatibilityState =
-  | { kind: 'healthy' }
-  | { kind: 'degraded'; unavailable: ProviderCapability[] }
-  | { kind: 'unsupported'; reason: string };
-```
+### Storage corrupt
+Block persistence and expose recovery/import/reset paths. Never silently replace data.
 
-## 10. Security/trust boundaries
+### Side-panel React crash
+Error boundary fails Chatspace closed; native ChatGPT remains unaffected.
 
-Trust levels:
+### Local companion unavailable
+Only vault synchronization degrades.
 
-1. Chatspace-owned local state
-2. Host page DOM/events — untrusted external input
-3. Extension messaging — validate payloads
-4. Future localhost bridge — separate trust boundary with explicit pairing/origin controls
+## 9. Performance rules
 
-Host DOM text/attributes are input. Never inject them as raw HTML into Chatspace.
+- no full provider DOM scans
+- no dependency on provider mutation observers for core workspace behavior
+- Explorer operations should be effectively instant at normal local scale
+- avoid virtualization until measured need
+- graph state remains derived and bounded
+- persist only canonical local state
 
-## 11. Performance budgets
+## 10. Architecture rule of thumb
 
-Initial engineering budgets, revise from measurements:
+If the feature can be implemented in local workspace state, keep it provider-independent.
 
-- extension shell must not block host page interaction during boot
-- avoid full-document rescans on every mutation
-- local tree operations should be effectively instant at hundreds of references
-- virtualize only after measured need
-- graph renderer loads lazily
-- persistence writes debounce/coalesce where safe
-- background worker must tolerate suspension/restart
-
-No optimization without a measurement or identified complexity risk.
-
-## 12. Failure modes
-
-### Host DOM changed
-Degrade provider capability; keep workspace local functions usable.
-
-### IndexedDB unavailable/corrupt
-Show recoverable error; never silently erase data.
-
-### React extension surface crashes
-Error boundary offers disable/reload Chatspace; host page remains usable.
-
-### Service worker suspended
-All operations must be restart-safe; no correctness dependency on in-memory background state.
-
-### Migration fails
-Do not overwrite old data. Surface migration error and support export/reset.
-
-### Extension removed
-Host provider remains unaffected by design.
-
-## 13. Architecture rule of thumb
-
-If a feature requires Chatspace to understand provider internals outside the compatibility adapter, the boundary is wrong.
-
-If a feature requires undocumented provider network behavior, the feature is out of scope until a supported path exists.
+If it requires provider internals or automated extraction, it is outside the current architecture until a supported path exists.
