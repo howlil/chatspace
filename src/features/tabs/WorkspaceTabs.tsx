@@ -27,13 +27,13 @@ export function WorkspaceTabs({ tabs, activeTabId, onActivate, onClose }: Worksp
         return (
           <div
             className={cn(
-              'group flex h-9 min-w-0 shrink-0 items-stretch border-r border-white/[0.065] transition-colors',
-              active ? 'bg-cs-bg text-cs-text shadow-[inset_0_-1px_0_rgb(255_255_255_/_0.72)]' : 'text-cs-muted hover:bg-white/[0.035]',
+              'group flex h-9 min-w-0 shrink-0 items-stretch border-r border-cs-border transition-colors',
+              active ? 'bg-cs-bg text-cs-text shadow-[inset_0_-1px_0_var(--color-cs-focus)]' : 'text-cs-muted hover:bg-cs-hover',
             )}
             key={tab.id}
           >
             <button
-              className="flex min-w-0 max-w-44 items-center gap-1.5 px-2.5 text-left text-[11px] outline-none focus-visible:bg-white/[0.055]"
+              className="flex min-w-0 max-w-44 items-center gap-1.5 px-2.5 text-left text-[11px] outline-none focus-visible:bg-cs-hover"
               type="button"
               role="tab"
               aria-selected={active}
@@ -46,7 +46,7 @@ export function WorkspaceTabs({ tabs, activeTabId, onActivate, onClose }: Worksp
             </button>
             {!tab.pinned && (
               <button
-                className="grid w-7 place-items-center text-cs-subtle opacity-0 outline-none transition group-hover:opacity-100 hover:bg-white/[0.055] hover:text-cs-text focus-visible:opacity-100"
+                className="grid w-7 place-items-center text-cs-subtle opacity-0 outline-none transition group-hover:opacity-100 hover:bg-cs-hover hover:text-cs-text focus-visible:opacity-100"
                 type="button"
                 aria-label={`Close ${tab.title}`}
                 onClick={() => onClose(tab.id)}
