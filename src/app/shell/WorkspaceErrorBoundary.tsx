@@ -12,17 +12,17 @@ export class WorkspaceErrorBoundary extends Component<
   WorkspaceErrorBoundaryProps,
   WorkspaceErrorBoundaryState
 > {
-  state: WorkspaceErrorBoundaryState = { failed: false };
+  override state: WorkspaceErrorBoundaryState = { failed: false };
 
   static getDerivedStateFromError(): WorkspaceErrorBoundaryState {
     return { failed: true };
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo): void {
+  override componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error('Chatspace workspace failed safely.', error, info.componentStack);
   }
 
-  render() {
+  override render() {
     if (this.state.failed) {
       return (
         <section className="chatspace-fallback" role="alert">
