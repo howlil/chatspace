@@ -5,7 +5,7 @@ import { Button, Panel, Select } from '../../ui/primitives';
 
 interface ChatDetailsProps {
   chat: ChatReference;
-  folder?: WorkspaceFolder;
+  folder: WorkspaceFolder | undefined;
   folders: WorkspaceFolder[];
   onRename: () => void;
   onTogglePin: () => void;
