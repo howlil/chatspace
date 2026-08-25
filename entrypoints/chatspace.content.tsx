@@ -1,9 +1,9 @@
 import { createShadowRootUi, defineContentScript } from '#imports';
 import { createRoot } from 'react-dom/client';
 
+import { WorkspaceApp } from '../src/app/WorkspaceApp';
 import { ChatspaceShell } from '../src/app/shell/ChatspaceShell';
 import { WorkspaceErrorBoundary } from '../src/app/shell/WorkspaceErrorBoundary';
-import { SpatialWorkspace } from '../src/features/workspace-layout/SpatialWorkspace';
 import '../src/app/shell/bootstrap-shell.css';
 
 export default defineContentScript({
@@ -19,7 +19,7 @@ export default defineContentScript({
         root.render(
           <WorkspaceErrorBoundary>
             <ChatspaceShell>
-              <SpatialWorkspace />
+              <WorkspaceApp />
             </ChatspaceShell>
           </WorkspaceErrorBoundary>,
         );
