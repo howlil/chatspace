@@ -14,7 +14,7 @@ interface NoteContextRailProps {
 
 export function NoteContextRail({ note, notes, bridgeConnected, onOpenNote, onSync }: NoteContextRailProps) {
   return (
-    <aside className="grid content-start gap-4 p-3 min-[880px]:border-l min-[880px]:border-white/[0.06] max-[879px]:border-t max-[879px]:border-white/[0.06]">
+    <aside className="grid content-start gap-4 p-3 min-[880px]:border-l min-[880px]:border-cs-border max-[879px]:border-t max-[879px]:border-cs-border">
       <RelatedNotesPanel noteId={note.id} notes={notes} onOpenNote={onOpenNote} />
 
       <section className="grid gap-1.5">
