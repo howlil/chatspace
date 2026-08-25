@@ -4,31 +4,24 @@ Last updated: 2026-08-25
 
 ## Current
 
-Iteration 0 foundation is implemented on PR #2 (`feat/iteration-0-bootstrap`). The extension now has a real WXT + React + strict TypeScript runtime, isolated Shadow DOM mount, unit test harness, lint/typecheck/build gates, and GitHub Actions verification.
+Iteration 1 — Safe Extension Shell is implemented on `feat/v1-workspace` after the verified v1 domain core.
 
 ## Last verified outcome
 
-Workflow run `32819940794` verified the implementation commit with all runtime gates green:
-
-- dependency installation: pass
-- ESLint: pass
-- strict TypeScript: pass
-- Vitest: pass
-- WXT production build: pass
-
-The TypeScript failure encountered during bootstrap was traced to the root `tsconfig.json` overriding WXT's generated include set and missing React JSX configuration. The fix follows the WXT React template: inherit generated declarations and add `jsx: react-jsx`.
+Commit `71900f9f5289fe39a19cdb341a397fd0def95c69` passed CI with dependency installation, ESLint, strict TypeScript, Vitest, and WXT production build all green.
 
 ## Implemented
 
-- WXT 0.21 Chromium MV3 foundation
-- React content UI
-- strict TypeScript configuration
-- Shadow DOM-isolated Chatspace root on `https://chatgpt.com/*`
-- harmless bootstrap status surface
-- Vitest + Testing Library + jsdom
-- ESLint flat config
-- CI gates for install, lint, typecheck, test, and production build
-- development README and repository ignores
+- WXT + React Chromium MV3 foundation
+- strict TypeScript
+- Shadow DOM-isolated content UI on `https://chatgpt.com/*`
+- provider-independent workspace domain model
+- workspace reducer and schema validation/import/export contracts
+- graph projection with canonical/manual provenance
+- safe ChatGPT URL-reference adapter
+- `chrome.storage.local` repository abstraction
+- Iteration 1 recoverable shell with explicit hide/restore controls
+- top-level error boundary that fails closed while leaving ChatGPT usable
 
 ## Hard constraints retained
 
@@ -36,38 +29,24 @@ The TypeScript failure encountered during bootstrap was traced to the root `tsco
 - no auth/session-cookie reuse
 - no automated/programmatic extraction of ChatGPT data/output
 - no protection/rate-limit bypass
-- provider-specific behavior must remain isolated
-- ChatGPT must remain usable if Chatspace fails or is hidden
+- provider-specific behavior remains isolated
+- ChatGPT remains usable if Chatspace fails or is hidden
 - TDD/evidence before completion claims
 
 ## Known reliability gap
 
-`package-lock.json` is not yet committed. Exact direct dependency versions are pinned and clean installation is verified, but transitive dependency reproducibility is not yet ideal. A workflow attempt to self-commit the generated lockfile was intentionally abandoned rather than granting persistent repository write access to CI. Close this gap during the reliability/store-readiness pass or through a trusted local package-manager environment; do not weaken dependency validation to hide it.
-
-## Not implemented yet
-
-- full safe shell controls/error boundary
-- three-panel workspace
-- persisted workspace domain
-- nested folders/chat references
-- tabs/command palette
-- provider navigation adapter
-- local Markdown notes
-- graph navigation
-- export/import/reset and store-readiness hardening
-- optional Obsidian/filesystem bridge
-- local semantic enrichment
+`package-lock.json` is not yet committed. Exact direct dependency versions are pinned; close this during Iteration 8 store-readiness without granting persistent repository write permission to CI.
 
 ## Compatibility state
 
-Only origin-scoped isolated mounting is implemented. No provider DOM selectors, output extraction, or private provider integration exists.
+Origin-scoped mount plus explicit URL-only ChatGPT navigation reference support. No provider DOM selectors, conversation scraping, history crawling, private endpoints, or provider credentials.
 
 ## Next single priority
 
-**Iteration 1 — Safe Extension Shell**, immediately followed by the local workspace vertical slice through Iterations 2–8.
+**Iteration 2 — Spatial Workspace Layout.**
 
-The next implementation must preserve host recoverability: top-level error boundary, visible collapse/restore control, provider-independent local state, and no ownership of ChatGPT conversation internals.
+Build the three-panel editor-like workspace shell while preserving the recoverable hide/restore behavior and host coexistence.
 
 ## Blocked
 
-No product blocker is known. Rich provider-derived semantic features remain intentionally constrained until a provider-supported data path exists.
+No product blocker is known.
