@@ -1,4 +1,5 @@
 import { FileText, MessageSquareText, Pin, Sparkles } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 import type { ChatReference, LocalNote } from '../../domain/workspace/model';
 import { Panel, SectionLabel } from '../../ui/primitives';
@@ -52,7 +53,7 @@ function NoteItem({ note, onOpen }: { note: LocalNote; onOpen: (note: LocalNote)
   );
 }
 
-function HomeSection({ title, children }: { title: string; children: React.ReactNode }) {
+function HomeSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section>
       <SectionLabel className="mb-1.5 px-1">{title}</SectionLabel>
