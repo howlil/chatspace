@@ -16,7 +16,7 @@ validated user value
 engineering time + cognitive load + compute cost + agent/context cost
 ```
 
-Production quality is required. Architectural sophistication is not a goal.
+Production quality is required. Architectural sophistication and testing volume are not goals.
 
 ## Product authority — hard rule
 
@@ -40,10 +40,10 @@ User / Product Authority
 Problem -> Vertical Slice -> Agent Implementation
                               |
                               v
-                         Code + Tests
+                       Code + Evidence
                               |
                               v
-                         Verification
+                    Risk-based Verification
                               |
                          evidence/result
                               v
@@ -72,16 +72,18 @@ Use `.agent/README.md` only to route to the minimum relevant project context.
 1. Understand requested outcome
 2. Read minimum relevant context
 3. Inspect current behavior/repository state
-4. Define 1-3 observable acceptance criteria + non-goals + risk + evidence
-5. Identify affected contracts/boundaries before parallel or cross-layer work
-6. Choose the smallest vertical change that can satisfy the approved requirement
-7. RED/reproduce when behavior is deterministic
-8. Implement minimum GREEN change
-9. Refactor touched complexity only while green
-10. Run targeted verification
-11. Run the required pre-merge gate
-12. Update only operational state/docs made stale by the change
-13. Stop
+4. Define 1-3 observable acceptance criteria + non-goals
+5. Identify realistic failure risk: impact + likelihood
+6. Identify affected contracts/boundaries before parallel or cross-layer work
+7. Choose the smallest vertical change that can satisfy the approved requirement
+8. Choose the cheapest high-signal verification for the identified risk
+9. Use RED/TDD only when a deterministic automated test is the best signal
+10. Implement the minimum change
+11. Refactor touched complexity only when useful and confidence remains intact
+12. Run targeted verification; broaden only when risk justifies it
+13. Satisfy repository-required merge checks
+14. Update only operational state/docs made stale by the change
+15. Stop
 ```
 
 Do not create a giant plan for a bounded task. Architecture work is justified only by the triggers in `.agent/SYSTEM.md`.
@@ -98,41 +100,79 @@ Do not create a giant plan for a bounded task. Architecture work is justified on
 - Preserve good boundaries when they provide real domain isolation, security, testability, failure isolation, or ownership clarity.
 - Prefer explicit, boring code over speculative extensibility.
 
-## Verification levels
+## Testing & verification rule — hard rule
 
-### Local fast loop
+Tests exist to reduce **meaningful delivery risk**, not to maximize coverage, test count, or ceremony.
 
-Use the cheapest high-signal check while developing:
+For every change:
+
+```text
+realistic failure
+      ↓
+impact + likelihood
+      ↓
+cheapest high-signal verification
+      ↓
+broaden only if risk requires it
+      ↓
+sufficient confidence
+      ↓
+stop
+```
+
+Before adding or running a test, ask:
+
+> What realistic regression or failure does this detect?
+
+Before adding a broader check, ask:
+
+> Is this failure already protected more cheaply at another layer?
+
+If there is no strong answer, do not add the test/check.
+
+### TDD
+
+Use TDD when a deterministic automated test is the cheapest high-signal way to define or protect important behavior.
+
+Prefer it for domain invariants, algorithms, persistence/data integrity, concurrency, migrations, security/privacy boundaries, provider/external contracts, and valuable deterministic regressions.
+
+Do **not** require TDD for presentation-only changes, styling/layout, static markup, copy/content, trivial wiring, exploratory implementation, or cases where another verification method is cheaper and equally reliable.
+
+Detailed policy lives in `.agent/TESTING.md`.
+
+## Progressive verification
+
+### Development loop
+
+Use the cheapest useful feedback for the touched risk. Examples only:
 
 ```bash
 pnpm exec vitest run <affected-test>
 pnpm exec eslint <touched-files>
 ```
 
-Run only what is useful for the current RED/GREEN loop. Do not run the full suite after every edit.
+A docs/copy change may need only diff inspection. A persistence-ordering change may need a focused deterministic regression test. A visual change may need a visual/manual check rather than a new unit test.
 
-### Pre-merge
+Do not run the full suite after every edit.
 
-Run once the intended outcome is complete:
+### Merge confidence
 
-```bash
-pnpm verify
-pnpm build
-pnpm zip
-```
+Run the targeted evidence required by the change risk, then satisfy any checks the repository currently enforces for the PR.
 
-Add explicit manual acceptance when browser/provider/UI behavior cannot be proven by CI.
+Do not treat the current CI command set as a universal testing pyramid or require agents to duplicate every CI check locally without a risk reason.
 
-### Release
+Add explicit manual acceptance only when browser/provider/UI behavior cannot be proven more cheaply and reliably by automation.
 
-Follow `.agent/ENGINEERING.md` + `.agent/DELIVERY.md`. Release validation is not part of every local iteration.
+### Release confidence
+
+Release-specific checks happen only for an actual distribution candidate or when the changed risk specifically requires them. Follow `.agent/TESTING.md`, `.agent/ENGINEERING.md`, and `.agent/DELIVERY.md`.
 
 ## Non-negotiable defaults
 
 - one logical outcome = one short-lived branch + one PR
 - keep `master` releasable
 - prefer small vertical slices over layer-by-layer scaffolding
-- use evidence for behavior claims; never declare success from inspection alone
+- use evidence for behavior claims; never declare success from inspection alone when behavior actually changed
 - acceptance criteria define done; agent confidence does not
 - no speculative abstraction, framework, dependency, service layer, registry, event bus, DI container, agent framework, or infrastructure
 - no unrelated refactor/cleanup in a feature or bug-fix task
@@ -142,6 +182,8 @@ Follow `.agent/ENGINEERING.md` + `.agent/DELIVERY.md`. Release validation is not
 - never use private/undocumented ChatGPT APIs, provider cookies/session tokens, automated content extraction, scraping, network replay, or protection bypasses
 - parallel agents are optional only for truly independent work; one owner integrates shared contracts
 - prefer a small releasable outcome over a giant feature batch
+- verification depth must follow meaningful risk, not habit
+- avoid duplicate confidence across test layers unless each layer protects a different failure mode
 
 ## Agent cost discipline
 
@@ -152,6 +194,8 @@ Treat these as waste unless evidence says otherwise:
 - repeated architecture analysis for ordinary feature work
 - large speculative plans
 - repeated full builds/tests during the local loop
+- tests with no realistic regression they protect
+- duplicated tests protecting the same failure at several layers
 - unnecessary generated markdown/status reports
 - multiple agents editing the same contract
 - continuing after acceptance is satisfied
@@ -165,12 +209,12 @@ Prefer reusing known project state and focused source/tests over rediscovery.
 Stop implementation when:
 
 - requested behavior works
-- relevant tests/evidence pass
-- required gate passes
-- required manual acceptance is recorded
+- risk-appropriate evidence is sufficient
+- repository-required checks pass
+- required manual acceptance is recorded when applicable
 - no blocker remains inside accepted scope
 
-Do **not** continue into optional refactoring, aesthetic cleanup, future-proofing, documentation expansion, dependency changes, architecture redesign, or adjacent feature work.
+Do **not** continue into optional refactoring, aesthetic cleanup, future-proofing, documentation expansion, dependency changes, architecture redesign, adjacent feature work, or extra tests that do not materially increase confidence.
 
 If a useful follow-up exists, record at most a short follow-up note and end the task.
 
@@ -205,6 +249,7 @@ Reassess before continuing when:
 - three patch attempts fail without a stronger root-cause hypothesis
 - provider/security assumptions are uncertain
 - a bounded task unexpectedly requires a new cross-cutting architecture boundary
+- verification is getting much broader or more expensive without a clearer failure model
 
 ## Do / Don't
 
@@ -218,12 +263,15 @@ Reassess before continuing when:
 | observable acceptance criteria | vague “done” |
 | inspect existing code and behavior | rewrite unnecessarily |
 | reuse existing patterns | abstraction by default |
+| classify realistic risk | run every check by habit |
 | test observable behavior/contracts | test implementation trivia |
+| choose cheapest high-signal evidence | maximize test count/coverage |
+| broaden verification when risk justifies it | duplicate confidence across layers |
 | small release-ready outcome | giant feature batch |
-| evidence from tests/build/manual acceptance | agent self-confidence |
+| evidence from relevant test/build/manual acceptance | agent self-confidence |
 | surface missing product decisions | silently invent requirements |
 | implementation recommendations within scope | unrequested product decisions |
 
 ## Project context routing
 
-Use `.agent/README.md` to locate project knowledge. Workflow rules live here and in `.agent/ENGINEERING.md`; project knowledge must not be duplicated into agent-specific files.
+Use `.agent/README.md` to locate project knowledge. Workflow rules live here and in `.agent/ENGINEERING.md`; testing strategy lives in `.agent/TESTING.md`. Project knowledge must not be duplicated into agent-specific files.

@@ -4,17 +4,19 @@
 
 Ship vertical user outcomes, not a checklist of component names.
 
-A feature is not complete merely because lint/typecheck/tests/build are green. Completion requires both:
+A change is complete when:
 
 ```text
-Engineering gate
-lint + strict typecheck + tests + production build
+Product acceptance
+observable workflow behaves as intended
 
              AND
 
-Product acceptance
-observable workflow behaves as intended
+Risk-appropriate engineering confidence
+the realistic failure modes are sufficiently verified
 ```
+
+Do not equate “more checks” with “more quality”. Verification depth follows meaningful risk.
 
 ## Product-convergence correction
 
@@ -25,9 +27,9 @@ The corrected architecture therefore prioritizes:
 1. native ChatGPT remains unobscured
 2. Chatspace lives in the browser Side Panel
 3. Explorer + Workbench are extension-owned
-4. content script is URL-only provider bridge
+4. provider integration is URL-only through the validated active-tab boundary
 5. graph must be spatial
-6. layout behavior must be persisted and tested as a user outcome
+6. layout behavior is persisted as local workspace state
 
 ## Current core slices
 
@@ -36,7 +38,7 @@ The corrected architecture therefore prioritizes:
 Acceptance:
 
 - extension action opens Chatspace side panel
-- content script renders no Chatspace UI
+- no Chatspace UI is injected into the provider page
 - no fake Provider panel
 - native ChatGPT remains the main-page conversation surface
 
@@ -46,19 +48,22 @@ Acceptance:
 
 - search local workspace
 - nested folders expand/collapse
-- create note/folder
-- basic folder rename/delete
+- create root folder/note
+- intentional nesting is explicit
+- folder/chat/note hierarchy can be moved reversibly
+- invalid folder cycles are rejected
 - pin/unpin saved chats
-- opening a saved chat navigates native ChatGPT via validated target
+- opening a saved chat navigates native ChatGPT through a validated target
 
-### Slice C — Layout
+### Slice C — Layout/theme
 
 Acceptance:
 
-- Explorer width is bounded and keyboard/pointer resizable
-- width persists through canonical workspace layout state
-- Explorer collapse persists
-- narrow width does not create unusable permanent columns
+- Explorer width is bounded and resizable
+- width/collapse persist through canonical workspace state
+- narrow width remains usable
+- light/dark preference persists
+- semantic UI tokens work across primary surfaces
 
 ### Slice D — Workbench
 
@@ -73,7 +78,7 @@ Acceptance:
 
 Acceptance:
 
-- graph uses actual spatial node positions and visible edges
+- graph uses spatial node positions and visible edges
 - zoom/reset controls work
 - selection opens an inspector
 - selected artifact can be opened
@@ -85,36 +90,57 @@ Acceptance:
 
 Acceptance:
 
-- extension-owned storage
+- extension-owned canonical storage
 - schema validation
 - corrupt storage blocks unsafe overwrite
 - import/export/reset available
-- provider bridge failure does not break local workspace
+- rapid persistence writes coalesce to the latest snapshot and physical writes are serialized
+- provider failure does not break local workspace
+- no obsolete provider content-script bridge is required
 
-## Quality gate order
+## Verification strategy
+
+Use `.agent/TESTING.md` as the verification authority.
+
+For each change:
 
 ```text
-lint
- ↓
-strict typecheck
- ↓
-tests including product acceptance behavior
- ↓
-production build
- ↓
-manual live browser visual/use check when available
- ↓
-merge
+realistic failure
+      ↓
+impact + likelihood
+      ↓
+cheapest high-signal evidence
+      ↓
+broaden only when justified
+      ↓
+accept / merge
 ```
+
+Examples:
+
+- docs/copy-only: diff inspection may be sufficient
+- styling/presentation-only: focused visual/manual check; do not add tests just for class changes
+- deterministic domain/interaction regression: focused automated behavior test
+- persistence/concurrency/data: stronger deterministic regression/boundary checks
+- permissions/security/provider contract: explicit boundary/security verification
+- release candidate: packaging/install/browser/permission checks appropriate to release risk
+
+The repository may enforce a cheap baseline CI gate. Passing it does not replace product acceptance, and agents do not need to duplicate every CI check locally unless the affected risk requires it.
+
+Do not run the complete manual browser checklist for unrelated low-risk work.
 
 ## Scope discipline
 
-Do not add more integrations, semantic sophistication, multi-provider abstraction, or design-system inventory while the core Explorer/Workbench/navigation experience has an unresolved product-acceptance issue.
+Do not add more integrations, semantic sophistication, multi-provider abstraction, or design-system inventory without an approved product requirement.
+
+When current functionality is sufficient, use real daily-driver friction to decide the next product change rather than generating scope from best practices.
 
 ## Release distinction
 
-- **development-ready:** code gates green and core flows implemented
+- **development-ready:** accepted change + sufficient risk-based confidence
 - **daily-driver candidate:** development-ready + repeated manual live use without major UX blocker
-- **store-ready:** daily-driver candidate + reproducible lockfile/package, permission audit, packaging assets/process, and install/update lifecycle checks
+- **store-ready:** daily-driver candidate + reproducible install/package, permission/privacy audit, packaging assets/process, and install/update lifecycle checks
 
-Do not collapse these three states into one “done” label.
+Do not collapse these states into one “done” label.
+
+Release-specific verification is intentionally broader than ordinary change verification.
