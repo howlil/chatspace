@@ -52,3 +52,4 @@ jobs:
           name: chatspace-live-browser-extension
           path: .output/*.zip
           if-no-files-found: error
+          include-hidden-files: true
