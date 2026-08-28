@@ -28,9 +28,12 @@ The primary UI must never be a floating overlay that covers the provider page.
 │  │ Explorer │ Workbench         │     │ provider-owned conversation     │  │
 │  │          │                   │     │ messages / composer / tools     │  │
 │  │ folders  │ tabs              │     │                                 │  │
-│  │ pins     │ notes             │     │ minimal Chatspace content       │  │
-│  │ search   │ graph             │◀───▶│ script: URL bridge only         │  │
+│  │ pins     │ notes             │     │ no Chatspace DOM/content bridge │  │
+│  │ search   │ graph             │     │                                 │  │
 │  └──────────────┬───────────────┘     └─────────────────────────────────┘  │
+│                 │                              ▲                           │
+│                 │ validated active-tab URL    │ browser.tabs read/update  │
+│                 └──────────────────────────────┘                           │
 │                 │                                                          │
 │        WorkspaceRepository                                                  │
 │                 │                                                          │
@@ -58,17 +61,20 @@ The side panel owns all Chatspace UI:
 
 It must remain useful even if provider navigation becomes unavailable.
 
-### B. Content-script provider bridge
+### B. Active-tab provider boundary
 
-The ChatGPT content script is deliberately narrow. It may only:
+Provider presence and navigation use an explicit `ProviderTabsPort` backed by browser tab APIs.
 
-- report the current page URL
-- validate and perform explicit navigation to a supported ChatGPT conversation target
+It may only:
 
-It must **not**:
+- read the active tab URL needed to classify supported ChatGPT state
+- validate a requested ChatGPT conversation target
+- navigate an existing supported ChatGPT tab to that target
+- open the validated target in a new tab when the active tab cannot be reused
 
-- render the Chatspace workspace
-- scrape conversation text or output
+It does **not** require a ChatGPT content script and must not:
+
+- read provider DOM or conversation output
 - crawl history
 - inspect cookies/session credentials
 - call undocumented/private endpoints
@@ -119,6 +125,9 @@ Rules:
 - failed loads/saves do not silently overwrite old data
 - recovery/export/reset remain explicit
 - never persist provider auth/session secrets
+- rapid production save requests coalesce to the latest snapshot within a bounded debounce window
+- physical Chrome-storage writes are serialized rather than overlapped
+- `clear()` cancels a pending buffered save before clearing storage
 
 ## 5. UI composition
 
@@ -164,14 +173,14 @@ Deterministic local semantic relations use only user-authored local note title/t
 ## 7. Trust boundaries
 
 1. Chatspace local state — trusted application data after validation
-2. extension messaging — validate message type/target
+2. browser tab metadata/navigation — narrow URL-only provider boundary with target validation
 3. provider page — external runtime; do not ingest content
 4. localhost bridge — separate explicit trust boundary with bearer authentication and path restrictions
 
 ## 8. Failure behavior
 
-### Provider bridge unavailable
-Local Explorer, tabs, notes, graph, backups, and settings keep working.
+### Provider tab unavailable
+Local Explorer, tabs, notes, graph, backups, and settings keep working. Provider-dependent navigation/reconnect surfaces degrade explicitly.
 
 ### Storage corrupt
 Block persistence and expose recovery/import/reset paths. Never silently replace data.
@@ -185,11 +194,12 @@ Only vault synchronization degrades.
 ## 9. Performance rules
 
 - no full provider DOM scans
-- no dependency on provider mutation observers for core workspace behavior
+- no provider content-script or mutation-observer dependency for core workspace behavior
 - Explorer operations should be effectively instant at normal local scale
 - avoid virtualization until measured need
 - graph state remains derived and bounded
 - persist only canonical local state
+- coalesce rapid persistence state transitions and serialize physical extension-storage writes
 
 ## 10. Architecture rule of thumb
 
