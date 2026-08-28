@@ -1,78 +1,86 @@
 # Iteration 0 Bootstrap Implementation Plan
 
-> For agentic workers: implement task-by-task with RED → GREEN → REFACTOR and fresh verification before completion claims.
+> **Status: Completed / Historical / Superseded as current instruction.**
+>
+> This document is preserved as project history and rationale. Do **not** use its npm, content-script, Shadow DOM, mandatory RED/TDD, old workflow-file references, or fixed CI-gate instructions as current operating rules. Current authority is `AGENTS.md`, current runtime architecture is `.agent/ARCHITECTURE.md`, and current verification policy is `.agent/TESTING.md`.
+>
+> Later decisions moved the product to a browser Side Panel, `chrome.storage.local`, URL-only `browser.tabs` provider integration with no ChatGPT content script, pnpm, and risk-based verification.
 
-**Goal:** Establish the smallest reproducible Chatspace browser-extension foundation that can mount/unmount an isolated React shell on an explicitly supported host page and pass lint, typecheck, test, and build in CI.
+> Historical instruction at the time: implement task-by-task with RED → GREEN → REFACTOR and fresh verification before completion claims.
 
-**Architecture:** Chromium Manifest V3 extension built with WXT. The content script owns only a Shadow DOM-isolated Chatspace shell; provider-specific behavior is intentionally absent from Iteration 0. React renders one harmless status surface. Runtime code remains thin and testable; future workspace/domain features are not introduced.
+**Historical Goal:** Establish the smallest reproducible Chatspace browser-extension foundation that can mount/unmount an isolated React shell on an explicitly supported host page and pass lint, typecheck, test, and build in CI.
 
-**Tech Stack:** Node >=22.12, npm 12.0.2, WXT 0.21.4, React 19.2.8, TypeScript 6.0.3, ESLint 10.9.0 + typescript-eslint 8.67.0, Vitest 4.1.11, Testing Library, jsdom 30.0.1.
+**Historical Architecture:** Chromium Manifest V3 extension built with WXT. The content script owned only a Shadow DOM-isolated Chatspace shell; provider-specific behavior was intentionally absent from Iteration 0. React rendered one harmless status surface. This architecture was later superseded by the Side Panel + browser-tabs design.
 
-**Spec:** `.agent/STATE.md`, `.agent/ARCHITECTURE.md`, `.agent/WORKFLOW.md`, `.agent/TESTING.md`
+**Historical Tech Stack:** Node >=22.12, npm 12.0.2, WXT 0.21.4, React 19.2.8, TypeScript 6.0.3, ESLint 10.9.0 + typescript-eslint 8.67.0, Vitest 4.1.11, Testing Library, jsdom 30.0.1.
 
-## Global Constraints
+**Historical Spec references:** `.agent/STATE.md`, `.agent/ARCHITECTURE.md`, deleted legacy workflow docs, `.agent/TESTING.md`.
+
+## Historical Global Constraints
 
 - Chromium Manifest V3 first.
-- Exact package versions in `package.json`; generate and commit `package-lock.json` as soon as a package-manager environment is available.
+- Exact package versions in `package.json`; generate and commit the package-manager lockfile as soon as available.
 - WXT requires Node >=22 for v0.21.x.
 - React is enabled through `@wxt-dev/module-react`.
-- Content UI uses WXT `createShadowRootUi` with `cssInjectionMode: 'ui'`.
-- The content script matches only `https://chatgpt.com/*` in Iteration 0.
-- No ChatGPT DOM scraping, private endpoints, auth/session access, conversation extraction, folders, tabs, notes, graph, IndexedDB, or provider adapter behavior in this iteration.
+- Content UI originally used WXT `createShadowRootUi`; this is no longer the current primary UI architecture.
+- The old content script matched `https://chatgpt.com/*`; the core current path no longer uses a ChatGPT content script.
+- No ChatGPT DOM scraping, private endpoints, auth/session access, or conversation extraction.
 - Tests must not require live ChatGPT.
-- CI must execute lint, typecheck, test, and build.
 
 ---
 
-## Task 1 — Reproducible toolchain and RED bootstrap test
+## Historical Task 1 — Reproducible toolchain and RED bootstrap test
 
-**Files:** `package.json`, `tsconfig.json`, `wxt.config.ts`, `vitest.config.ts`, `eslint.config.mjs`, `tests/setup.ts`, `src/app/shell/BootstrapShell.test.tsx`
+**Files at the time:** `package.json`, `tsconfig.json`, `wxt.config.ts`, `vitest.config.ts`, `eslint.config.mjs`, `tests/setup.ts`, `src/app/shell/BootstrapShell.test.tsx`
 
-**Behavior under test:** the bootstrap shell exposes a visible `Chatspace` label and a non-interactive `Foundation ready` status.
+**Behavior under test at the time:** the bootstrap shell exposed a visible `Chatspace` label and a non-interactive `Foundation ready` status.
 
-1. Add exact dependency versions and scripts: `postinstall`, `dev`, `build`, `lint`, `typecheck`, `test`, `test:watch`, `verify`.
+1. Add exact dependency versions and scripts.
 2. Configure WXT React module and minimal MV3 manifest metadata.
-3. Configure strict TypeScript extending WXT-generated config after `wxt prepare`.
-4. Configure Vitest + jsdom and ESLint flat config.
-5. Write the shell test before the component exists.
-6. Push and verify CI/test failure is caused by the missing `BootstrapShell` implementation, not configuration mistakes.
+3. Configure strict TypeScript.
+4. Configure Vitest + jsdom and ESLint.
+5. Write the shell test before the component existed.
+6. Verify failure was caused by missing implementation rather than configuration.
 
-## Task 2 — GREEN isolated shell
+The bootstrap test was later removed after the bootstrap shell stopped protecting an active runtime behavior.
 
-**Files:** `src/app/shell/BootstrapShell.tsx`, `src/app/shell/bootstrap-shell.css`, `entrypoints/chatspace.content.tsx`
+## Historical Task 2 — GREEN isolated shell
 
-1. Implement the minimal component needed by the failing test.
-2. Mount it through WXT `createShadowRootUi`.
-3. Use `cssInjectionMode: 'ui'`, `position: 'inline'`, `anchor: 'body'`, and a unique kebab-case root name.
-4. Return the React root from `onMount` and unmount it in `onRemove`.
-5. Keep the shell visually unobtrusive and host-independent.
-6. Run test, typecheck, lint, and build.
+**Files at the time:** `src/app/shell/BootstrapShell.tsx`, bootstrap CSS, old ChatGPT content-script entrypoint.
 
-## Task 3 — Fast CI and repository hygiene
+1. Implement the minimal bootstrap component.
+2. Mount through WXT isolated content UI.
+3. Keep the shell host-independent.
+4. Unmount cleanly.
+5. Keep the shell visually unobtrusive.
+6. Run the then-required verification.
 
-**Files:** `.github/workflows/ci.yml`, `.gitignore`, `README.md`
+This content-script UI design was later superseded by the Side Panel architecture.
+
+## Historical Task 3 — Fast CI and repository hygiene
 
 1. CI on pushes to `master` and pull requests.
-2. Pin npm 12.0.2. Use `npm ci` and npm dependency caching once the generated lockfile is committed.
-3. Run `npm run verify` and `npm run build` as distinct evidence-producing steps.
-4. Ignore WXT/build/node artifacts.
-5. Document local commands and Chrome unpacked-extension workflow.
+2. The project originally planned npm; pnpm later became canonical.
+3. The original plan treated build as a separate CI step; current CI uses WXT ZIP as the single build+package gate where appropriate.
+4. Ignore generated build artifacts.
+5. Document local commands and unpacked-extension workflow.
 
-## Task 4 — Verification and state handoff
+## Historical Task 4 — Verification and state handoff
 
 1. Inspect branch diff for scope leakage.
-2. Verify the latest workflow run for the head commit.
-3. Confirm no provider/extraction code exists.
-4. Update `.agent/STATE.md` with exact evidence and next single priority.
-5. Open a focused PR, review changed files, then squash-merge only if all available checks are green.
+2. Verify the latest workflow run.
+3. Confirm no unsupported provider/extraction code.
+4. Update operational state.
+5. Open a focused PR and integrate only after required checks.
 
-## Definition of Done
+## Historical Definition of Done
 
-- WXT extension builds successfully.
-- TypeScript strict check passes.
-- ESLint passes.
-- Vitest bootstrap behavior test passes.
-- Content script is limited to `https://chatgpt.com/*` and mounts an isolated Shadow DOM shell.
-- No live ChatGPT dependency in automated tests.
-- CI is present and green on the final branch head.
-- `.agent/STATE.md` reports evidence and does not claim later features.
+At the time this plan was completed:
+
+- the WXT extension foundation built successfully
+- strict TypeScript / ESLint / Vitest foundation checks existed
+- provider extraction/private API behavior was absent
+- CI existed
+- project state captured the next iteration
+
+Later architecture/product decisions supersede the original content-script/bootstrap details while this plan remains preserved as historical rationale.
