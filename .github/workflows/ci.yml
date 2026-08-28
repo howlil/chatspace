@@ -43,8 +43,5 @@ jobs:
       - name: Test
         run: pnpm test
 
-      - name: Production build
-        run: pnpm build
-
-      - name: Package extension ZIP
+      - name: Build and package extension ZIP
         run: pnpm zip
