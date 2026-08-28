@@ -31,7 +31,7 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install dependencies
+      - name: Install frozen dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Lint
