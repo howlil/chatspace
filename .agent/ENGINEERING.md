@@ -1,8 +1,6 @@
 # Lean Engineering Policy
 
-`AGENTS.md` defines the canonical agent lifecycle. This file contains the detailed engineering policy behind it.
-
-Detailed product requirements and architecture remain in their existing project documents and must not be replaced by generic process rules.
+`AGENTS.md` is the single canonical product/engineering lifecycle. This file provides detailed engineering policy only; it must not redefine the lifecycle or product authority.
 
 ## 1. Engineering economics
 
@@ -12,133 +10,82 @@ Optimize for:
 Value Delivered / (Engineering Time + Waiting + Rework + Cognitive Load + Compute Cost + Agent Context Cost)
 ```
 
-Speed comes primarily from small batches, low rework and fast feedback. Never trade correctness/security for superficial coding speed.
+Speed comes primarily from small batches, low WIP, low rework, clear boundaries, and fast feedback. Never trade correctness/security for superficial coding speed.
 
-Testing cost is part of engineering cost. More tests/checks are justified only when they reduce meaningful risk.
+Testing/checking cost is engineering cost. Verification depth is justified only by meaningful risk plus repository-required quality gates.
 
-## 2. Requirement intake
+## 2. Requirement handling
 
-Before implementation, reduce the task to:
+Follow `AGENTS.md` for USER INTENT → UNDERSTAND → BOUND → SPECIFY.
+
+For a bounded implementation task, the working summary should normally fit in:
 
 ```text
-Problem: <one sentence>
-Acceptance: <1-3 observable outcomes>
-Non-goals: <what will not change>
-Risk: <what can realistically break + impact/likelihood>
-Evidence: <cheapest high-signal verification>
+Problem:
+Explicit requirement:
+Expected outcome:
+Acceptance: 1-3 observable outcomes
+Non-goals:
+Risk:
+Evidence:
 ```
 
-Reuse existing requirements in `PRODUCT.md`, `DELIVERY.md` or `plans/`. Do not rewrite them into a speculative roadmap.
+Separate a proposed solution from the underlying requirement. A proposed solution can be evaluated technically; it is not permission to invent adjacent product behavior.
 
-## 3. Real lifecycle
+The agent may draft acceptance criteria when they directly restate explicit requirements or existing approved behavior. Material product semantics remain user-owned.
 
-The default Chatspace delivery path is:
+Do not turn requirement intake into mandatory broad discovery, bottleneck analysis, P0/P1 inventory, metrics work, or a giant plan for ordinary bounded changes.
+
+## 3. Local engineering autonomy
+
+Within approved scope and current material boundaries, execute ordinary local engineering choices without approval loops.
+
+Examples:
+
+- implementation order
+- naming/file placement consistent with repository patterns
+- local component/function structure
+- reuse/extension of an existing owner
+- small local abstraction justified by current behavior
+- touched-only refactor
+- verification boundary selection
+
+Escalate only when the material approval boundaries in `AGENTS.md` or `.agent/SYSTEM.md` are crossed.
+
+## 4. Small-batch implementation
+
+Use the thinnest vertical slice that proves the approved outcome.
+
+Typical implementation loop inside the canonical lifecycle:
 
 ```text
-request
--> minimum context discovery
--> bounded acceptance
--> realistic risk classification
--> smallest vertical implementation
--> cheapest high-signal verification
--> broader confidence only when required
--> PR / repository-required checks
--> merge to releasable master
--> release-specific validation only for release candidates
-```
-
-Optimize waiting/rework before optimizing typing speed.
-
-## 4. Small-batch iteration — XP + lean
-
-```text
-specify/reproduce
+specify / reproduce
 -> choose verification boundary
--> RED when useful
--> minimal change
+-> RED only when useful
+-> minimum change
 -> touched-only refactor when useful
--> targeted verify
--> broaden only if risk requires
--> stop
+-> targeted verification
 ```
 
-- use the thinnest end-to-end slice that proves value
-- use TDD when a deterministic automated test is the cheapest high-signal protection
-- do not require TDD for styling, presentation, copy, trivial wiring, or other changes better verified another way
-- automate owned contracts when the regression value justifies maintenance cost
-- use explicit manual checks for browser/provider behavior automation cannot prove more cheaply/reliably
-- stop immediately when acceptance and sufficient confidence pass
+Do not introduce architecture-first scaffolding, feature bundles, broad rewrites, or “while here” cleanup.
 
-Avoid architecture-first scaffolding, feature bundles, broad UI rewrites, test ceremony and “while here” cleanup.
+## 5. Verification economics
 
-## 5. Risk-based verification
-
-Tests exist to reduce meaningful delivery risk, not to maximize coverage, test count, or automation volume.
+`.agent/TESTING.md` is the detailed verification authority.
 
 For every change:
 
-1. identify what can realistically break
-2. estimate impact and likelihood
-3. choose the cheapest high-signal verification
-4. broaden verification only when risk justifies the cost
+1. identify realistic failure
+2. estimate impact + likelihood
+3. choose cheapest high-signal evidence
+4. broaden only when risk requires it
+5. satisfy repository-required quality gates before merge
 
-```text
-LOW risk     -> cheap verification
-MEDIUM risk  -> targeted behavior/boundary verification
-HIGH risk    -> stronger contract/integration/data/security/critical-flow evidence
-RELEASE      -> release-specific confidence only when actually releasing
-```
+Local fast feedback and merge gates are different concerns. Do not reproduce the full CI gate after every edit, but do not waive required CI/quality gates because a local change seems low-risk.
 
-Detailed examples and rules live in `.agent/TESTING.md`.
+No arbitrary coverage target. Flaky tests are defects because they lower signal.
 
-### Development loop
-
-Use the shortest useful feedback. Examples only:
-
-```bash
-pnpm exec vitest run <affected-test>
-pnpm exec eslint <touched-files>
-```
-
-Do not run broad checks by habit. A docs-only change may need only diff inspection; a persistence/concurrency change should usually have deterministic automated protection; a presentation-only change may need a visual check.
-
-### Merge confidence
-
-Run the targeted evidence justified by the affected risk and satisfy repository-enforced PR checks.
-
-Current repository CI may remain broader than the locally required verification while it is cheap. Do not interpret that as a universal requirement to reproduce every CI command for every edit.
-
-A meaningful browser/UI/provider change requires manual acceptance only when that environment-specific failure cannot be proven more cheaply and reliably elsewhere.
-
-### Release confidence
-
-Release checks happen only for an actual distribution candidate or when the changed risk specifically requires them. Follow `.agent/TESTING.md` and `DELIVERY.md`.
-
-No arbitrary coverage-percentage target. Flaky tests are defects because they lower signal.
-
-## 6. Avoid duplicate confidence
-
-Do not protect the same failure repeatedly at multiple layers unless each layer detects a meaningfully different failure mode.
-
-Optimize for:
-
-```text
-confidence gained
------------------
-execution + maintenance + development cost
-```
-
-Before adding/running a test, ask:
-
-> What realistic regression or failure does this detect?
-
-Before adding a broader test, ask:
-
-> Is this already protected more cheaply elsewhere?
-
-If the answer does not justify the check, do less verification.
-
-## 7. Git and WIP strategy
+## 6. Git and WIP strategy
 
 `master` is the integration branch and should stay releasable.
 
@@ -155,61 +102,74 @@ Rules:
 - one logical outcome = one branch + one PR
 - branch from current `master`
 - keep branches short-lived
-- avoid stacked PRs unless unavoidable
+- keep concurrent WIP low
+- avoid stacked PRs unless a dependency makes them necessary
 - never branch per file/layer/agent/micro-task
-- no unrelated cleanup inside feature PRs
-- commits are checkpoints; the PR is the review unit
-- prefer squash merge and delete merged branches
+- no unrelated cleanup in a feature/fix PR
+- commits are checkpoints; PR is the review unit
+- prefer squash merge
 - recheck after meaningful base movement
-- keep concurrent WIP low; parallelize only independent work with stable boundaries
+- parallelize only genuinely independent work with stable contracts
 
-PR communicates: Why, What, Non-goals, Risk, Verification.
+A PR should communicate: Why, What, Non-goals, Risk, Verification.
 
-## 8. Code / abstraction rule
+## 7. Code and abstraction rule
 
-Use `CODE_PATTERNS.md` for project conventions.
+Use `.agent/CODE_PATTERNS.md` for project conventions and `.agent/SYSTEM.md` for design decisions.
 
-Do not add an interface, factory, registry, base class, store, service, framework, cache, worker, event bus, DI container or plugin mechanism solely for future flexibility.
+Do not add an interface, factory, registry, base class, store, service, framework, cache, worker, event bus, DI container, plugin mechanism, or other abstraction solely for future flexibility.
 
-Extract when there is evidence of:
+Prefer:
+
+```text
+reuse existing pattern
+-> extend existing owner
+-> small local abstraction
+-> architecture change only when necessary
+```
+
+Extract when there is current evidence of:
 
 - a stable repeated pattern
 - a real external/trust boundary
 - defect-prone duplicated knowledge
-- an independently changing responsibility
-- a measured performance constraint
+- independently changing responsibility
+- measured performance constraint
 
-A dependency must solve a current problem and materially beat platform/native code on correctness, security, maintenance or delivery cost.
+A dependency must solve a current problem and materially beat platform/native code on correctness, security, maintenance, or delivery cost.
 
-Preserve boundaries that already provide domain isolation, failure isolation, security or testability. Simplification is not file-count reduction.
+Preserve boundaries that already provide domain isolation, failure isolation, security, ownership clarity, or testability.
 
-## 9. Agent context and token discipline
+## 8. Agent context and token discipline
 
-Agent cost includes context discovery, reasoning, tool calls, re-reading, replanning, generated artifacts, tests/checks and rework.
+Default context:
 
-Default rules:
+```text
+AGENTS.md + STATE.md + affected code/tests + task-relevant project docs only
+```
 
-- load `AGENTS.md` + `STATE.md`, then affected source/tests
-- consult architecture/security/design docs only when the change touches those concerns
-- reuse known repository state instead of rediscovering it
-- do not recursively scan the repository for bounded work
-- do not generate implementation plans longer than the task requires
-- do not repeatedly run broad verification during implementation
-- do not add tests without a realistic failure they protect
-- do not duplicate confidence across layers
-- do not produce duplicate workflow/status documents
-- do not delegate tightly coupled work to multiple agents
-- stop after completion instead of inventing adjacent improvements
+Treat these as waste unless evidence says otherwise:
 
-Classify agent/process work mentally as **necessary / reducible / waste**. Remove recurring waste; do not optimize one-off trivial cost with new tooling.
+- recursive repo scans for bounded work
+- preloading all `.agent` docs
+- repeated architecture analysis for ordinary local changes
+- mandatory bottleneck analysis before ordinary coding
+- large speculative plans
+- repeated full verification during the local loop
+- duplicate tests/checks for the same failure
+- duplicate workflow/status documents
+- tightly coupled parallel-agent work
+- continuing after acceptance is satisfied
 
-## 10. Delivery measurement
+Reuse known project state rather than rediscovering it.
 
-Use metrics to locate constraints, not to score developers or reward output volume.
+## 9. Delivery measurement
 
-Where evidence exists, observe:
+Metrics are diagnostic tools, not mandatory deliverables for every task.
 
-### Delivery/DORA
+Where existing evidence supports a real delivery decision, useful signals may include:
+
+### Delivery / DORA
 
 - deployment frequency
 - change lead time
@@ -219,105 +179,101 @@ Where evidence exists, observe:
 ### Flow
 
 - PR/cycle time
-- coding vs waiting time
-- review wait
+- waiting/review time
 - CI duration/queue time
-- batch size / changed-file surface
-- WIP / concurrent PRs
+- batch size
+- WIP
 - rework caused by acceptance failure
 
-### Agent/DevEx
+### Agent / DevEx
 
 - repeated context discovery
 - repeated broad verification
 - avoidable replanning
-- conflicting/duplicated instructions
+- conflicting instructions
 - unnecessary handoffs
 - low-value test maintenance
 
-Do not fabricate metrics that the repository cannot measure. Record missing telemetry only when it blocks a real improvement decision. Do not add a metrics platform merely to satisfy a framework.
+Do not fabricate telemetry. Do not build a metrics platform unless a concrete decision is blocked without it.
 
-## 11. Legacy cleanup
+## 10. Legacy cleanup
 
-“Legacy” means obsolete implementation or obsolete workflow machinery. It does not mean old project knowledge.
+“Legacy” means obsolete implementation or obsolete workflow machinery, not old project knowledge.
 
 Deletion requires evidence such as:
 
-- no runtime/import/entrypoint/route consumer
-- replacement behavior is covered and active
-- product scope explicitly removed the capability
+- no active runtime/import/entrypoint/route consumer
+- replacement behavior is active
+- capability is explicitly removed from product scope
 - config/script exists only for a removed path
 
-When truly dead, remove the ownership slice rather than keeping commented copies or compatibility wrappers.
+When dead, remove the obsolete ownership slice rather than leaving commented copies or compatibility wrappers.
 
 Never delete as legacy:
 
 - requirements / acceptance criteria
 - architecture/system documentation
-- project plans / rationale
+- plans / rationale
 - security/compliance constraints
 - testing strategy/rationale
 - delivery/product-convergence context
-- durable design/product decisions
+- durable decisions
 
-Mark knowledge superseded/completed/archived instead when appropriate.
+Mark durable knowledge completed/superseded/historical instead.
 
-## 12. Review
+## 11. Review order
 
 Review in this order:
 
-1. acceptance correctness
-2. unintended scope/batch growth
-3. failure/security/data behavior
-4. whether risk classification is credible
-5. whether evidence is sufficient without duplication
+1. approved acceptance correctness
+2. unintended product/scope growth
+3. material boundary changes
+4. failure/security/data behavior
+5. sufficiency and non-duplication of verification
 6. simplicity/maintainability
-7. measured performance
+7. measured performance when relevant
 8. style
 
-Do not block delivery on subjective style or missing tests that do not protect a realistic failure. Three failed fixes trigger root-cause-model reassessment rather than another blind patch.
+Do not block delivery on subjective style or tests that protect no realistic failure.
 
-Provider permissions, persistence/schema, security/trust boundaries and destructive migrations deserve stronger verification/review than docs or isolated visual copy changes.
+Three failed implementation attempts without a stronger hypothesis trigger root-cause/model reassessment rather than a fourth blind patch.
 
-## 13. Release strategy
+## 12. Release strategy
 
-Development merges do not automatically become releases. `master` stays releasable; distribute only a coherent accepted outcome.
+Development merges do not automatically become public releases. `master` stays releasable; distribute the smallest coherent accepted increment.
 
 Pre-1.0:
 
 - `0.x.y`: bugfix/reliability/internal change
 - `0.x.0`: coherent backward-compatible capability or intentional persisted-schema evolution
-- `1.0.0`: core workflow, recovery/upgrades, permissions/privacy and distribution lifecycle are stable
+- `1.0.0`: core workflow, recovery/upgrades, permissions/privacy, and distribution lifecycle are stable
 
 ```text
-feature/fix PR
--> master accepted
--> release candidate decision
--> release-specific verification
--> tiny release PR (version + release notes only)
--> tag exact merge commit vX.Y.Z
--> package from tag
+accepted feature/fix
+-> merge to releasable master
+-> release-candidate decision
+-> release-specific verification when needed
+-> tiny release-only change if version/release notes are required
+-> tag exact accepted commit
+-> package from the accepted source/tag
 ```
 
-No long-lived release branch. No feature code in the release PR. No release framework/orchestrator until real distribution needs justify it.
+No long-lived release branch. No feature expansion inside a release-only change.
+
+Before release, decide whether product instrumentation is actually needed to evaluate the expected outcome. It is not mandatory by default.
 
 Rollback before public distribution: revert the bounded merge and rebuild the last accepted tag. Persisted-schema changes must define migration/rollback safety in the change itself.
 
-## 14. Definition of done / stop rule
+## 13. Definition of done
 
-Done means:
+Engineering completion means:
 
-- observable acceptance passes
+- approved observable acceptance passes
 - realistic affected risks were identified
-- sufficient high-signal evidence exists for those risks
-- repository-required checks pass
-- required manual acceptance is recorded only when applicable
-- diff contains only the intended outcome
-- no accidental debug/dead code remains in the touched slice
-- any changed operational state/documentation is current
+- sufficient high-signal evidence exists
+- repository-required quality gates pass
+- required environment-specific/manual acceptance is recorded only when applicable
+- diff contains only intended scope
+- changed operational state/docs are current
 
-Then stop.
-
-Do not continue into optional cleanup, broad refactoring, aesthetic work, future scalability architecture, extra dependencies, documentation expansion, speculative optimization, or extra testing that does not materially reduce delivery risk.
-
-A worthwhile follow-up may be recorded briefly as a separate next task; it is not part of the completed change.
+Then follow the STOP rule in `AGENTS.md`.

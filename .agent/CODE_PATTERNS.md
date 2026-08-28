@@ -1,353 +1,246 @@
 # Code Patterns
 
+This file documents current Chatspace code conventions. `AGENTS.md` owns workflow; `ARCHITECTURE.md` owns durable runtime boundaries.
+
+Do not preserve obsolete implementation patterns merely because they appeared in an earlier plan.
+
 ## 1. Default style
 
-Chatspace uses TypeScript as a correctness tool, not decoration.
+Chatspace uses TypeScript as a correctness tool.
 
 - `strict: true`
-- no `any` in production code unless isolated at an external boundary and immediately validated/narrowed
-- prefer discriminated unions for state machines/errors
+- avoid `any` in production code; isolate/validate unknown external input
+- prefer discriminated unions for state/error variants
 - prefer immutable domain transitions
-- prefer named types for IDs and external boundaries
 - prefer small pure functions over utility classes
-- avoid inheritance unless required by a framework
+- avoid inheritance unless a framework requires it
 - no service locator/global mutable singleton
+- use domain language in names
 
 ## 2. Dependency direction
 
-```text
-UI
- ↓
-Use cases / feature commands
- ↓
-Domain
- ↑
-Ports/interfaces
- ↑
-Adapters (IndexedDB, ChatGPT host, browser APIs)
-```
-
-Domain must not import React, WXT, Chrome APIs, IndexedDB, or provider DOM code.
-
-## 3. Result/error pattern
-
-Expected operational failures should be values, not thrown exceptions across feature boundaries.
-
-```ts
-type Result<T, E> =
-  | { ok: true; value: T }
-  | { ok: false; error: E };
-```
-
-Throw only for programmer invariants/unrecoverable defects at the current boundary. Catch external exceptions at adapters and normalize them.
-
-Bad:
-
-```ts
-try {
-  await doEverything();
-} catch {
-  return null;
-}
-```
-
-Good:
-
-```ts
-type SaveWorkspaceError =
-  | { kind: 'quota-exceeded' }
-  | { kind: 'storage-unavailable'; cause: unknown }
-  | { kind: 'serialization-failed'; cause: unknown };
-```
-
-Errors must retain enough context for diagnosis without storing sensitive host data.
-
-## 4. State transitions
-
-Complex UI state should use explicit actions/reducers or a small store with deterministic transitions.
-
-```ts
-type WorkspaceAction =
-  | { type: 'folder.created'; parentId: FolderId | null; name: string }
-  | { type: 'tab.opened'; tab: WorkspaceTab }
-  | { type: 'tab.closed'; tabId: TabId }
-  | { type: 'layout.resized'; layout: PanelLayout };
-```
-
-Do not spread persistence side effects through reducers/components.
+Current conceptual direction:
 
 ```text
-Action -> pure transition -> state -> effect scheduler -> repository
+UI / feature views
+      ↓
+application coordination / commands
+      ↓
+workspace domain
+      ↑
+owned ports
+      ↑
+adapters: chrome.storage.local / browser.tabs / localhost bridge
 ```
 
-## 5. Feature module pattern
+The workspace domain must not depend on React, WXT, Chrome APIs, or provider-specific browser APIs.
 
-Create a module only when behavior exists.
+Do not create ceremonial `controllers/`, `services/`, `repositories/`, or `usecases/` layers unless current ownership/behavior actually requires them.
 
-Example:
+## 3. State transitions
+
+Workspace state changes should be explicit and deterministic.
 
 ```text
-features/workspace-tree/
-├── workspace-tree.tsx
-├── workspace-tree.model.ts
-├── workspace-tree.commands.ts
-└── workspace-tree.test.tsx
+user/application action
+-> pure domain transition
+-> WorkspaceSnapshot
+-> persistence effect
+-> WorkspaceRepository
 ```
 
-Do not create `controllers/`, `services/`, `repositories/`, `usecases/` directories merely to look architectural.
+Do not spread persistence side effects through reducers or unrelated components.
 
-## 6. UI component rules
+Persist canonical domain state, not incidental render state unless restoration explicitly requires it.
 
-A component should primarily do one of:
+## 4. Workspace ownership
+
+Canonical local state includes approved workspace entities such as:
+
+- folders
+- saved chat references
+- notes
+- tabs
+- pins
+- layout state that must restore
+- manual graph relations
+
+Graph projections and derived relations are views over canonical state, not another source of truth.
+
+## 5. Feature module rule
+
+Create a module when behavior/ownership exists, not to prebuild architecture.
+
+A component should primarily:
 
 1. render data
 2. collect input
-3. coordinate a feature view
+3. coordinate one feature view
 
-If a component performs persistence + provider DOM manipulation + rendering, split it.
+Move pure logic to plain TypeScript where that makes ownership and deterministic verification clearer.
 
-Prefer:
+Extract only when the current code has multiple independent reasons to change, real boundary leakage, defect-prone duplication, or another concrete maintenance problem.
 
-```tsx
-<WorkspaceTree
-  tree={tree}
-  selectedId={selectedId}
-  onSelect={selectItem}
-  onMove={moveItem}
-/>
-```
+There is no arbitrary file-size or line-count gate.
 
-over hidden global dependencies inside the component.
+## 6. Provider adapter pattern
 
-## 7. Hooks
+All ChatGPT-specific assumptions belong under `src/providers/chatgpt/`.
 
-Hooks encapsulate React lifecycle/state composition, not arbitrary business logic.
+The current provider boundary is **URL/tab based**, not DOM/content-script based.
 
-Good:
-- `usePanelResize`
-- `useKeyboardCommand`
-- `useWorkspaceSnapshot`
+Current responsibilities include:
 
-Move pure logic to plain TypeScript functions so it is testable without React.
+- validate/normalize supported ChatGPT conversation targets
+- classify active browser-tab provider state
+- navigate an existing supported ChatGPT tab
+- open a validated target in a new tab when required
 
-## 8. Provider adapter pattern
+Feature code should depend on provider capability/ports rather than calling `chrome.tabs` directly.
 
-All ChatGPT-specific assumptions live under `src/providers/chatgpt/`.
+Do not add or revive:
 
-Separate:
+- provider DOM selectors
+- MutationObserver-based provider coupling
+- ChatGPT content-script message bridges for the core path
+- provider content extraction
+- private/undocumented provider APIs
+- cookie/session access
+- network interception/replay
 
-- selector definitions
-- host lifecycle observation
-- capability detection
-- navigation/host actions
-- normalization
+A provider-specific assumption should stop at the provider adapter boundary.
 
-Never import a provider selector directly from a feature.
+## 7. Browser-tab boundary
 
-Bad:
+Treat browser tab metadata and navigation as external input/action.
 
-```ts
-// feature component
-const composer = document.querySelector('[data-something-chatgpt]');
-```
+- validate target URLs before navigation
+- fail closed on unsupported origins/targets
+- do not derive provider content from tab/page internals
+- provider failure should disable provider-dependent behavior only
+- local workspace behavior must remain usable
 
-Good:
+Use explicit owned port shapes such as `ProviderTabsPort` so deterministic tests can use fakes without mocking browser internals everywhere.
 
-```ts
-const state = providerAdapter.getCompatibilityState();
-```
+## 8. Persistence pattern
 
-Selectors should be semantic and guarded. Avoid positional/style-generated classes.
-
-## 9. DOM interaction
-
-Host DOM is external input.
-
-Rules:
-
-- query only the smallest required subtree
-- no unbounded polling loops
-- MutationObserver callbacks do almost no work; schedule reconciliation separately
-- unsubscribe observers on unmount/navigation
-- do not mutate host nodes unless the accepted design explicitly requires it and has a rollback path
-- prefer mounting Chatspace in its own isolated root/Shadow DOM when feasible
-- sanitize/escape any host-derived display string
-- no `innerHTML` with external content
-
-## 10. Browser messaging
-
-Treat messages as network packets even though they are local to the extension.
-
-```ts
-type ExtensionMessage =
-  | { type: 'workspace.load'; workspaceId: string }
-  | { type: 'workspace.save'; snapshot: WorkspaceSnapshot };
-```
-
-Validate runtime payloads. Every request with a response has an explicit success/error shape.
-
-No stringly typed `sendMessage({ action: 'whatever', data })`.
-
-## 11. Persistence pattern
-
-Components never call IndexedDB directly.
+Components do not call `chrome.storage.local` directly.
 
 ```text
-component
-  ↓
-feature command
-  ↓
-WorkspaceRepository port
-  ↓
-IndexedDbWorkspaceRepository
+component / app coordination
+        ↓
+WorkspaceRepository
+        ↓
+production Chrome-storage adapter
 ```
 
-Persist canonical domain data, not transient render state unless restoration requires it.
+Current requirements:
 
-Persistence requirements:
+- extension-owned `chrome.storage.local`
+- schema-versioned JSON
+- corrupted/unsupported data fails closed
+- recovery/export/reset are explicit
+- never persist provider auth/session secrets
+- rapid production saves may be coalesced to the latest snapshot
+- physical writes are serialized
+- clearing cancels pending buffered saves before storage clear
 
-- `schemaVersion`
-- migration test per version transition
-- deterministic serialization
-- timestamps in ISO 8601 UTC
-- no Date instances in persisted schema
-- no cyclic structures
-- no raw DOM nodes/provider response bodies
+Use the in-memory repository for deterministic application tests where persistence mechanics are not the behavior under test.
 
-## 12. Schema migrations
+## 9. Schema changes
 
-Each migration is pure when possible:
+A persisted-schema change is a material data/compatibility decision. Follow `SYSTEM.md` and obtain approval when required.
 
-```ts
-type Migration = (input: unknown) => Result<unknown, MigrationError>;
+When an actual migration exists, prefer a deterministic transformation and verify the specific migration/data-integrity risks. Do not create migration machinery for hypothetical future versions.
+
+Never silently discard or overwrite user state because a schema cannot be interpreted.
+
+## 10. Error handling
+
+Expected operational failures should remain explicit at meaningful boundaries.
+
+Catch external exceptions at adapters and normalize enough context for diagnosis without retaining sensitive provider/user content.
+
+Do not hide failures with broad `catch { return null }` patterns when callers need to distinguish unsupported state, corruption, quota, or unavailable integration behavior.
+
+Use thrown errors for programmer invariants or when the existing local convention already makes them the clearest boundary; do not introduce a new Result framework solely for consistency aesthetics.
+
+## 11. UI commands
+
+When the same user action is reachable through multiple surfaces such as mouse, keyboard, and command palette, route them to the same application behavior rather than implementing three independent semantics.
+
+Use explicit commands/functions only as far as current reuse requires; do not introduce a command framework speculatively.
+
+## 12. Graph pattern
+
+Graph remains a deterministic projection over local state.
+
+```text
+WorkspaceSnapshot
+-> pure projection / derived-local relation logic
+-> WorkspaceGraph
+-> renderer / inspector
 ```
 
-Never mutate original stored data before the new version has been validated and committed.
+Keep provenance explicit for canonical/manual/derived-local relationships. Do not create opaque semantic edges.
 
-## 13. Command pattern
+Renderer-library types should not become canonical domain storage.
 
-User actions that can be triggered through mouse, keyboard, or command palette should map to one application command.
+## 13. Localhost vault bridge
 
-```ts
-interface Command {
-  id: CommandId;
-  label: string;
-  isEnabled(ctx: CommandContext): boolean;
-  execute(ctx: CommandContext): Promise<void> | void;
-}
-```
+The optional companion is an explicit separate trust boundary.
 
-This prevents three implementations of "open tab" for three UI entry points.
+- loopback only
+- bearer-authenticated
+- note-only current contract
+- explicit path/root restrictions
+- no arbitrary shell or arbitrary filesystem write API
+- send only data explicitly required by the note-sync action
 
-## 14. Graph pattern
+Do not couple core capture/navigation to companion availability.
 
-Canonical domain remains independent of renderer libraries.
+## 14. UI component conventions
 
-```ts
-interface GraphNode {
-  id: string;
-  kind: 'folder' | 'chat-ref' | 'note' | 'concept';
-  label: string;
-  source: GraphProvenance;
-}
+- use existing design-system tokens/primitives before inventing new ones
+- hooks encapsulate React lifecycle/state composition, not unrelated domain logic
+- icon-only controls require accessible names
+- external/user-authored Markdown must render without executing raw HTML/script content
+- provider content is not an input to Chatspace rendering under the current architecture
 
-interface GraphEdge {
-  id: string;
-  from: string;
-  to: string;
-  kind: EdgeKind;
-  source: GraphProvenance;
-}
-```
+Detailed visual/interaction rules live in `DESIGN_SYSTEM.md`.
 
-React Flow/Sigma types stop at the renderer adapter.
-
-## 15. Data provenance
-
-Every derived relationship that may influence navigation should be explainable.
-
-```ts
-type GraphProvenance =
-  | { kind: 'user-created' }
-  | { kind: 'local-structure' }
-  | { kind: 'official-import'; sourceId: string }
-  | { kind: 'supported-integration'; sourceId: string };
-```
-
-No unexplained magic edge.
-
-## 16. Naming
+## 15. Naming
 
 Use domain language:
 
 - `ChatReference`, not `ChatData`
-- `WorkspaceSnapshot`, not `AppStateThing`
-- `ProviderCapability`, not `FeatureFlag2`
-- `CompatibilityState`, not `Status`
+- `WorkspaceSnapshot`, not generic `AppState`
+- `ProviderCapability`, not vague flags
 
 Boolean names read as predicates: `isPinned`, `canNavigate`, `hasChildren`.
 
 Functions use verbs and communicate effect: `moveFolder`, `projectGraph`, `saveWorkspace`.
 
-## 17. File size and extraction
+## 16. Comments and diagnostics
 
-There is no arbitrary line-count gate, but large mixed-responsibility files are a design smell.
+Comments explain why, constraints, or non-obvious invariants—not obvious syntax.
 
-Extract when:
-
-- a file has multiple independent reasons to change
-- tests require unrelated setup
-- one feature cannot be understood without reading many implementation details
-- provider-specific code leaks into generic code
-
-Do not split cohesive logic simply to satisfy aesthetics.
-
-## 18. Comments
-
-Comments explain **why**, constraints, or non-obvious invariants.
-
-Bad:
-
-```ts
-// increment index
-index++;
-```
-
-Good:
-
-```ts
-// Host navigation may replace the subtree without a full page reload;
-// retain the observer on the stable root and reconcile child handles.
-```
-
-## 19. Logging and diagnostics
-
-Use structured diagnostics behind one interface.
-
-```ts
-interface Diagnostics {
-  debug(event: DiagnosticEvent): void;
-  warn(event: DiagnosticEvent): void;
-  error(event: DiagnosticEvent): void;
-}
-```
-
-Never log:
+Diagnostics must not contain:
 
 - auth tokens/cookies
 - full provider conversations
 - private page content
-- raw extension storage dumps
+- raw extension-storage dumps
 
-Debug logging must be disableable.
+Debug diagnostics must be disableable and should not become a mandatory instrumentation layer.
 
-## 20. Dependency policy
+## 17. Dependency policy
 
-Add a dependency only if:
+Add a dependency only when:
 
 1. it solves a defined current problem
-2. implementing/maintaining the capability ourselves is materially worse
-3. bundle/runtime/security cost is understood
-4. it has healthy maintenance and browser compatibility
+2. implementing/maintaining the capability locally is materially worse
+3. bundle/runtime/security/maintenance cost is understood
+4. maintenance/browser compatibility is acceptable
 
-Prefer platform APIs and small focused packages. No broad UI framework or state framework by default.
+Prefer platform APIs and focused packages. No framework/state-management layer merely for future flexibility.

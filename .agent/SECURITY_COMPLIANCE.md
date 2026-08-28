@@ -1,24 +1,20 @@
 # Security, Privacy & Compliance
 
+`AGENTS.md` owns workflow and approval boundaries. This file documents current Chatspace security/privacy constraints.
+
 ## 1. Principle
 
-Chatspace is a browser extension injected into a sensitive authenticated application. Treat this as a high-trust integration surface even if the product stores only local metadata.
+Chatspace runs as a browser extension beside an authenticated provider page and has privileged browser capabilities. Treat provider navigation, extension storage, permissions, and the optional localhost bridge as explicit trust boundaries.
 
-Security and policy constraints shape architecture. They are not release-time checkboxes.
+Security/privacy constraints shape architecture; they are not release-time checkboxes.
 
-## 2. Current OpenAI usage boundary
+Material changes to permission, trust, privacy, provider, or credential boundaries require explicit user approval.
 
-As of the repository's initial planning date (2026-08-25), OpenAI's individual Terms of Use effective 2026-01-01 state that users may not automatically or programmatically extract data or Output, and prohibit reverse engineering, interference/bypass of protections, and related misuse.
+## 2. Current provider usage boundary
 
-Reference:
-- https://openai.com/policies/terms-of-use/
-- Indonesian version: https://openai.com/id-ID/policies/terms-of-use/
+Chatspace's core provider integration is URL-only through validated browser-tab reads/navigation.
 
-Therefore Chatspace must not rely on automated/programmatic extraction of ChatGPT data/output from the live service.
-
-Before implementing a provider-facing capability, re-check the current applicable terms/documentation because policies can change.
-
-## 3. Forbidden implementation patterns
+It does not need provider content, DOM, session credentials, private endpoints, or programmatic output extraction for the approved core workflow.
 
 Do not implement:
 
@@ -29,133 +25,130 @@ Do not implement:
 - bypass of CSP, anti-automation, rate limiting, or protective measures
 - background crawling of conversation history
 - automated extraction/scraping of ChatGPT data/output
-- reverse engineering model/system internals
+- reverse engineering of private model/system internals
 - hidden telemetry containing provider content
 
-If a requested feature requires one of these, stop and redesign around a supported path.
+Before implementing a materially new provider-facing capability, re-check the current applicable provider terms/documentation because policies can change.
 
-## 4. Supported-source hierarchy
+## 3. Supported-source hierarchy
 
 Prefer sources in this order:
 
-1. Chatspace-owned local data
+1. Chatspace-owned local state
 2. explicit user-created metadata
 3. provider-documented browser/platform behavior
 4. official user export/import pathways
 5. official API/SDK/integration with appropriate credentials and terms
-6. provider UI coexistence/navigation capabilities that do not violate policy
+6. provider UI coexistence/navigation that does not require private provider data
 
-Anything else requires explicit legal/technical review before implementation.
+Anything outside these categories requires explicit product/security review before implementation.
 
-## 5. Extension permissions
+## 4. Extension permissions
 
 Follow least privilege.
 
-Every manifest permission must have:
+Every new manifest permission must have:
 
-- concrete feature justification
-- threat impact
-- whether optional permission can replace required permission
-- removal condition if feature is dropped
+- a concrete approved capability requiring it
+- threat/privacy impact understood
+- consideration of whether a narrower/optional permission can satisfy the need
+- removal condition if the capability is later removed
 
-Avoid broad permissions such as `<all_urls>` when a specific host permission suffices.
+Avoid broad permissions such as `<all_urls>` when a specific capability/origin permission is sufficient.
 
-Target early permission model should be limited to required ChatGPT origin(s), storage, and only platform APIs actually used.
+Do not add permissions because they may be useful later.
 
-## 6. Content script trust boundary
+## 5. Browser-tab trust boundary
 
-The host page is untrusted external input.
+Active-tab URL metadata is external input.
 
-Never:
+- validate supported origin and target shape
+- normalize targets before navigation
+- fail closed on unsupported URLs
+- provider unavailability must degrade provider-dependent navigation only
+- do not infer or extract conversation content from page internals
 
-- evaluate host-provided JavaScript
-- inject host text via unsanitized `innerHTML`
-- trust attributes as validated IDs without checking
-- allow host DOM to select arbitrary extension commands
+The core path does not use a ChatGPT content script or DOM bridge. Do not reintroduce one without an approved requirement and material boundary review.
 
-Prefer Shadow DOM/style isolation so Chatspace CSS neither depends on nor pollutes provider styles.
+## 6. Local persistence
 
-## 7. Page/main-world execution
+Canonical workspace data is extension-owned `chrome.storage.local` behind `WorkspaceRepository`.
 
-Avoid main-world page script execution unless a documented requirement makes isolated-world content scripts insufficient.
-
-If main-world access is proposed:
-
-- write a dedicated design/security note
-- explain why isolated world cannot solve it
-- define exact message schema
-- validate all cross-world messages
-- forbid credential/private-state transfer
-
-## 8. Local persistence
-
-Store only Chatspace-owned data necessary for the feature.
+Store only Chatspace-owned data required by approved features.
 
 Never store:
 
 - cookies
-- session tokens
+- provider session tokens
 - auth headers
 - passwords
 - full provider network payloads
-- hidden internal provider state
+- hidden provider state
 
 For user-created notes/chat references:
 
-- make storage location/behavior explicit
-- provide deletion/reset
-- provide export when practical
-- schema migrations must not silently discard data
+- storage behavior should remain understandable
+- deletion/reset is explicit
+- export/recovery paths remain available where approved
+- corrupted/unsupported state fails closed
+- schema changes must not silently discard user data
+- rapid persistence writes remain serialized/coalesced according to current architecture
 
-## 9. Browser storage
+Browser storage is not a secret vault.
 
-IndexedDB/storage is not a secret vault. Do not treat local browser storage as secure credential storage.
+## 7. Rendering and local content
 
-Sensitive future integration credentials, if ever required, need a separate architecture review and should prefer provider-supported OAuth/token mechanisms with minimal scope.
+Treat user-authored/imported content as untrusted input for rendering.
 
-## 10. Future localhost companion
+- no raw executable HTML from Markdown
+- no `eval`
+- no remote executable scripts
+- no unsanitized `innerHTML` for untrusted content
+- keep diagnostic/error surfaces free of sensitive payloads
 
-A future filesystem bridge materially changes the threat model.
+## 8. Optional localhost vault bridge
 
-Required before implementation:
+The companion is already an implemented optional integration and is **not** part of the core provider/navigation path.
+
+Current security requirements:
 
 - bind loopback only
-- random/paired session credential
-- explicit user-selected vault root
-- path canonicalization
-- deny traversal outside root
-- strict origin/client validation
-- narrow command set (no arbitrary shell)
-- request size limits
-- CSRF/cross-site protections as applicable
-- audit/security tests
+- bearer-authenticated explicit connection
+- narrow note-only contract
+- explicit authorized vault/root path
+- canonicalize/restrict paths and deny traversal
+- no arbitrary shell execution
+- no arbitrary filesystem-write API
+- request/body limits where appropriate
+- only explicitly synced local note data crosses the boundary
+- failure degrades vault sync only
 
-Never expose a localhost API that writes arbitrary paths without authorization.
+Any expansion beyond this contract is a material trust/data boundary change and requires approval.
 
-## 11. Markdown/filesystem safety
+## 9. Markdown/filesystem safety
 
-When a filesystem bridge exists:
+For vault writes:
 
-- treat note filenames as untrusted input
+- treat filenames/path inputs as untrusted
 - normalize/canonicalize paths
-- atomic write where possible
-- avoid overwriting without expected-version/check
-- keep backups/recovery for migrations
+- keep writes inside the authorized root
+- avoid unsafe overwrite behavior
 - never execute Markdown content
+- preserve recovery/migration safety when the persisted/file contract changes
 
-## 12. Supply chain
+## 10. Supply chain
 
-For dependencies:
+Dependencies execute in a privileged extension context.
 
-- minimize count
-- pin lockfile
-- review permission/runtime implications
-- use automated dependency/security scanning
-- avoid packages whose capability can be implemented safely with small platform code
+- minimize dependency count
+- maintain a committed reproducible lockfile before public distribution
+- review runtime/permission/security implications of new dependencies
+- use automated dependency/security scanning when it provides meaningful signal
+- prefer small platform code over a dependency when correctness/maintenance cost is lower
 
-Browser-extension dependencies execute in a privileged user context; convenience alone is not sufficient justification.
+Convenience alone is not sufficient justification.
 
-## 13. CSP
+## 11. CSP
 
 Respect MV3 CSP constraints.
 
@@ -163,88 +156,61 @@ No:
 
 - `eval`
 - remote executable scripts
-- dynamic code fetched from provider pages
+- dynamic executable code fetched from provider pages
 
 Bundle executable extension code with the extension package.
 
-## 14. Logging
+## 12. Logging and instrumentation
 
 Diagnostics must redact by default.
 
-Allowed examples:
+Never log:
 
-```text
-provider_capability_unavailable: conversation-navigation
-workspace_migration_failed: schema=2->3
-```
+- provider conversation content
+- cookies/tokens
+- raw private page content
+- raw extension-storage dumps
 
-Disallowed:
+Remote product telemetry is not mandatory. If instrumentation becomes necessary to evaluate an approved product outcome, define the minimum event/data needed and review privacy before implementation. Do not collect provider content.
 
-```text
-full conversation text
-cookie/token values
-raw DOM dumps from a user's conversation
-```
+## 13. Data deletion
 
-## 15. Telemetry
+`Reset Chatspace` removes Chatspace-owned local data only.
 
-MVP default: no remote analytics unless explicitly designed and disclosed.
+It must not delete or mutate provider conversations/data. Provider data deletion remains a provider action.
 
-If telemetry is introduced later:
+## 14. Threat scenarios
 
-- opt-in/clear disclosure where appropriate
-- collect aggregate product events, not conversation content
-- document retention
-- allow disablement
-- privacy review before release
+### Malicious/unsupported provider target
+Mitigation: origin/target validation and fail-closed navigation.
 
-## 16. Data deletion
-
-"Reset Chatspace" should remove Chatspace-owned local data only and must not interact with/deleting provider data.
-
-Provider conversation deletion stays a provider action.
-
-## 17. Threat scenarios
-
-### Malicious host markup
-Could attempt to trick selectors/commands. Mitigation: semantic validation + narrow adapter + no raw HTML injection.
-
-### XSS in local notes
-Mitigation: render Markdown with safe escaping/sanitization; no arbitrary HTML execution by default.
+### XSS in local notes/imported Markdown
+Mitigation: safe React/Markdown rendering; no raw executable HTML.
 
 ### Over-broad extension permission
-Mitigation: specific host permission and manifest review gate.
+Mitigation: explicit capability justification + least privilege + approval for material permission boundary changes.
 
-### Provider UI changes
-Security risk if selectors begin targeting wrong elements. Mitigation: capability detection and fail closed.
-
-### Corrupted IndexedDB
-Mitigation: schema validation, recovery path, no silent reset.
+### Corrupted extension storage
+Mitigation: schema validation, recovery path, no silent overwrite/reset.
 
 ### Dependency compromise
-Mitigation: dependency minimization, lockfile, scans, review.
+Mitigation: dependency minimization, reproducible lockfile, review/scanning appropriate to distribution risk.
 
-## 18. Compliance gate for every provider feature
+### Localhost bridge path abuse
+Mitigation: loopback binding, bearer auth, authorized root, path canonicalization, narrow commands.
 
-Before coding, answer:
+## 15. Security review triggers
 
-1. What exact provider data/action does this use?
-2. Is the capability explicitly supported/permitted?
-3. Does it extract/store provider data or Output programmatically?
-4. Does it require undocumented endpoints or private state?
-5. Can Chatspace deliver the user value with local metadata or an official export/API instead?
-6. What happens when the capability disappears?
+A focused security/privacy review is required when a change touches:
 
-If answers 2–4 are unsafe/unclear, do not implement until resolved.
+- manifest permissions
+- provider target/navigation contract
+- credentials/auth
+- storage schema or destructive data behavior
+- rendering of untrusted content
+- localhost bridge command/data/path contract
+- remote telemetry
 
-## 19. Security definition of done
+Review only the affected threat boundary; do not turn every ordinary code change into a broad security audit.
 
-For a PR touching permissions, provider adapter, persistence, rendering external text, or filesystem bridge:
-
-- threat boundary reviewed
-- new inputs validated
-- permission delta explained
-- no secrets/content in logs
-- negative tests included where applicable
-- failure is closed/recoverable
-- current provider policy checked if capability changed materially
+Relevant completion evidence may include input validation, permission delta explanation, negative/boundary tests, data-recovery behavior, or current provider-policy verification when the provider capability materially changes.
