@@ -1,6 +1,8 @@
 # Architecture Decision Log
 
-Update this log when a decision changes a meaningful boundary, dependency, persistence contract, or delivery assumption.
+Update this log only when a decision changes a meaningful product/architecture boundary, dependency, persistence contract, trust boundary, or delivery assumption. Ordinary local implementation choices do not need ADRs.
+
+Preserve superseded decisions to retain why the architecture changed.
 
 ## ADR-001 — Browser extension, not Obsidian plugin
 
@@ -20,11 +22,15 @@ Chatspace owns folders, tabs, local notes, layout, graph projections, annotation
 
 No private endpoints, session-cookie reuse, network replay, protection bypass, or automated/programmatic extraction of ChatGPT data/output.
 
-## ADR-004 — Narrow provider compatibility boundary
+## ADR-004 — Narrow URL/tab provider boundary
 
-**Status:** Accepted
+**Status:** Accepted; updated after content-script removal
 
-Provider-specific target validation/navigation stays in the ChatGPT adapter/content bridge. Provider breakage must not contaminate workspace domain logic.
+Provider-specific target validation/capability logic stays under `src/providers/chatgpt/`. Runtime provider presence/navigation uses an owned browser-tab port.
+
+The provider boundary may classify the active tab URL, validate/normalize supported ChatGPT conversation targets, navigate a reusable supported tab, or open a validated target in a new tab.
+
+It does not read provider DOM/content, cookies/session state, or private endpoints. Provider breakage must not contaminate local workspace behavior.
 
 ## ADR-005 — Local canonical state, graph as projection
 
@@ -48,13 +54,13 @@ Use WXT, strict TypeScript, React, and Chromium MV3.
 
 **Status:** Superseded by ADR-011
 
-Canonical Chatspace data must not live in host-origin web storage.
+Historical bootstrap-era direction. Canonical Chatspace data must not live in host-origin storage or depend on a provider content script.
 
-## ADR-009 — Live provider automation not required CI
+## ADR-009 — Live provider automation not required in CI
 
 **Status:** Accepted
 
-Mandatory CI uses local tests and production build. Live provider acceptance remains manual unless a supported official automation path exists.
+Repository CI uses deterministic local/build/package checks appropriate to current risk. Live provider/browser acceptance remains manual when the environment-specific risk cannot be proven more cheaply and reliably in CI.
 
 ## ADR-010 — Obsidian bridge deferred from MVP
 
@@ -66,13 +72,17 @@ The bridge later shipped as an isolated optional integration rather than a core 
 
 **Status:** Accepted
 
-Canonical workspace state is stored behind a repository port backed by `chrome.storage.local`.
+Canonical workspace state is stored behind `WorkspaceRepository` backed by extension-owned `chrome.storage.local`.
+
+Production persistence coalesces rapid state changes to the latest snapshot and serializes physical writes. Corrupted data fails closed and recovery remains explicit.
 
 ## ADR-012 — Authenticated localhost bridge is opt-in and note-only
 
 **Status:** Accepted
 
-The companion binds to loopback, requires a bearer token, writes beneath its authorized Chatspace vault path, and receives only explicitly synced local note data.
+The companion binds to loopback, requires bearer authentication, writes only beneath its authorized Chatspace vault path, and receives only explicitly synced local note data.
+
+It is secondary to the core provider/navigation path.
 
 ## ADR-013 — Semantic enrichment is deterministic local projection
 
@@ -82,25 +92,40 @@ Related-note enrichment is derived only from user-authored local note title, tag
 
 ## ADR-014 — Browser Side Panel is the primary Chatspace UI
 
-**Status:** Accepted
+**Status:** Accepted; provider coordination updated by ADR-015
 
-**Decision:** The extension Side Panel owns the Chatspace Explorer and Workbench. The ChatGPT content script renders no workspace UI and acts only as a validated URL-location/navigation bridge.
+**Decision:** The extension Side Panel owns the Chatspace Explorer and Workbench. Native ChatGPT remains the main-page conversation UI.
 
 **Why:** The previous fixed overlay covered the host page, created a fake provider column, and violated the product thesis that Chatspace should live beside—not replace or obscure—native ChatGPT.
 
 **Alternatives considered:**
 
 - fixed page overlay: rejected because it obscures the provider and creates layout conflicts
-- mutating/inserting panels into ChatGPT DOM: rejected because it increases provider coupling and compatibility risk
-- separate standalone extension page: valid for future large-screen workflows, but worse for always-adjacent navigation
+- mutating/inserting workspace panels into ChatGPT DOM: rejected because it increases provider coupling and compatibility risk
+- standalone extension page: potentially valid for a future explicitly approved workflow, but worse for the current adjacent-navigation requirement
 
 **Consequences:**
 
-- native ChatGPT owns the main-page conversation UI
-- Chatspace gets an independent, stable visual surface
-- core workspace no longer depends on provider DOM structure
-- Chromium `sidePanel` is a current platform dependency; other browsers require an explicit equivalent/adaptation
-- active-provider-tab coordination uses extension messaging only
+- native ChatGPT owns the conversation UI
+- Chatspace gets an independent Side Panel surface
+- core workspace does not depend on provider DOM structure
+- Chromium `sidePanel` is a current platform dependency
+
+## ADR-015 — Remove obsolete ChatGPT content-script bridge
+
+**Status:** Accepted
+
+**Decision:** Provider presence/navigation use `ProviderTabsPort` backed by `browser.tabs`; the obsolete ChatGPT content-script location/navigation bridge is removed.
+
+**Why:** The content-script message types had no active runtime sender/consumer outside the obsolete bridge, while the side-panel provider path already used validated browser-tab URL behavior.
+
+**Consequences:**
+
+- no ChatGPT content script is required for the core workflow
+- no provider DOM/content bridge exists
+- provider capability remains URL-only and origin-scoped
+- local workspace behavior remains provider-independent
+- any future request to reintroduce provider DOM/content access is a new material trust/provider-boundary decision, not a local refactor
 
 ## ADR template
 
