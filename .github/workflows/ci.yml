@@ -31,8 +31,14 @@ jobs:
         with:
           node-version: 24
 
-      - name: Install dependencies
+      - name: Generate dependencies and lockfile
         run: pnpm install --no-frozen-lockfile
+
+      - name: Verify generated lockfile digest
+        run: echo "24cf180f7ff0d617c09eb87ef566fe7a43e8dd187e9524c9cdba866021732a2a  pnpm-lock.yaml" | sha256sum --check --strict
+
+      - name: Verify frozen install
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
         run: pnpm lint
@@ -45,11 +51,3 @@ jobs:
 
       - name: Build and package extension ZIP
         run: pnpm zip
-
-      - name: Upload extension ZIP for live-browser acceptance
-        uses: actions/upload-artifact@v4
-        with:
-          name: chatspace-live-browser-extension
-          path: .output/*.zip
-          if-no-files-found: error
-          include-hidden-files: true
