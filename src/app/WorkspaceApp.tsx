@@ -2,6 +2,7 @@ import { AlertTriangle, BookmarkPlus, FilePlus2, FolderPlus } from 'lucide-react
 import { useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
 
 import { projectWorkspaceGraph, type GraphNode } from '../domain/graph/projectGraph';
+import { canMoveFolder } from '../domain/workspace/integrity';
 import { exportWorkspaceJson, importWorkspaceJson } from '../domain/workspace/io';
 import {
   createChatReference,
@@ -27,15 +28,13 @@ import { SettingsPanel } from '../features/settings/SettingsPanel';
 import { WorkbenchChrome } from '../features/workbench/WorkbenchChrome';
 import { SpatialWorkspace } from '../features/workspace-layout/SpatialWorkspace';
 import { WorkspaceTree } from '../features/workspace-tree/WorkspaceTree';
-import { HttpLocalVaultBridge, type LocalVaultBridge } from '../integrations/obsidian/bridge';
-import { requestLocalBridgePermission } from '../integrations/obsidian/permission';
-import { createDefaultWorkspaceRepository } from '../persistence/chromeStorageWorkspaceRepository';
+import type { LocalVaultBridge } from '../integrations/obsidian/bridge';
 import type { WorkspaceRepository } from '../persistence/workspaceRepository';
 import { getChatGptCapability, navigateToChatGptTarget } from '../providers/chatgpt/adapter';
 import { Button } from '../ui/primitives';
 
 interface WorkspaceAppProps {
-  repository?: WorkspaceRepository;
+  repository: WorkspaceRepository;
   currentUrl?: () => string;
   navigate?: (url: string) => void;
   downloadText?: (filename: string, content: string) => void;
@@ -68,27 +67,14 @@ function defaultDownloadText(filename: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
-function isFolderDescendant(folders: WorkspaceFolder[], folderId: string, candidateParentId: string): boolean {
-  let cursor: string | null = candidateParentId;
-  const visited = new Set<string>();
-  while (cursor !== null && !visited.has(cursor)) {
-    if (cursor === folderId) return true;
-    visited.add(cursor);
-    cursor = folders.find((folder) => folder.id === cursor)?.parentId ?? null;
-  }
-  return false;
-}
-
 export function WorkspaceApp({
-  repository,
+  repository: workspaceRepository,
   currentUrl = () => window.location.href,
   navigate = (url) => window.location.assign(url),
   downloadText = defaultDownloadText,
-  bridge,
-  requestBridgePermission = requestLocalBridgePermission,
+  bridge: vaultBridge,
+  requestBridgePermission = async () => false,
 }: WorkspaceAppProps) {
-  const workspaceRepository = useMemo(() => repository ?? createDefaultWorkspaceRepository(), [repository]);
-  const vaultBridge = useMemo(() => bridge ?? new HttpLocalVaultBridge(), [bridge]);
   const [workspace, dispatch] = useReducer(workspaceReducer, undefined, () => createInitialWorkspace());
   const [persistenceState, setPersistenceState] = useState<PersistenceState>('loading');
   const [persistenceError, setPersistenceError] = useState<string | null>(null);
@@ -186,7 +172,7 @@ export function WorkspaceApp({
   }
 
   function moveFolder(folder: WorkspaceFolder, parentId: string | null): void {
-    if (parentId === folder.id || (parentId !== null && isFolderDescendant(workspace.folders, folder.id, parentId))) {
+    if (!canMoveFolder(workspace.folders, folder.id, parentId)) {
       setStatus('A folder cannot be moved into itself or one of its descendants.');
       return;
     }
@@ -372,7 +358,7 @@ export function WorkspaceApp({
       const reset = createInitialWorkspace();
       dispatch({ type: 'workspace/replace', snapshot: reset });
       setSelectedFolderId(null);
-      setPersistenceError(null);
+      setPersistenceError(null;
       setRecoveryJson(null);
       setPersistenceState('ready');
       setStatus('Local workspace reset.');
@@ -387,6 +373,7 @@ export function WorkspaceApp({
     setBridgeState('connecting');
     setBridgeMessage(null);
     try {
+      if (vaultBridge === undefined) throw new Error('Local vault bridge is not configured.');
       const granted = await requestBridgePermission();
       if (!granted) throw new Error('Localhost bridge permission was not granted.');
       await vaultBridge.health(token);
@@ -408,8 +395,12 @@ export function WorkspaceApp({
   }
 
   async function syncNoteToVault(note: LocalNote): Promise<void> {
-    if (bridgeToken === null) {
-      setBridgeMessage('Connect the local vault bridge before syncing a note.');
+    if (bridgeToken === null || vaultBridge === undefined) {
+      setBridgeMessage(
+        vaultBridge === undefined
+          ? 'Local vault bridge is not configured.'
+          : 'Connect the local vault bridge before syncing a note.',
+      );
       openSettings();
       return;
     }
