@@ -125,7 +125,7 @@ export function isWorkspaceSnapshot(value: unknown): value is WorkspaceSnapshot 
     isNumber(value.updatedAt)
   );
 
-  return structurallyValid && hasValidWorkspaceSemantics(value as WorkspaceSnapshot);
+  return structurallyValid && hasValidWorkspaceSemantics(value as unknown as WorkspaceSnapshot);
 }
 
 export function exportWorkspaceJson(snapshot: WorkspaceSnapshot): string {
