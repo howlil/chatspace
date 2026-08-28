@@ -2,6 +2,7 @@ import { browser } from 'wxt/browser';
 
 import { isWorkspaceSnapshot } from '../domain/workspace/io';
 import type { WorkspaceSnapshot } from '../domain/workspace/model';
+import { CoalescingWorkspaceRepository } from './coalescingWorkspaceRepository';
 import {
   MemoryWorkspaceRepository,
   WorkspaceCorruptionError,
@@ -44,5 +45,7 @@ function hasExtensionRuntime(): boolean {
 }
 
 export function createDefaultWorkspaceRepository(): WorkspaceRepository {
-  return hasExtensionRuntime() ? new ChromeStorageWorkspaceRepository() : new MemoryWorkspaceRepository();
+  return hasExtensionRuntime()
+    ? new CoalescingWorkspaceRepository(new ChromeStorageWorkspaceRepository())
+    : new MemoryWorkspaceRepository();
 }
