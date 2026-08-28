@@ -1,4 +1,4 @@
-import { Code2, Eye, FileText, Link2, Pencil, Tag, X } from 'lucide-react';
+import { Code2, Dot, Eye, FileText, Link2, Pencil, Tag, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
 import type { ChatReference, LocalNote } from '../../domain/workspace/model';
@@ -27,7 +27,7 @@ function renderSafeMarkdown(markdown: string): ReactNode[] {
         codeLines = [];
       } else {
         blocks.push(
-          <pre key={`code-${index}`} className="my-3 overflow-auto rounded-lg border border-white/[0.075] bg-cs-panel p-3 font-mono text-[11px] leading-5 text-cs-muted">
+          <pre key={`code-${index}`} className="my-3 overflow-auto rounded-lg border border-cs-border bg-cs-panel p-3 font-mono text-[11px] leading-5 text-cs-muted">
             <code>{codeLines.join('\n')}</code>
           </pre>,
         );
@@ -49,13 +49,14 @@ function renderSafeMarkdown(markdown: string): ReactNode[] {
       blocks.push(<h1 className="mb-2 mt-7 text-[18px] font-semibold tracking-[-0.025em]" key={index}>{line.slice(2)}</h1>);
     } else if (/^[-*] /.test(line)) {
       blocks.push(
-        <div className="my-1 flex gap-2 pl-2 text-[12px] leading-5" key={index}>
-          <span className="text-cs-subtle" aria-hidden="true">•</span><span>{line.slice(2)}</span>
+        <div className="my-1 flex gap-1 pl-1 text-[12px] leading-5" key={index}>
+          <Dot className="mt-[3px] shrink-0 text-cs-subtle" size={14} strokeWidth={2.2} aria-hidden="true" />
+          <span>{line.slice(2)}</span>
         </div>,
       );
     } else if (line.startsWith('> ')) {
       blocks.push(
-        <blockquote className="my-3 border-l-2 border-white/15 pl-3 text-[12px] leading-5 text-cs-muted" key={index}>
+        <blockquote className="my-3 border-l-2 border-cs-border pl-3 text-[12px] leading-5 text-cs-muted" key={index}>
           {line.slice(2)}
         </blockquote>,
       );
@@ -68,7 +69,7 @@ function renderSafeMarkdown(markdown: string): ReactNode[] {
 
   if (codeLines !== null) {
     blocks.push(
-      <pre key="code-unclosed" className="my-3 overflow-auto rounded-lg border border-white/[0.075] bg-cs-panel p-3 font-mono text-[11px] leading-5 text-cs-muted">
+      <pre key="code-unclosed" className="my-3 overflow-auto rounded-lg border border-cs-border bg-cs-panel p-3 font-mono text-[11px] leading-5 text-cs-muted">
         <code>{codeLines.join('\n')}</code>
       </pre>,
     );
@@ -92,7 +93,7 @@ export function LocalNoteEditor({ note, chats, onChange, onLinkChat }: LocalNote
 
   return (
     <section className="grid h-full min-h-0 grid-rows-[auto_auto_minmax(0,1fr)_auto_auto] bg-cs-bg" aria-label={`Edit note ${note.title}`}>
-      <div className="flex min-w-0 items-center gap-2 border-b border-white/[0.065] px-3 py-2">
+      <div className="flex min-w-0 items-center gap-2 border-b border-cs-border px-3 py-2">
         <FileText size={13} className="shrink-0 text-cs-subtle" strokeWidth={1.7} aria-hidden="true" />
         <input
           className="h-7 min-w-0 flex-1 bg-transparent text-[13px] font-semibold tracking-[-0.015em] text-cs-text outline-none placeholder:text-cs-subtle"
@@ -100,13 +101,13 @@ export function LocalNoteEditor({ note, chats, onChange, onLinkChat }: LocalNote
           value={note.title}
           onChange={(event) => onChange({ ...note, title: event.target.value })}
         />
-        <div className="flex shrink-0 rounded-md border border-white/[0.075] bg-white/[0.025] p-0.5" role="group" aria-label="Note view mode">
+        <div className="flex shrink-0 rounded-md border border-cs-border bg-cs-control p-0.5" role="group" aria-label="Note view mode">
           <button
             type="button"
             data-active={mode === 'edit' ? 'true' : 'false'}
             className={cn(
-              'flex h-6 items-center gap-1 rounded px-2 text-[9px] font-medium text-cs-subtle outline-none transition-colors hover:text-cs-text focus-visible:ring-1 focus-visible:ring-white/25',
-              mode === 'edit' && 'bg-white/[0.075] text-cs-text',
+              'flex h-6 items-center gap-1 rounded px-2 text-[9px] font-medium text-cs-subtle outline-none transition-colors hover:bg-cs-hover hover:text-cs-text focus-visible:ring-1 focus-visible:ring-cs-focus/30',
+              mode === 'edit' && 'bg-cs-active text-cs-text',
             )}
             onClick={() => setMode('edit')}
           >
@@ -116,8 +117,8 @@ export function LocalNoteEditor({ note, chats, onChange, onLinkChat }: LocalNote
             type="button"
             data-active={mode === 'preview' ? 'true' : 'false'}
             className={cn(
-              'flex h-6 items-center gap-1 rounded px-2 text-[9px] font-medium text-cs-subtle outline-none transition-colors hover:text-cs-text focus-visible:ring-1 focus-visible:ring-white/25',
-              mode === 'preview' && 'bg-white/[0.075] text-cs-text',
+              'flex h-6 items-center gap-1 rounded px-2 text-[9px] font-medium text-cs-subtle outline-none transition-colors hover:bg-cs-hover hover:text-cs-text focus-visible:ring-1 focus-visible:ring-cs-focus/30',
+              mode === 'preview' && 'bg-cs-active text-cs-text',
             )}
             onClick={() => setMode('preview')}
           >
@@ -126,11 +127,11 @@ export function LocalNoteEditor({ note, chats, onChange, onLinkChat }: LocalNote
         </div>
       </div>
 
-      <div className="flex min-w-0 items-center gap-2 border-b border-white/[0.055] bg-cs-panel/70 px-3 py-1.5">
+      <div className="flex min-w-0 items-center gap-2 border-b border-cs-border bg-cs-panel/70 px-3 py-1.5">
         <Tag size={11} className="shrink-0 text-cs-subtle" aria-hidden="true" />
         <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" aria-label="Note tags">
           {note.tags.map((tag) => (
-            <span className="flex h-5 shrink-0 items-center gap-1 rounded border border-white/[0.075] bg-white/[0.025] pl-1.5 text-[9px] text-cs-muted" key={tag}>
+            <span className="flex h-5 shrink-0 items-center gap-1 rounded border border-cs-border bg-cs-control pl-1.5 text-[9px] text-cs-muted" key={tag}>
               #{tag}
               <button
                 type="button"
@@ -182,7 +183,7 @@ export function LocalNoteEditor({ note, chats, onChange, onLinkChat }: LocalNote
         </article>
       )}
 
-      <footer className="flex min-w-0 items-center justify-between gap-3 border-t border-white/[0.055] px-3 py-1.5 text-[9px] text-cs-subtle">
+      <footer className="flex min-w-0 items-center justify-between gap-3 border-t border-cs-border px-3 py-1.5 text-[9px] text-cs-subtle">
         <span className="flex shrink-0 items-center gap-1.5">
           <Code2 size={10} aria-hidden="true" /> {note.content.length} chars · {note.tags.length} tags
         </span>
@@ -210,18 +211,18 @@ export function LocalNoteEditor({ note, chats, onChange, onLinkChat }: LocalNote
                 }
               }}
             >
-              Link chat
+              <Link2 size={9} aria-hidden="true" /> Link chat
             </Button>
           </div>
         )}
       </footer>
 
       {note.linkedChatIds.length > 0 && (
-        <div className="no-scrollbar flex gap-1 overflow-x-auto border-t border-white/[0.05] bg-cs-panel/60 px-3 py-1.5" aria-label="Linked chats">
+        <div className="no-scrollbar flex gap-1 overflow-x-auto border-t border-cs-border bg-cs-panel/60 px-3 py-1.5" aria-label="Linked chats">
           {note.linkedChatIds.map((chatId) => {
             const chat = chats.find((candidate) => candidate.id === chatId);
             return (
-              <span className="flex h-5 shrink-0 items-center gap-1 rounded border border-white/[0.065] bg-white/[0.02] px-1.5 text-[9px] text-cs-muted" key={chatId}>
+              <span className="flex h-5 shrink-0 items-center gap-1 rounded border border-cs-border bg-cs-control px-1.5 text-[9px] text-cs-muted" key={chatId}>
                 <Link2 size={9} aria-hidden="true" /> {chat?.label ?? chatId}
               </span>
             );

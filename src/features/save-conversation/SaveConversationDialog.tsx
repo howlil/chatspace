@@ -46,20 +46,20 @@ export function SaveConversationDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-3 backdrop-blur-[1px]"
+      className="fixed inset-0 z-50 grid place-items-center bg-black/35 p-3 backdrop-blur-[1px]"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onCancel();
       }}
     >
       <section
-        className="w-full max-w-md overflow-hidden rounded-xl border border-white/[0.10] bg-cs-panel shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
+        className="w-full max-w-md overflow-hidden rounded-xl border border-cs-border bg-cs-panel shadow-[0_24px_80px_rgba(0,0,0,0.35)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="save-conversation-title"
       >
-        <header className="flex items-start gap-3 border-b border-white/[0.075] px-4 py-3.5">
-          <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.035] text-cs-muted">
+        <header className="flex items-start gap-3 border-b border-cs-border px-4 py-3.5">
+          <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg border border-cs-border bg-cs-surface text-cs-muted">
             <BookmarkPlus size={15} strokeWidth={1.7} aria-hidden="true" />
           </span>
           <div className="grid min-w-0 flex-1 gap-0.5">
@@ -97,9 +97,9 @@ export function SaveConversationDialog({
             </Select>
           </label>
 
-          <label className="flex cursor-pointer items-center gap-2 rounded-md border border-white/[0.07] bg-white/[0.02] px-2.5 py-2 text-[10px] text-cs-muted hover:bg-white/[0.035]">
+          <label className="flex cursor-pointer items-center gap-2 rounded-md border border-cs-border bg-cs-control px-2.5 py-2 text-[10px] text-cs-muted hover:bg-cs-hover">
             <input
-              className="accent-white"
+              className="accent-cs-primary"
               type="checkbox"
               checked={pinned}
               onChange={(event) => setPinned(event.target.checked)}
@@ -108,13 +108,13 @@ export function SaveConversationDialog({
             <span>Pin this conversation</span>
           </label>
 
-          <div className="flex min-w-0 items-center gap-2 rounded-md border border-white/[0.065] bg-cs-bg px-2.5 py-2 text-[9px] text-cs-subtle" title={target}>
+          <div className="flex min-w-0 items-center gap-2 rounded-md border border-cs-border bg-cs-bg px-2.5 py-2 text-[9px] text-cs-subtle" title={target}>
             <Link2 size={11} className="shrink-0" aria-hidden="true" />
             <span className="truncate font-mono">{target}</span>
           </div>
         </div>
 
-        <footer className="flex items-center justify-end gap-2 border-t border-white/[0.075] bg-white/[0.015] px-4 py-3">
+        <footer className="flex items-center justify-end gap-2 border-t border-cs-border bg-cs-surface/60 px-4 py-3">
           <Button variant="ghost" onClick={onCancel}>Cancel</Button>
           <Button
             variant="primary"

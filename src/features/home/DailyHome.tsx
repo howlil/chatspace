@@ -20,10 +20,10 @@ function ChatItem({ chat, onOpen }: { chat: ChatReference; onOpen: (chat: ChatRe
   return (
     <button
       type="button"
-      className="group flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-2.5 py-2 text-left outline-none transition-colors hover:bg-white/[0.045] focus-visible:bg-white/[0.06]"
+      className="group flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-2.5 py-2 text-left outline-none transition-colors hover:bg-cs-hover focus-visible:bg-cs-active"
       onClick={() => onOpen(chat)}
     >
-      <span className="grid size-7 shrink-0 place-items-center rounded-md border border-white/[0.07] bg-white/[0.025] text-cs-subtle group-hover:text-cs-muted">
+      <span className="grid size-7 shrink-0 place-items-center rounded-md border border-cs-border bg-cs-surface text-cs-subtle group-hover:text-cs-muted">
         <MessageSquareText size={13} strokeWidth={1.7} aria-hidden="true" />
       </span>
       <span className="grid min-w-0 flex-1 gap-0.5">
@@ -39,10 +39,10 @@ function NoteItem({ note, onOpen }: { note: LocalNote; onOpen: (note: LocalNote)
   return (
     <button
       type="button"
-      className="group flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-2.5 py-2 text-left outline-none transition-colors hover:bg-white/[0.045] focus-visible:bg-white/[0.06]"
+      className="group flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-2.5 py-2 text-left outline-none transition-colors hover:bg-cs-hover focus-visible:bg-cs-active"
       onClick={() => onOpen(note)}
     >
-      <span className="grid size-7 shrink-0 place-items-center rounded-md border border-white/[0.07] bg-white/[0.025] text-cs-subtle group-hover:text-cs-muted">
+      <span className="grid size-7 shrink-0 place-items-center rounded-md border border-cs-border bg-cs-surface text-cs-subtle group-hover:text-cs-muted">
         <FileText size={13} strokeWidth={1.7} aria-hidden="true" />
       </span>
       <span className="grid min-w-0 flex-1 gap-0.5">
@@ -84,7 +84,7 @@ export function DailyHome({ chats, notes, status, onOpenChat, onOpenNote }: Dail
         {empty ? (
           <Panel className="grid min-h-44 place-items-center px-6 py-8 text-center">
             <div className="grid max-w-sm justify-items-center gap-2">
-              <span className="grid size-9 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-cs-muted">
+              <span className="grid size-9 place-items-center rounded-lg border border-cs-border bg-cs-surface text-cs-muted">
                 <Sparkles size={15} strokeWidth={1.6} aria-hidden="true" />
               </span>
               <strong className="text-xs font-medium">Build your working set</strong>
