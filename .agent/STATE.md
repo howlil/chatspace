@@ -6,7 +6,7 @@ This is a short operational snapshot. Durable product/architecture/history belon
 
 ## Current
 
-- `master` includes Explorer hierarchy/theme, canonical lean workflow, coalesced/serialized workspace persistence, obsolete ChatGPT content-script removal, risk-based testing policy, verification cleanup, canonical codebase-quality rules, and bounded ownership/integrity cleanup.
+- `master` includes Explorer hierarchy/theme, canonical lean workflow, coalesced/serialized workspace persistence, obsolete ChatGPT content-script removal, risk-based testing policy, verification cleanup, canonical codebase-quality rules, bounded ownership/integrity cleanup, and reproducible frozen pnpm installs.
 - Core daily-driver flow: detect a supported ChatGPT conversation URL, save a local reference, organize it, resume through Home/Explorer/tabs, and navigate native ChatGPT.
 - Production persistence uses extension-owned `chrome.storage.local`, coalesces rapid snapshots, and serializes physical writes.
 - Workspace folder hierarchy and local entity folder ownership are domain invariants: cyclic hierarchy, missing parent folders, and chat/note references to missing folders are rejected at the reducer and persistence/import boundary.
@@ -14,9 +14,10 @@ This is a short operational snapshot. Durable product/architecture/history belon
 - Provider presence/navigation use the validated active-tab `browser.tabs` boundary; no ChatGPT content script or provider DOM bridge is required for the core path.
 - The validated ChatGPT navigation wrapper remains intentional because it protects URL/origin constraints independently of the concrete browser-tab adapter.
 - Dead bootstrap shell code has been removed. Large feature components are not split by line count; extraction requires a real ownership or independent-changeability gain.
-- Verification is risk-based; current CI keeps lint, strict typecheck, deterministic tests, and one WXT build+ZIP package gate.
+- Verification is risk-based; current CI keeps frozen dependency install, lint, strict typecheck, deterministic tests, and one WXT build+ZIP package gate.
 - `shellCollapsed` and `shellWidth` remain in the persisted schema. Do not remove or migrate them without explicit approval for a persisted-contract change.
-- PR #11 remains the reproducible-install slice: a valid `pnpm-lock.yaml` was generated in CI, but the final PR must commit it, switch install to `--frozen-lockfile`, and remove the temporary artifact helper without broadening CI write permissions.
+- PR #11 is merged as `662fba2`: `pnpm-lock.yaml` is committed, CI uses `pnpm install --frozen-lockfile`, the temporary artifact helper is absent, and repository CI permissions remain `contents: read`.
+- The post-merge `master` CI run for `662fba2` passed frozen install, lint, strict typecheck, deterministic tests, and WXT build+ZIP packaging.
 - Live-browser interaction/visual acceptance remains outside repository CI.
 
 ## Canonical operating model
@@ -89,9 +90,8 @@ Daily-driver candidate, not yet public/store-ready.
 
 ## Next highest-ROI sequence
 
-1. Finalize PR #11 with committed `pnpm-lock.yaml` + frozen install and no temporary artifact helper.
-2. Perform bounded live-browser acceptance of the current daily-driver flow.
-3. After real use, treat observed friction as evidence for a user product decision; do not implement unapproved feature scope automatically.
+1. Perform bounded live-browser acceptance of the current daily-driver flow.
+2. After real use, treat observed friction as evidence for a user product decision; do not implement unapproved feature scope automatically.
 
 ## Manual acceptance still required for current daily-driver candidate
 
@@ -109,4 +109,3 @@ After reloading the unpacked extension:
 
 - No known runtime code blocker.
 - Live-browser acceptance cannot be proven by repository CI alone.
-- PR #11 finalization is blocked on safely committing the generated lockfile without increasing CI repository-write permission.
