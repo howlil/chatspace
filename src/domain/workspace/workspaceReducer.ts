@@ -1,3 +1,4 @@
+import { canMoveFolder } from './integrity';
 import type {
   ChatReference,
   LocalNote,
@@ -47,21 +48,40 @@ function safeActiveTab(tabs: WorkspaceTab[], requested: string): string {
   return tabs[0]?.id ?? 'tab-home';
 }
 
+function folderExists(folders: WorkspaceFolder[], folderId: string | null): boolean {
+  return folderId === null || folders.some((folder) => folder.id === folderId);
+}
+
 export function workspaceReducer(state: WorkspaceSnapshot, action: WorkspaceAction): WorkspaceSnapshot {
   switch (action.type) {
     case 'folder/create':
+      if (
+        state.folders.some((folder) => folder.id === action.folder.id) ||
+        !folderExists(state.folders, action.folder.parentId)
+      ) {
+        return state;
+      }
       return {
         ...state,
-        folders: appendUnique(state.folders, action.folder),
+        folders: [...state.folders, action.folder],
         updatedAt: Math.max(state.updatedAt, action.folder.updatedAt),
       };
 
-    case 'folder/update':
+    case 'folder/update': {
+      const current = state.folders.find((folder) => folder.id === action.folder.id);
+      if (current === undefined) return state;
+      if (
+        action.folder.parentId !== current.parentId &&
+        !canMoveFolder(state.folders, action.folder.id, action.folder.parentId)
+      ) {
+        return state;
+      }
       return {
         ...state,
         folders: replaceById(state.folders, { ...action.folder, updatedAt: action.now }),
         updatedAt: action.now,
       };
+    }
 
     case 'folder/toggle':
       return {
@@ -104,6 +124,7 @@ export function workspaceReducer(state: WorkspaceSnapshot, action: WorkspaceActi
     }
 
     case 'chat/create':
+      if (!folderExists(state.folders, action.chat.folderId)) return state;
       return {
         ...state,
         chatRefs: appendUnique(state.chatRefs, action.chat),
@@ -111,6 +132,7 @@ export function workspaceReducer(state: WorkspaceSnapshot, action: WorkspaceActi
       };
 
     case 'chat/update':
+      if (!folderExists(state.folders, action.chat.folderId)) return state;
       return {
         ...state,
         chatRefs: replaceById(state.chatRefs, { ...action.chat, updatedAt: action.now }),
@@ -136,6 +158,7 @@ export function workspaceReducer(state: WorkspaceSnapshot, action: WorkspaceActi
     }
 
     case 'note/create':
+      if (!folderExists(state.folders, action.note.folderId)) return state;
       return {
         ...state,
         notes: appendUnique(state.notes, action.note),
@@ -143,6 +166,7 @@ export function workspaceReducer(state: WorkspaceSnapshot, action: WorkspaceActi
       };
 
     case 'note/update':
+      if (!folderExists(state.folders, action.note.folderId)) return state;
       return {
         ...state,
         notes: replaceById(state.notes, { ...action.note, updatedAt: action.now }),
