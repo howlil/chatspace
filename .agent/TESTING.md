@@ -1,237 +1,362 @@
-# Testing Strategy
+# Testing & Verification Principle
 
-## 1. Objective
+Tests exist to reduce meaningful delivery risk, not to maximize coverage, test count, or testing ceremony.
 
-Tests protect behavior and boundaries while keeping feedback fast. Chatspace must be testable without depending on live ChatGPT in CI.
-
-## 2. Test layers
+The goal is:
 
 ```text
-many       unit/domain tests
-  ↓        component tests
-  ↓        adapter contract tests
- few       extension E2E tests
-manual     live-host compatibility checks
+fast feedback -> sufficient confidence -> low maintenance cost -> safe delivery
 ```
 
-### Unit/domain
-Use for:
-- folder/tree operations
-- tab state
-- panel normalization
-- graph projection
-- migration transforms
-- command enablement
-- error normalization
+—not maximum test coverage or maximum automation.
 
-These tests should have no browser/React dependency where possible.
+## 1. Risk-based verification
 
-### Component
-Use for:
-- workspace tree keyboard behavior
-- panel resizing
-- tab interactions
-- command palette
-- empty/error states
+For every change:
 
-Test observable behavior, not implementation details.
-
-### Provider contract
-Use sanitized local fixtures representing only structure needed for supported adapter behavior.
-
-Fixtures must not contain copied private user conversations or sensitive host data.
-
-Contract tests answer:
-- can page type be detected from the supported fixture?
-- can capability availability be evaluated?
-- does host lifecycle replacement recover?
-- does unsupported structure degrade cleanly?
-
-### Extension E2E
-Use Playwright against controlled/local fixture pages and built extension where practical.
-
-E2E flows:
-- extension mounts and unmounts
-- host remains interactive
-- layout persists after reload
-- folder create/rename/move persists
-- tabs restore
-- compatibility failure disables only dependent features
-
-Mandatory CI must not automate extraction from live ChatGPT.
-
-## 3. TDD requirement
-
-Behavior changes:
+1. identify what can realistically break
+2. estimate the impact and likelihood of that failure
+3. choose the cheapest high-signal verification that can detect it
+4. increase verification depth only when risk justifies the additional cost
 
 ```text
-RED
-- write focused behavior test
-- execute
-- confirm expected failure
-
-GREEN
-- minimal implementation
-- execute focused test
-- execute affected suite
-
-REFACTOR
-- simplify while green
+CHANGE
+  ↓
+Classify risk
+  ↓
+┌────────────┬────────────┬────────────┐
+│ LOW        │ MEDIUM     │ HIGH       │
+↓            ↓            ↓
+cheap        targeted     stronger
+verification verification verification
+             │            │
+             │            ├─ boundary / contract
+             │            ├─ integration
+             │            ├─ critical journey
+             │            ├─ migration / data
+             │            ├─ security / privacy
+             │            └─ other risk-specific checks
+             │
+             └────────────┬────────────
+                          ↓
+                    MERGE / ACCEPT
+                          ↓
+                 RELEASE CANDIDATE?
+                    │            │
+                   no           yes
+                    │            ↓
+                   stop     release-specific
+                            verification
+                                 ↓
+                              RELEASE
 ```
 
-A regression test for a bug must fail against the broken behavior before the fix is accepted.
+The verification mechanism depends on the affected risk. Do not assume every change needs unit tests, integration tests, E2E, type checking, packaging, browser testing, or the same testing pyramid.
 
-## 4. Test naming
+### Practical Chatspace examples
 
-Name by observable behavior:
+**Low risk**
+
+Examples:
+- documentation-only correction
+- copy change
+- isolated styling change with no interaction/layout contract change
+- deleting a confirmed-unused comment or dead documentation reference
+
+Possible verification:
+- inspect diff
+- render/visual check when presentation changed
+- targeted lint only when code syntax changed
+
+Do not add tests merely because a file changed.
+
+**Medium risk**
+
+Examples:
+- Explorer interaction behavior
+- command behavior
+- local state transition
+- provider URL classification
+- UI wiring that changes observable behavior
+
+Possible verification:
+- focused deterministic behavior test
+- affected component/domain test
+- targeted typecheck/lint where useful
+- smallest manual check for browser-only behavior
+
+**High risk**
+
+Examples:
+- persisted data/schema/migration
+- concurrency or persistence ordering
+- permissions/security/privacy boundary
+- provider contract/trust boundary
+- destructive operation
+- release/install/update behavior
+
+Possible verification:
+- deterministic regression tests
+- boundary/contract tests
+- migration/data-integrity checks
+- integration or critical-journey checks
+- explicit security/privacy review
+- release-specific browser/package/install checks when actually releasing
+
+Risk classification is not bureaucracy. Keep it proportional and short.
+
+## 2. TDD
+
+Use TDD when a deterministic automated test is the cheapest high-signal way to define or protect important behavior.
+
+Prefer TDD or strong automated tests for:
+
+- domain invariants
+- algorithms and transformations
+- persistence and data integrity
+- concurrency
+- migrations
+- security/privacy boundaries
+- external/provider contracts
+- valuable deterministic regressions
+
+Do not require TDD for:
+
+- presentation-only changes
+- styling/layout
+- static markup
+- copy/content changes
+- trivial wiring
+- exploratory implementation
+- changes where another verification method is cheaper and equally reliable
+
+For a defect, add a regression test only when it protects a realistic repeat failure at a useful boundary. When used, it should fail against the broken behavior before the fix.
+
+## 3. Progressive confidence
+
+Verification becomes broader or more expensive only when necessary.
+
+```text
+development
+    ↓
+fast feedback
+    ↓
+change confidence
+    ↓
+boundary/system confidence when required
+    ↓
+release confidence when releasing
+```
+
+Do not run every available test for every change.
+
+Fast, deterministic, cheap checks should run frequently.
+
+Expensive, broad, environment-dependent, or slow checks should run only when:
+
+- the affected risk requires them
+- a relevant boundary changed
+- a critical workflow changed
+- or the software is approaching release
+
+The repository may keep a cheap baseline CI gate while it remains inexpensive. That is an implementation choice for this repository, not a universal rule that every agent must reproduce locally after every edit.
+
+## 4. Avoid duplicate confidence
+
+Do not test the same behavior repeatedly at multiple layers unless each layer protects a meaningfully different failure mode.
+
+Prefer the verification boundary with the best ratio:
+
+```text
+confidence gained
+-----------------
+execution + maintenance + development cost
+```
+
+Examples:
+
+- a pure folder-cycle invariant belongs in the domain-level behavior test rather than being duplicated through multiple UI/E2E cases
+- a browser extension packaging failure cannot be proven by a unit test, so packaging verification belongs at the build/release boundary
+- live ChatGPT usability cannot be honestly proven by synthetic unit tests, so use an explicit bounded manual browser check when that risk matters
+
+## 5. Test value question
+
+Before adding or running a test, ask:
+
+> What realistic regression or failure does this detect?
+
+If there is no strong answer, do not add the test.
+
+Before adding a broader test, also ask:
+
+> Is this failure already protected more cheaply at another layer?
+
+If yes, avoid duplication.
+
+## 6. Observable behavior over implementation trivia
+
+Tests should protect behavior, invariants, boundaries, and failure modes.
 
 Good:
 - `moves a chat reference into a nested folder`
-- `restores panel widths after repository reload`
-- `disables host navigation when capability detection fails`
+- `rejects moving a folder into its descendant`
+- `coalesces rapid persistence writes to the latest snapshot`
+- `opens a validated saved ChatGPT target in the active provider tab`
 
-Bad:
-- `tree test`
-- `works correctly`
+Weak unless the call itself is the contract:
 - `calls setItem`
+- `calls dispatch twice`
+- `uses helper X`
+- snapshot tests that mostly freeze markup structure
 
-## 5. Mocking policy
+Prefer fakes at owned ports over mocking internals.
 
-Prefer fakes at ports over mocking internals.
+## 7. Persistence, migration, and data integrity
 
-Good:
+Persistence work is high-value deterministic test territory because failures can look like data loss.
 
-```ts
-class InMemoryWorkspaceRepository implements WorkspaceRepository { ... }
-```
+Choose checks according to the changed risk. Relevant behaviors may include:
 
-Avoid tests whose only assertion is that a mock function was called unless the call itself is the externally meaningful contract.
-
-Provider adapter contract tests should use DOM fixtures, not mocks of `querySelector` chains.
-
-## 6. Persistence tests
-
-Required behavior:
-
-- round-trip canonical snapshot
-- missing workspace
-- interrupted/failed write handling
-- schema migration N -> N+1
-- unknown future schema fails safely
-- malformed stored data produces recoverable error
+- canonical snapshot round-trip
+- malformed/future schema fails safely
+- recovery does not silently replace user state
+- buffered/serialized writes preserve the latest accepted state
 - reset affects only Chatspace-owned data
+- migration is deterministic and preserves semantic behavior
 
-Never silently default malformed persisted data to empty if that could look like data loss.
+For each actual migration, verify only the migration concerns that exist:
 
-## 7. Migration verification
-
-For each migration:
-
-1. old fixture loads
-2. migration output validates against new schema
+1. old data can be interpreted
+2. output validates against the new contract
 3. semantic behavior is preserved
 4. migration is deterministic
-5. original data remains unchanged until new write succeeds
+5. unsafe partial overwrite is prevented
 
-## 8. DOM/adapter tests
+Do not maintain migration ceremony when no migration exists.
 
-Every provider selector/capability assumption needs a contract test.
+## 8. Provider and trust-boundary verification
 
-Maintain fixtures for:
+Chatspace currently integrates with native ChatGPT through validated URL/tab behavior and must not use private APIs, cookies/session reuse, history crawling, DOM scraping, automated output extraction, network replay, or protection bypasses.
 
-- healthy supported host
-- missing optional region
-- replaced subtree after SPA navigation
-- unsupported structure
+When provider integration changes, verify the affected contract at the cheapest stable boundary. Examples:
 
-Avoid snapshots of entire host pages. Keep fixtures minimal and semantic.
+- supported target normalization
+- active-tab classification
+- validated navigation
+- unsupported URL degradation
 
-## 9. UI accessibility tests
+Do not create fake provider DOM/E2E layers for behavior that no longer depends on provider DOM.
 
-Automated checks where useful plus behavior tests for:
+Live ChatGPT validation is a manual release/review activity when the risk cannot be proven safely in CI.
 
-- focus order
-- keyboard tree navigation
-- tab keyboard semantics
-- icon button accessible names
-- command palette focus return
-- panel collapse without focus loss
+## 9. UI and accessibility verification
 
-Automated accessibility tools supplement, not replace, interaction tests.
+Use automated interaction/accessibility tests when they protect an important deterministic interaction or regression.
 
-## 10. Performance tests
+Use visual/manual verification when it is cheaper and more reliable for presentation-only behavior.
 
-Do not benchmark everything. Add targeted performance tests after a budget/risk exists.
+Examples where automated behavior checks can be valuable:
+- keyboard action semantics
+- focus return for an important workflow
+- icon-only button accessible name
+- destructive action confirmation
+- hierarchy invariants triggered through UI
 
-Candidate benchmarks:
+Do not add automated tests merely to freeze Tailwind classes, exact layout pixels, or static copy.
 
-- tree projection with 1,000 local references
-- graph projection with defined node/edge scale
-- repeated host mutation reconciliation
-- persistence serialize/load latency
+## 10. Performance verification
 
-Performance tests should compare against explicit budgets or baselines.
+Do not benchmark everything.
 
-## 11. Manual compatibility checklist
+Add a performance check only after a meaningful budget, observed bottleneck, or regression risk exists.
 
-Live ChatGPT validation is a manual release/review activity unless an official automation path explicitly permits it.
+Potential targets if evidence justifies them:
+- large local Explorer projection
+- graph projection at a defined scale
+- persistence serialization/write behavior
 
-Check:
+A performance test without a meaningful budget or decision is usually noise.
 
-- normal ChatGPT conversation remains usable
-- composer remains usable
-- navigation works normally when Chatspace hidden
-- extension mounts on intended routes only
-- panel resize doesn't cover critical host controls unexpectedly
-- SPA navigation does not duplicate Chatspace roots/listeners
-- reload recovers workspace
-- compatibility degraded state is honest
+## 11. Manual browser acceptance
+
+Use manual browser acceptance only for behavior that actually requires the extension/browser/provider environment or when it is the cheapest reliable signal.
+
+For the current daily-driver candidate, relevant checks include:
+
+- extension loads in the Side Panel
+- native ChatGPT remains usable
+- supported ChatGPT conversation detection/navigation works
+- saved conversation capture/resume works
+- Explorer root/subfolder semantics work
+- drag/drop hierarchy remains reversible and prevents invalid cycles
+- light/dark preference survives side-panel reopen
+- reload recovers local workspace
+- no obsolete ChatGPT content script is required
 
 Do not copy/store conversation output as part of the check.
 
-## 12. Test data
+Do not run the entire manual checklist for an unrelated low-risk change.
 
-Use invented/synthetic test conversations and labels.
+## 12. Release-specific verification
+
+Development acceptance and release acceptance are different.
+
+A release candidate may justify checks that ordinary PRs do not, such as:
+
+- reproducible dependency install
+- production build/package
+- extension load/install/update lifecycle
+- permissions/privacy review
+- critical daily-driver browser journey
+- recovery/upgrade behavior when relevant
+
+If the change is not a release candidate and the affected risk does not require these checks, stop after sufficient change confidence.
+
+## 13. Test data
+
+Use invented/synthetic data.
 
 Never commit:
 
 - real ChatGPT exports containing personal data
 - auth/session material
 - screenshots with private conversations unless explicitly sanitized
-- local IndexedDB dumps from real usage
+- local storage/IndexedDB dumps from real usage
 
-## 13. Flaky tests
+## 14. Flaky tests
 
-A flaky test is a defect.
+A flaky test is a defect because it reduces signal.
 
 When flaky:
 
-- quarantine only if necessary to unblock unrelated work
-- create a concrete owner/fix task
-- identify nondeterminism root cause
-- do not normalize rerunning CI until green as workflow
+- identify the nondeterminism/root cause
+- quarantine only when necessary to unblock unrelated work
+- do not normalize rerunning CI until green
+- delete or replace a low-value flaky test when its maintenance cost exceeds the confidence it provides
 
-## 14. Suggested commands
+## 15. Verification decision record
 
-Exact scripts will be established during bootstrap. Target interface:
+For ordinary work, the verification decision should fit in the PR/task summary:
 
-```bash
-pnpm test             # unit + component
-pnpm test:contract    # provider fixtures/contracts
-pnpm test:e2e         # controlled extension E2E
-pnpm typecheck
-pnpm lint
-pnpm build
-pnpm verify           # full merge gate
+```text
+Risk: low / medium / high — <why>
+Realistic failure: <what could break>
+Verification: <cheapest high-signal evidence>
+Broader checks: <only if justified>
 ```
 
-Do not claim these commands exist until bootstrap creates and verifies them.
+Do not create a separate testing plan document for every task.
 
-## 15. Test review questions
+## 16. Review questions
 
-- What production change would make this test fail?
-- Is the test asserting behavior or implementation trivia?
-- Did the test fail before implementation/fix?
-- Does it cover the relevant failure mode?
-- Is external behavior represented through a stable contract/fixture?
-- Will this test survive a reasonable internal refactor?
+Before adding or requesting verification:
+
+- What realistic regression or failure does this detect?
+- What is the impact and likelihood?
+- Is this the cheapest reliable boundary?
+- Is the same failure already protected elsewhere?
+- Is broader verification justified by a boundary/critical-flow/release risk?
+- Am I testing observable behavior rather than implementation trivia?
+- Will this check continue to provide more confidence than maintenance cost?
+
+If the answers do not justify the check, do less verification—not more ceremony.
