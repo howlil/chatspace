@@ -1,3 +1,4 @@
+import { hasValidWorkspaceSemantics } from './integrity';
 import {
   WORKSPACE_SCHEMA_VERSION,
   type ChatReference,
@@ -104,7 +105,7 @@ function isPanelLayout(value: unknown): value is PanelLayout {
 }
 
 export function isWorkspaceSnapshot(value: unknown): value is WorkspaceSnapshot {
-  return (
+  const structurallyValid = (
     isRecord(value) &&
     value.schemaVersion === WORKSPACE_SCHEMA_VERSION &&
     isString(value.id) &&
@@ -123,6 +124,8 @@ export function isWorkspaceSnapshot(value: unknown): value is WorkspaceSnapshot 
     isPanelLayout(value.layout) &&
     isNumber(value.updatedAt)
   );
+
+  return structurallyValid && hasValidWorkspaceSemantics(value as unknown as WorkspaceSnapshot);
 }
 
 export function exportWorkspaceJson(snapshot: WorkspaceSnapshot): string {

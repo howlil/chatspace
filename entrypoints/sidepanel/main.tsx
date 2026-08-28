@@ -6,6 +6,9 @@ import { browser } from 'wxt/browser';
 import { WorkspaceApp } from '../../src/app/WorkspaceApp';
 import { ChatspaceShell } from '../../src/app/shell/ChatspaceShell';
 import { WorkspaceErrorBoundary } from '../../src/app/shell/WorkspaceErrorBoundary';
+import { HttpLocalVaultBridge } from '../../src/integrations/obsidian/bridge';
+import { requestLocalBridgePermission } from '../../src/integrations/obsidian/permission';
+import { createDefaultWorkspaceRepository } from '../../src/persistence/chromeStorageWorkspaceRepository';
 import {
   navigateActiveProvider,
   readActiveProviderState,
@@ -14,6 +17,9 @@ import {
 } from '../../src/providers/chatgpt/browserTabProvider';
 import '../../src/styles/tailwind.css';
 import { Button } from '../../src/ui/primitives';
+
+const workspaceRepository = createDefaultWorkspaceRepository();
+const vaultBridge = new HttpLocalVaultBridge();
 
 const providerTabsPort: ProviderTabsPort = {
   async getActive() {
@@ -92,6 +98,9 @@ function SidepanelWorkspace() {
         </div>
       )}
       <WorkspaceApp
+        repository={workspaceRepository}
+        bridge={vaultBridge}
+        requestBridgePermission={requestLocalBridgePermission}
         currentUrl={() => providerUrl}
         navigate={(target) => {
           void navigateActiveProvider(providerTabsPort, target)

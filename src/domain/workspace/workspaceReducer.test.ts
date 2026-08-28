@@ -61,4 +61,36 @@ describe('workspaceReducer', () => {
     expect(state.chatRefs[0]?.folderId).toBeNull();
     expect(state.notes[0]?.folderId).toBeNull();
   });
+
+  it('rejects folder moves that would create cycles at the domain boundary', () => {
+    let state = createInitialWorkspace(1);
+    const parent = createFolder({ id: 'folder-parent', name: 'Backend', parentId: null, now: 2 });
+    const child = createFolder({ id: 'folder-child', name: 'Database', parentId: parent.id, now: 3 });
+    state = workspaceReducer(state, { type: 'folder/create', folder: parent });
+    state = workspaceReducer(state, { type: 'folder/create', folder: child });
+
+    const unchanged = workspaceReducer(state, {
+      type: 'folder/update',
+      folder: { ...parent, parentId: child.id },
+      now: 4,
+    });
+
+    expect(unchanged).toBe(state);
+    expect(unchanged.folders.find((folder) => folder.id === parent.id)?.parentId).toBeNull();
+  });
+
+  it('rejects local entities that point at missing folders', () => {
+    const state = createInitialWorkspace(1);
+    const chat = createChatReference({
+      id: 'chat-orphan',
+      label: 'Orphan',
+      target: 'https://chatgpt.com/c/orphan',
+      folderId: 'missing-folder',
+      now: 2,
+    });
+    const note = createLocalNote({ id: 'note-orphan', title: 'Orphan', folderId: 'missing-folder', now: 2 });
+
+    expect(workspaceReducer(state, { type: 'chat/create', chat })).toBe(state);
+    expect(workspaceReducer(state, { type: 'note/create', note })).toBe(state);
+  });
 });

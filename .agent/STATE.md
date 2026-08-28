@@ -1,17 +1,21 @@
 # Project State
 
-Updated: 2026-08-28
+Updated: 2026-08-29
 
 This is a short operational snapshot. Durable product/architecture/history belongs in the owning `.agent` documents and plans/ADRs.
 
 ## Current
 
-- `master` includes Explorer hierarchy/theme, canonical lean workflow, coalesced/serialized workspace persistence, obsolete ChatGPT content-script removal, risk-based testing policy, and the verification-audit cleanup through PR #13.
+- `master` includes Explorer hierarchy/theme, canonical lean workflow, coalesced/serialized workspace persistence, obsolete ChatGPT content-script removal, risk-based testing policy, verification cleanup, canonical codebase-quality rules, and bounded ownership/integrity cleanup.
 - Core daily-driver flow: detect a supported ChatGPT conversation URL, save a local reference, organize it, resume through Home/Explorer/tabs, and navigate native ChatGPT.
 - Production persistence uses extension-owned `chrome.storage.local`, coalesces rapid snapshots, and serializes physical writes.
+- Workspace folder hierarchy and local entity folder ownership are domain invariants: cyclic hierarchy, missing parent folders, and chat/note references to missing folders are rejected at the reducer and persistence/import boundary.
+- The Side Panel entrypoint is the concrete composition root for the workspace repository, localhost vault bridge, permission request, and provider-tab adapter. `WorkspaceApp` owns application orchestration rather than constructing infrastructure adapters.
 - Provider presence/navigation use the validated active-tab `browser.tabs` boundary; no ChatGPT content script or provider DOM bridge is required for the core path.
+- The validated ChatGPT navigation wrapper remains intentional because it protects URL/origin constraints independently of the concrete browser-tab adapter.
+- Dead bootstrap shell code has been removed. Large feature components are not split by line count; extraction requires a real ownership or independent-changeability gain.
 - Verification is risk-based; current CI keeps lint, strict typecheck, deterministic tests, and one WXT build+ZIP package gate.
-- One obsolete static bootstrap test and the duplicate standalone production-build CI step were removed because they added no distinct meaningful confidence.
+- `shellCollapsed` and `shellWidth` remain in the persisted schema. Do not remove or migrate them without explicit approval for a persisted-contract change.
 - PR #11 remains the reproducible-install slice: a valid `pnpm-lock.yaml` was generated in CI, but the final PR must commit it, switch install to `--frozen-lockfile`, and remove the temporary artifact helper without broadening CI write permissions.
 - Live-browser interaction/visual acceptance remains outside repository CI.
 
@@ -77,6 +81,7 @@ realistic failure
 - Small bounded PRs after the initial convergence work reduced change surface and review complexity.
 - Current CI is short enough that selective-test/path-filter infrastructure is not justified.
 - Do not add a metrics platform, broad audit ritual, agent orchestrator, or selective-test framework without a concrete blocking need.
+- Do not split cohesive feature components or introduce new layers merely to reduce file length.
 
 ## Release state
 
