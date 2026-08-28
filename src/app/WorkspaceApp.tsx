@@ -358,7 +358,7 @@ export function WorkspaceApp({
       const reset = createInitialWorkspace();
       dispatch({ type: 'workspace/replace', snapshot: reset });
       setSelectedFolderId(null);
-      setPersistenceError(null;
+      setPersistenceError(null);
       setRecoveryJson(null);
       setPersistenceState('ready');
       setStatus('Local workspace reset.');
