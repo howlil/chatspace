@@ -1,108 +1,200 @@
-# Chatspace Canonical Agent Workflow
+# Chatspace Product & Engineering Operating Rules
 
-This file is the **canonical execution contract for every coding agent** working on Chatspace: Codex, Claude Code, GPT web, GitHub/IDE agents, and future agents.
+This file is the **single canonical execution contract** for every coding agent working on Chatspace: Codex, Claude Code, GPT web, GitHub/IDE agents, and future agents.
 
-Agent-specific instruction files may only be thin adapters that point here and add tool-specific behavior. They must not redefine the development lifecycle or duplicate project knowledge.
+`.agent/` stores project knowledge and detailed engineering policy. It must not define a competing lifecycle. Agent-specific files may only point here and add tool-specific behavior.
 
-Detailed product/architecture/testing/security context lives in `.agent/` and is loaded only when the task needs it.
-
-## Objective
+## 1. Operating principle
 
 Optimize for:
 
 ```text
 validated user value
 -------------------------------
-engineering time + cognitive load + compute cost + agent/context cost
+engineering time + waiting + rework + cognitive load + compute/context cost
 ```
 
-Production quality is required. Architectural sophistication and testing volume are not goals.
+Production quality is required. Architecture sophistication, test volume, documentation volume, and process ceremony are not goals.
 
-## Product authority — hard rule
-
-**The user owns product decisions. Agents own implementation within the approved product scope.**
-
-- Do not introduce a new feature, capability, workflow, product behavior, or product requirement unless the user explicitly requested it or it is already an approved requirement.
-- Do not expand scope because something is fashionable, convenient, architecturally elegant, or considered a general best practice.
-- Do not silently invent missing product requirements. Surface the missing requirement/decision and keep implementation inside the part that is actually approved.
-- Implementation recommendations are allowed when they help satisfy an approved requirement.
-- Product recommendations are not implementation authority. Treat them as proposals only, and make them only when the user explicitly asks for product advice/options.
-- Existing product requirements, acceptance criteria, and durable decisions remain authoritative until the user changes them.
-- If repository behavior and an explicit current user requirement conflict, the user requirement is the product authority, but apply the escalation rules below before making a destructive or contract-breaking change.
-
-Authority model:
+The operating model is:
 
 ```text
-User / Product Authority
-        |
-        | approved requirement
-        v
-Problem -> Vertical Slice -> Agent Implementation
-                              |
-                              v
-                       Code + Evidence
-                              |
-                              v
-                    Risk-based Verification
-                              |
-                         evidence/result
-                              v
-                      User accepts/revises
+high autonomy in local engineering execution
+low autonomy in product and material architecture decisions
 ```
 
-## Minimum Context Principle
+## 2. Product authority — hard rule
 
-Read in this order:
+The user owns:
+
+- WHY / product problem and intent
+- WHAT / product behavior and semantics
+- product scope and non-goals
+- material architecture boundaries
+- final approve / reject / release / change-direction decisions
+
+The agent may analyze, surface evidence, identify risks, recommend implementation approaches, and draft acceptance criteria from an already clear requirement. It must not:
+
+- invent a product requirement
+- add a feature/capability/workflow because it seems useful or best practice
+- silently reinterpret material ambiguity
+- expand scope through acceptance criteria
+- treat a recommendation, observation, or feedback item as authorization
+
+Existing approved requirements and durable decisions remain authoritative until explicitly changed.
+
+## 3. Engineering autonomy
+
+Inside approved scope and existing material boundaries, the agent should execute ordinary local engineering decisions autonomously. Do not request approval for normal implementation choices such as:
+
+- naming and file placement consistent with existing conventions
+- implementation sequencing
+- local code structure
+- reuse of an existing pattern/component
+- a small local abstraction justified by the current change
+- touched-only refactoring
+- risk-appropriate verification selection
+- ordinary error handling and internal implementation details
+
+Prefer making the smallest sound local decision and continuing.
+
+Explicit user approval is required before materially changing:
+
+- service/runtime boundaries
+- data ownership
+- public/user-visible APIs or persisted compatibility contracts
+- communication patterns between major components/services
+- consistency model
+- security/privacy/permission/trust boundaries
+- infrastructure architecture
+- destructive or irreversible data behavior
+- another major cross-cutting architecture boundary
+
+## 4. Minimum context principle
+
+Default read path:
 
 ```text
 task
 -> AGENTS.md
 -> .agent/STATE.md
 -> affected source/tests
--> task-relevant .agent documents only
+-> only task-relevant .agent documents
 ```
 
-Do not recursively read the repository or preload every `.agent` document.
+Use `.agent/README.md` as a context router. Do not recursively scan the repository or preload all `.agent` documents for an ordinary bounded task.
 
-Use `.agent/README.md` only to route to the minimum relevant project context.
-
-## Canonical lifecycle
+## 5. Canonical lifecycle
 
 ```text
-1. Understand requested outcome
-2. Read minimum relevant context
-3. Inspect current behavior/repository state
-4. Define 1-3 observable acceptance criteria + non-goals
-5. Identify realistic failure risk: impact + likelihood
-6. Identify affected contracts/boundaries before parallel or cross-layer work
-7. Choose the smallest vertical change that can satisfy the approved requirement
-8. Choose the cheapest high-signal verification for the identified risk
-9. Use RED/TDD only when a deterministic automated test is the best signal
-10. Implement the minimum change
-11. Refactor touched complexity only when useful and confidence remains intact
-12. Run targeted verification; broaden only when risk justifies it
-13. Satisfy repository-required merge checks
-14. Update only operational state/docs made stale by the change
-15. Stop
+USER INTENT
+    ↓
+UNDERSTAND
+    ↓
+BOUND
+    ↓
+SPECIFY
+    ↓
+DESIGN
+    ↓
+IMPLEMENT
+    ↓
+VERIFY
+    ↓
+QUALITY GATES
+    ↓
+RELEASE READY
+    ↓
+STOP
 ```
 
-Do not create a giant plan for a bounded task. Architecture work is justified only by the triggers in `.agent/SYSTEM.md`.
+This is the only canonical development lifecycle. Detailed documents explain specific concerns; they do not redefine this sequence.
 
-## Implementation rule — hard rule
+### USER INTENT
 
-- Prefer the smallest vertical slice that produces observable user value or proves the requested behavior end-to-end.
-- Reuse existing patterns and boundaries before introducing new architecture.
-- Do not create abstractions until required by the current implementation or a demonstrated stable pattern/boundary.
-- Do not refactor unrelated code.
-- Do not modify unrelated behavior.
-- Do not build horizontal layers independently when the requested behavior can be proven with a thinner vertical slice.
-- For work spanning multiple components, establish the shared contract first; frontend/backend/agents must not independently invent incompatible assumptions.
-- Preserve good boundaries when they provide real domain isolation, security, testability, failure isolation, or ownership clarity.
-- Prefer explicit, boring code over speculative extensibility.
+Start from the explicit user request or already-approved requirement.
 
-## Testing & verification rule — hard rule
+- preserve the requested outcome
+- do not add adjacent product scope
+- distinguish a request for implementation from a request for product recommendations
 
-Tests exist to reduce **meaningful delivery risk**, not to maximize coverage, test count, or ceremony.
+### UNDERSTAND
+
+Separate:
+
+```text
+Problem:
+Proposed solution, if any:
+Explicit requirement:
+Current behavior / relevant repository state:
+```
+
+Inspect only enough existing code/context to understand the affected behavior and ownership.
+
+When product uncertainty materially affects what should be built, identify the **minimum evidence** needed to resolve it. Do not create a broad research phase for ordinary implementation work.
+
+### BOUND
+
+Define the smallest safe change boundary:
+
+- in-scope behavior
+- non-goals
+- affected ownership/boundaries
+- any decision that crosses a product/material-architecture approval boundary
+
+Do not silently choose through a material ambiguity. Surface only the decision that actually blocks safe execution; continue autonomously on unaffected local work.
+
+### SPECIFY
+
+Turn the approved product decision into implementation-ready expectations:
+
+```text
+Expected outcome:
+Explicit requirements:
+1-3 observable acceptance criteria:
+Relevant constraints/non-goals:
+```
+
+Acceptance criteria may be drafted by the agent when they directly restate an explicit requirement or existing approved behavior. They must not create new product semantics or expand scope.
+
+### DESIGN
+
+Design only as far as needed for the current requirement.
+
+Before introducing a new design, determine:
+
+1. What behavior must change?
+2. Which existing component/module owns that behavior?
+3. Can the requirement use the current architecture and patterns?
+4. What is the smallest design with the lowest justified blast radius?
+
+Prefer, in order:
+
+```text
+reuse existing pattern
+-> extend existing owner/component
+-> introduce a small local abstraction
+-> change architecture only when existing architecture cannot reasonably satisfy the requirement
+```
+
+When several designs satisfy the requirement, prefer lower coupling, smaller change surface, fewer dependencies/abstractions, lower migration cost, easier reversibility, and clearer ownership.
+
+Do not introduce architecture for hypothetical scale, flexibility, reuse, or future requirements. Follow `.agent/SYSTEM.md` for material design boundaries.
+
+### IMPLEMENT
+
+Implement the smallest vertical change that satisfies the specification.
+
+- preserve current boundaries unless the approved design changes them
+- avoid unrelated refactoring/cleanup
+- do not build frontend/backend/layers independently around guessed contracts
+- define the shared contract first when multiple components must coordinate
+- prefer explicit boring code over speculative extensibility
+- refactor touched complexity only when it improves the current change
+
+### VERIFY
+
+Verification is risk-based.
 
 For every change:
 
@@ -113,165 +205,149 @@ impact + likelihood
       ↓
 cheapest high-signal verification
       ↓
-broaden only if risk requires it
+broaden only when risk requires it
       ↓
-sufficient confidence
-      ↓
-stop
+sufficient change confidence
 ```
 
-Before adding or running a test, ask:
+Tests exist to reduce meaningful delivery risk, not to maximize coverage/test count or enforce ceremony.
+
+Use TDD when a deterministic automated test is the cheapest high-signal way to define or protect important behavior. Do not require TDD for presentation-only changes, styling/layout, static markup, copy, trivial wiring, exploratory implementation, or cases better verified another way.
+
+Before adding or running a test/check, ask:
 
 > What realistic regression or failure does this detect?
 
-Before adding a broader check, ask:
+Before adding a broader layer, ask:
 
-> Is this failure already protected more cheaply at another layer?
-
-If there is no strong answer, do not add the test/check.
-
-### TDD
-
-Use TDD when a deterministic automated test is the cheapest high-signal way to define or protect important behavior.
-
-Prefer it for domain invariants, algorithms, persistence/data integrity, concurrency, migrations, security/privacy boundaries, provider/external contracts, and valuable deterministic regressions.
-
-Do **not** require TDD for presentation-only changes, styling/layout, static markup, copy/content, trivial wiring, exploratory implementation, or cases where another verification method is cheaper and equally reliable.
+> Is this already protected more cheaply elsewhere?
 
 Detailed policy lives in `.agent/TESTING.md`.
 
-## Progressive verification
+### QUALITY GATES
 
-### Development loop
+Risk-based verification does not remove repository quality gates.
 
-Use the cheapest useful feedback for the touched risk. Examples only:
+Before merge, satisfy the checks actually required by the repository/CI for the changed codebase, such as lint, strict type checking, deterministic tests, build/package checks, or other configured checks.
 
-```bash
-pnpm exec vitest run <affected-test>
-pnpm exec eslint <touched-files>
-```
+Do not mechanically duplicate all CI commands locally after every edit. Use fast targeted feedback during development, then let required quality gates provide merge confidence.
 
-A docs/copy change may need only diff inspection. A persistence-ordering change may need a focused deterministic regression test. A visual change may need a visual/manual check rather than a new unit test.
+A failing required gate is not optional merely because the local risk classification was low.
 
-Do not run the full suite after every edit.
+### RELEASE READY
 
-### Merge confidence
+A merged change should be the smallest complete increment that can safely remain on releasable `master`.
 
-Run the targeted evidence required by the change risk, then satisfy any checks the repository currently enforces for the PR.
+Before calling an increment release-ready:
 
-Do not treat the current CI command set as a universal testing pyramid or require agents to duplicate every CI check locally without a risk reason.
+- acceptance criteria are satisfied
+- risk-appropriate evidence exists
+- required quality gates pass
+- only docs/state made stale by the change are updated
+- no accidental debug/dead code remains in the touched slice
+- release-specific checks are performed only when this is actually a release candidate or the changed risk requires them
 
-Add explicit manual acceptance only when browser/provider/UI behavior cannot be proven more cheaply and reliably by automation.
+If evaluating the expected product outcome requires instrumentation, decide whether instrumentation is necessary before release. Instrumentation is **not mandatory by default** and must not collect provider content or create unapproved telemetry.
 
-### Release confidence
+### STOP
 
-Release-specific checks happen only for an actual distribution candidate or when the changed risk specifically requires them. Follow `.agent/TESTING.md`, `.agent/ENGINEERING.md`, and `.agent/DELIVERY.md`.
+Stop when the approved scope is satisfied, verification is sufficient, required gates pass, and no material issue remains inside scope.
 
-## Non-negotiable defaults
+Do not continue into:
 
-- one logical outcome = one short-lived branch + one PR
-- keep `master` releasable
-- prefer small vertical slices over layer-by-layer scaffolding
-- use evidence for behavior claims; never declare success from inspection alone when behavior actually changed
-- acceptance criteria define done; agent confidence does not
-- no speculative abstraction, framework, dependency, service layer, registry, event bus, DI container, agent framework, or infrastructure
-- no unrelated refactor/cleanup in a feature or bug-fix task
-- preserve good existing boundaries for domain isolation, security, testability, and failure isolation
-- delete dead code only after references/ownership/replacement are understood
-- never delete requirements, architecture, plans, testing rationale, security constraints, delivery context, or durable decisions as “legacy workflow”
-- never use private/undocumented ChatGPT APIs, provider cookies/session tokens, automated content extraction, scraping, network replay, or protection bypasses
-- parallel agents are optional only for truly independent work; one owner integrates shared contracts
-- prefer a small releasable outcome over a giant feature batch
-- verification depth must follow meaningful risk, not habit
-- avoid duplicate confidence across test layers unless each layer protects a different failure mode
+- optional cleanup
+- aesthetic refactoring
+- future-proofing
+- speculative optimization
+- new dependencies/architecture
+- adjacent features
+- extra tests without meaningful risk reduction
+- unnecessary status/report documents
 
-## Agent cost discipline
+A useful follow-up may be recorded briefly as a separate task; it is not part of the completed change.
 
-Treat these as waste unless evidence says otherwise:
+## 6. Product-learning loop after release
 
-- repeated full-repository scans
-- duplicated instruction loading
-- repeated architecture analysis for ordinary feature work
-- large speculative plans
-- repeated full builds/tests during the local loop
-- tests with no realistic regression they protect
-- duplicated tests protecting the same failure at several layers
-- unnecessary generated markdown/status reports
-- multiple agents editing the same contract
-- continuing after acceptance is satisfied
-
-Prefer reusing known project state and focused source/tests over rediscovery.
-
-## Stop and escalation conditions — hard rule
-
-### Stop because the task is complete
-
-Stop implementation when:
-
-- requested behavior works
-- risk-appropriate evidence is sufficient
-- repository-required checks pass
-- required manual acceptance is recorded when applicable
-- no blocker remains inside accepted scope
-
-Do **not** continue into optional refactoring, aesthetic cleanup, future-proofing, documentation expansion, dependency changes, architecture redesign, adjacent feature work, or extra tests that do not materially increase confidence.
-
-If a useful follow-up exists, record at most a short follow-up note and end the task.
-
-### Stop and surface the issue before changing the contract
-
-Do not silently proceed when any of these is required:
-
-- the requested requirement contradicts existing approved behavior or another active requirement
-- a destructive or irreversible data migration is required
-- a public/user-visible contract or persisted compatibility contract must break
-- a security, privacy, permission, trust, or provider boundary must change
-- a major/cross-cutting architecture change is necessary
-- the requirement is materially incomplete and choosing an assumption would create new product behavior
-
-In these cases, surface:
+The development lifecycle ends at STOP. When a released change is being evaluated as a product decision, use this separate learning loop only when relevant:
 
 ```text
-Conflict / required decision:
-Why current implementation cannot safely satisfy both:
+PRODUCT DECISION
+-> REQUIREMENT
+-> canonical development lifecycle
+-> RELEASE
+-> OBSERVE
+-> EVIDENCE
+-> KEEP / ITERATE / REVERT / REMOVE / INVESTIGATE
+-> USER DECISION
+```
+
+Observe only signals relevant to the expected outcome, potentially including:
+
+- technical health
+- user behavior
+- product outcome
+
+Do not invent instrumentation or a metrics program just to satisfy this loop. The user owns the final product decision.
+
+## 7. Git and release defaults
+
+- one logical outcome = one short-lived branch + one PR
+- branch from current `master`
+- keep concurrent WIP low
+- prefer squash merge
+- keep `master` releasable
+- no long-lived release branch by default
+- release the smallest complete accepted increment
+- no unrelated feature code in a release-only change
+
+Detailed repository release policy lives in `.agent/ENGINEERING.md` and `.agent/DELIVERY.md`.
+
+## 8. Stop and escalation conditions
+
+Surface a decision before proceeding when the change requires:
+
+- inventing material product behavior because a requirement is incomplete
+- reconciling contradictory approved requirements
+- destructive/irreversible migration or data behavior
+- breaking a public/user-visible or persisted compatibility contract
+- changing security/privacy/permission/trust/provider boundaries
+- changing data ownership or another material architecture boundary
+- an unsafe provider mechanism or unsupported capability
+
+When escalation is needed, keep it narrow:
+
+```text
+Required decision:
+Why it blocks safe execution:
 Smallest viable options:
-Impact / migration / compatibility risk:
-Recommended implementation option (if useful):
+Material impact/risk:
+Recommended implementation option, if useful:
 ```
 
 Do not turn an implementation recommendation into an unapproved product decision.
 
-### Stop and reopen the engineering model
+Reassess the engineering model before another patch when three implementation attempts fail without a stronger root-cause hypothesis or when verification expands significantly without a clearer failure model.
 
-Reassess before continuing when:
-
-- scope starts expanding beyond acceptance criteria
-- three patch attempts fail without a stronger root-cause hypothesis
-- provider/security assumptions are uncertain
-- a bounded task unexpectedly requires a new cross-cutting architecture boundary
-- verification is getting much broader or more expensive without a clearer failure model
-
-## Do / Don't
+## 9. Do / Don't
 
 | Do | Don't |
 |---|---|
-| problem first | framework first |
-| explicit approved requirement | AI-generated product scope |
-| minimal architecture | speculative architecture |
-| define shared contract first | frontend/backend/agents independently improvising contracts |
-| vertical slices | horizontal layer construction by default |
-| observable acceptance criteria | vague “done” |
-| inspect existing code and behavior | rewrite unnecessarily |
-| reuse existing patterns | abstraction by default |
-| classify realistic risk | run every check by habit |
-| test observable behavior/contracts | test implementation trivia |
-| choose cheapest high-signal evidence | maximize test count/coverage |
-| broaden verification when risk justifies it | duplicate confidence across layers |
-| small release-ready outcome | giant feature batch |
-| evidence from relevant test/build/manual acceptance | agent self-confidence |
-| surface missing product decisions | silently invent requirements |
-| implementation recommendations within scope | unrequested product decisions |
+| start from explicit user intent | generate adjacent product scope |
+| separate problem / proposed solution / requirement | treat proposed solution as automatically correct requirement |
+| bound the smallest safe change | conduct mandatory repo-wide reconnaissance |
+| draft AC from approved behavior | invent product semantics through AC |
+| reuse current owner/pattern | redesign architecture by default |
+| make ordinary local engineering decisions autonomously | ask approval for trivial implementation details |
+| escalate material architecture/product decisions | silently change boundaries |
+| vertical slices | horizontal scaffolding by default |
+| risk-based verification | run every possible test by habit |
+| cheapest high-signal evidence | duplicate confidence across layers |
+| required quality gates before merge | confuse local fast loop with merge gates |
+| smallest complete release-ready increment | giant feature batch |
+| stop when done | continue into optional future-proofing |
 
-## Project context routing
+## 10. Project-context routing
 
-Use `.agent/README.md` to locate project knowledge. Workflow rules live here and in `.agent/ENGINEERING.md`; testing strategy lives in `.agent/TESTING.md`. Project knowledge must not be duplicated into agent-specific files.
+`.agent/README.md` identifies the authoritative project document for product, architecture, code patterns, testing, security, design, delivery, state, and durable decisions.
+
+Project knowledge must be preserved when workflow/process rules are cleaned up. Never delete requirements, architecture, plans/rationale, security constraints, testing rationale, delivery context, or durable decisions merely because they are old; mark them completed/superseded when appropriate.
