@@ -45,3 +45,10 @@ jobs:
 
       - name: Build and package extension ZIP
         run: pnpm zip
+
+      - name: Upload extension ZIP for live-browser acceptance
+        uses: actions/upload-artifact@v4
+        with:
+          name: chatspace-live-browser-extension
+          path: .output/*.zip
+          if-no-files-found: error
