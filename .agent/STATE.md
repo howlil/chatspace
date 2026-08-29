@@ -6,11 +6,11 @@ This is a short operational snapshot. Durable product/architecture/history belon
 
 ## Current
 
-- `master` includes Explorer hierarchy/theme, canonical lean workflow, coalesced/serialized workspace persistence, obsolete ChatGPT content-script removal, risk-based testing policy, verification cleanup, canonical codebase-quality rules, bounded ownership/integrity cleanup, reproducible frozen pnpm installs, the UI consistency cleanup from PR #19, the workbench-height/navigation correction from PR #21, the writing-first note/tree interaction cleanup from PR #23, and the compact Explorer/note-mode visual refinement from PR #25.
+- `master` includes Explorer hierarchy/theme, canonical lean workflow, coalesced/serialized workspace persistence, obsolete ChatGPT content-script removal, risk-based testing policy, verification cleanup, canonical codebase-quality rules, bounded ownership/integrity cleanup, reproducible frozen pnpm installs, the UI consistency cleanup from PR #19, the workbench-height/navigation correction from PR #21, the writing-first note/tree interaction cleanup from PR #23, the compact Explorer/note-mode visual refinement from PR #25, and direct Obsidian folder sync from PR #27.
 - Core daily-driver flow: detect a supported ChatGPT conversation URL, save a local reference, organize it, resume through Home/Explorer/tabs, and navigate native ChatGPT.
 - Production persistence uses extension-owned `chrome.storage.local`, coalesces rapid snapshots, and serializes physical writes.
 - Workspace folder hierarchy and local entity folder ownership are domain invariants: cyclic hierarchy, missing parent folders, and chat/note references to missing folders are rejected at the reducer and persistence/import boundary.
-- The Side Panel entrypoint is the concrete composition root for the workspace repository, localhost vault bridge, permission request, provider-tab adapter, and ephemeral top-level utility view selection. `WorkspaceApp` owns application orchestration rather than constructing infrastructure adapters.
+- The Side Panel entrypoint is the concrete composition root for the workspace repository, browser local-vault adapter, provider-tab adapter, and ephemeral top-level utility view selection. `WorkspaceApp` owns application orchestration rather than constructing infrastructure adapters.
 - Provider presence/navigation use the validated active-tab `browser.tabs` boundary; no ChatGPT content script or provider DOM bridge is required for the core path.
 - The validated ChatGPT navigation wrapper remains intentional because it protects URL/origin constraints independently of the concrete browser-tab adapter.
 - Dead bootstrap shell code has been removed. Large feature components are not split by line count; extraction requires a real ownership or independent-changeability gain.
@@ -22,7 +22,12 @@ This is a short operational snapshot. Durable product/architecture/history belon
 - Note Edit/Preview is an icon-only segmented control with explicit accessible labels/tooltips, `aria-pressed`, and a high-contrast pressed state so the active mode is immediately visible.
 - Note header, tag row, editor padding, and footer chrome are tightened so the writing surface remains visually primary without changing behavior.
 - Note secondary context is ephemeral and collapsible. Collapsed mode hides `Related locally`, linked-chat controls, and linked-chat chips while retaining the `chars · tags` summary and an explicit expand control so writing space becomes primary.
-- Markdown sync is opened from a header utility icon beside the theme control and rendered as a dedicated ephemeral view that reuses the existing localhost bridge component.
+- Markdown sync is opened from a header utility icon beside the theme control and rendered as a dedicated ephemeral view.
+- The primary Markdown Sync flow now uses direct browser folder access: the user chooses an Obsidian vault through the native directory picker, and manual sync writes note Markdown only below `<vault>/Chatspace/`. No terminal, token, Node process, or localhost server is required in the primary UX.
+- The selected vault directory handle is integration-owned state stored separately in IndexedDB. It is not part of `WorkspaceSnapshot`, workspace import/export, or the canonical `chrome.storage.local` workspace schema.
+- Persisted vault handles are restored on reopen. If browser write permission is no longer granted, Markdown Sync surfaces an explicit Reconnect state; Change vault and Disconnect are also explicit user actions.
+- Markdown Sync remains one-way and manual: Chatspace → selected vault. Automatic sync, filesystem watching, Obsidian → Chatspace, sync-all, conflict resolution, and bidirectional synchronization are not implemented or implied.
+- The previous authenticated localhost bridge implementation remains in the repository temporarily as retained legacy/fallback code, but it is no longer composed into the primary Side Panel Markdown Sync flow. Removal is deferred until direct-folder behavior passes live-browser acceptance.
 - The Markdown Sync page exposes an explicit `Back to workspace` action; returning preserves existing workspace state because the utility page remains ephemeral rather than becoming a persisted tab.
 - Workbench content is explicitly placed in the flexible viewport row even when no persistence warning exists. Note editing therefore uses the remaining workbench height instead of leaving the flexible row empty below a short auto-sized editor surface.
 - When note context is expanded, the narrow note relation rail remains capped at `25dvh` with internal overflow so secondary local-relation context does not dominate a narrow side-panel viewport.
@@ -34,7 +39,8 @@ This is a short operational snapshot. Durable product/architecture/history belon
 - PR #21 is merged as `f9e003e`: workbench content occupies the intended flexible viewport row and Markdown Sync has explicit back navigation.
 - PR #23 is merged as `ed17df7`: Explorer/note controls are compact, note title/tab titles stay aligned, note context can collapse, and target-owned tree context menus replace the permanent folder action footer.
 - PR #25 is merged as `a0b25b8`: Explorer quick actions/search/root chrome are denser, permanent root drop-hint noise is removed, and the note Edit/Preview state is high-contrast and explicit.
-- The post-merge `master` CI run for `a0b25b8` passed frozen install, lint, strict typecheck, deterministic tests, and WXT build+ZIP packaging.
+- PR #27 is merged as `de4eed2`: primary Markdown Sync uses direct selected-folder access, persists the selected directory handle outside workspace state, supports reconnect/change/disconnect, and manually writes the active note below the vault `Chatspace/` directory.
+- The post-merge `master` CI run for `de4eed2` passed frozen install, lint, strict typecheck, deterministic tests, and WXT build+ZIP packaging.
 - Live-browser interaction/visual acceptance remains outside repository CI.
 
 ## Canonical operating model
@@ -70,7 +76,8 @@ Material changes to data ownership, public/persisted contracts, major communicat
 - provider integration is URL-only and origin-scoped through validated browser-tab reads/navigation
 - no provider DOM/content script is required for core behavior
 - no private APIs, cookie/session reuse, history crawling, DOM scraping, automated output extraction, network replay, or protection bypasses
-- optional authenticated localhost Markdown/vault bridge is secondary, session-scoped, and note-only
+- direct Markdown/vault integration is user-selected-folder only, manually writes notes below `<vault>/Chatspace/`, and stores its directory handle separately from workspace state in IndexedDB
+- the old authenticated localhost Markdown/vault bridge remains retained but is no longer the primary Side Panel integration path; do not remove it until direct-folder live acceptance is complete
 - Markdown Sync presentation and note-context collapse state are ephemeral shell/workbench UI state, not canonical workspace state
 - graph is a projection, never canonical storage
 
@@ -108,8 +115,9 @@ Daily-driver candidate, not yet public/store-ready.
 
 ## Next highest-ROI sequence
 
-1. Perform bounded live-browser acceptance of the current daily-driver flow, including the PR #19, PR #21, PR #23, and PR #25 UI behavior.
-2. After real use, treat observed friction as evidence for a user product decision; do not implement unapproved feature scope automatically.
+1. Perform bounded live-browser acceptance of the current daily-driver flow, especially PR #27 direct-folder Markdown Sync in the actual Chromium Side Panel context.
+2. If direct-folder connect/write/restore succeeds in live use, decide whether to remove the retained localhost bridge and optional localhost permission as a bounded cleanup sprint.
+3. After real use, treat observed friction as evidence for a user product decision; do not implement unapproved feature scope automatically.
 
 ## Manual acceptance still required for current daily-driver candidate
 
@@ -126,12 +134,19 @@ After reloading the unpacked extension:
 9. collapse note context and confirm only the chars/tags summary plus expand affordance remain below the editor; expand it and confirm `Related locally` and linked-note/chat context return
 10. confirm the note editor still uses the remaining workbench height in both expanded and collapsed context states
 11. on a narrow Side Panel with context expanded, verify `Related locally` remains secondary and scrolls internally when its content exceeds the bounded rail height
-12. open Markdown Sync from the header, confirm `Back to workspace` is obvious, and verify returning preserves the active workspace state
-13. switch light/dark mode, close/reopen Side Panel, verify preference persists
-14. inspect Home, Explorer, notes, tabs, graph, dialogs, context menus, Markdown Sync, and settings in both themes
-15. confirm supported ChatGPT conversation detection/navigation works with no content script registered
+12. open Markdown Sync from the header and confirm `Back to workspace` remains obvious
+13. click `Connect Obsidian`; verify the native directory picker opens from the Chromium Side Panel without terminal/token/server setup
+14. select a real Obsidian vault; verify the UI shows the selected vault name and indicates that files are stored under `<vault>/Chatspace/`
+15. with a note active, click `Sync current note`; verify `<vault>/Chatspace/<title>-<note-id>.md` is created with exactly the current note Markdown
+16. edit the same note and sync again; verify the same file is updated instead of creating a duplicate for the same note ID
+17. close/reopen the Side Panel; verify the selected directory handle is restored, or an explicit Reconnect state appears if the browser requires write permission again
+18. cancel `Change vault`; verify the existing selected vault remains unchanged, then verify Change vault and Disconnect work when explicitly confirmed through their respective browser/UI flows
+19. verify workspace export/import does not contain the filesystem directory handle and the persisted workspace schema/`TabKind` remain unchanged
+20. switch light/dark mode, close/reopen Side Panel, verify preference persists
+21. inspect Home, Explorer, notes, tabs, graph, dialogs, context menus, Markdown Sync, and settings in both themes
+22. confirm supported ChatGPT conversation detection/navigation works with no content script registered
 
 ## Blocked
 
-- No known runtime code blocker.
-- Live-browser acceptance cannot be proven by repository CI alone.
+- No known repository/CI runtime code blocker.
+- Actual `showDirectoryPicker()` availability, write access, and persisted directory-handle behavior inside the Chromium extension Side Panel cannot be proven by repository CI and require live-browser acceptance before the retained localhost bridge can be removed.
