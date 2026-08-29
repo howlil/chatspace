@@ -48,7 +48,7 @@ function dataTransfer(): DataTransfer {
 }
 
 describe('WorkspaceApp', () => {
-  it('creates root folders by default and subfolders only through the explicit folder action', async () => {
+  it('creates root folders globally and child items through the target folder context menu', async () => {
     const initial = createInitialWorkspace(1);
     initial.folders = [
       createFolder({ id: 'root-folder', name: 'Backend', parentId: null, now: 1 }),
@@ -59,8 +59,7 @@ describe('WorkspaceApp', () => {
     render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
 
     expect(await screen.findByText('Databases')).toBeVisible();
-    fireEvent.click(screen.getByText('Backend'));
-    fireEvent.click(screen.getByRole('button', { name: 'Folder' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create folder' }));
 
     await waitFor(async () => {
       const saved = await repository.load();
@@ -68,13 +67,22 @@ describe('WorkspaceApp', () => {
       expect(saved?.folders[2]?.parentId).toBeNull();
     });
 
-    fireEvent.click(screen.getByText('Backend'));
-    fireEvent.click(screen.getByRole('button', { name: 'New subfolder here' }));
+    const backendRow = screen.getByTitle('Backend').parentElement;
+    if (backendRow === null) throw new Error('Backend row missing');
+    fireEvent.contextMenu(backendRow, { clientX: 120, clientY: 100 });
+    fireEvent.click(screen.getByRole('menuitem', { name: 'New subfolder' }));
 
     await waitFor(async () => {
       const saved = await repository.load();
       expect(saved?.folders).toHaveLength(4);
       expect(saved?.folders[3]?.parentId).toBe('root-folder');
+    });
+
+    fireEvent.contextMenu(backendRow, { clientX: 120, clientY: 100 });
+    fireEvent.click(screen.getByRole('menuitem', { name: 'New note here' }));
+
+    await waitFor(async () => {
+      expect((await repository.load())?.notes[0]?.folderId).toBe('root-folder');
     });
   });
 
@@ -97,8 +105,10 @@ describe('WorkspaceApp', () => {
     const platformRow = screen.getByTitle('Platform').parentElement;
     const databaseRow = screen.getByTitle('Database').parentElement;
     const chatRow = screen.getByRole('button', { name: 'Production debugging' }).parentElement;
-    const noteRow = screen.getByRole('button', { name: 'Runbook' });
-    if (backendRow === null || platformRow === null || databaseRow === null || chatRow === null) throw new Error('Explorer drag targets missing');
+    const noteRow = screen.getByRole('button', { name: 'Runbook' }).parentElement;
+    if (backendRow === null || platformRow === null || databaseRow === null || chatRow === null || noteRow === null) {
+      throw new Error('Explorer drag targets missing');
+    }
 
     const chatTransfer = dataTransfer();
     fireEvent.dragStart(chatRow, { dataTransfer: chatTransfer });
@@ -145,7 +155,7 @@ describe('WorkspaceApp', () => {
       />,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Save chat' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Save current chat' }));
     expect(screen.getByRole('dialog', { name: 'Save conversation' })).toBeVisible();
     fireEvent.change(screen.getByRole('textbox', { name: 'Conversation name' }), {
       target: { value: 'PostgreSQL locking' },
@@ -178,6 +188,7 @@ describe('WorkspaceApp', () => {
 
     await screen.findByText('Local workspace ready.');
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    expect(screen.getByRole('dialog', { name: 'Command palette' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Open graph' }));
     expect(screen.getByRole('tab', { name: 'Graph' })).toHaveAttribute('aria-selected', 'true');
   });
@@ -208,7 +219,7 @@ describe('WorkspaceApp', () => {
     expect(screen.getByText('Conversation detected')).toBeVisible();
   });
 
-  it('creates, edits, links, and persists a local Markdown note', async () => {
+  it('creates, edits, links, and persists a local Markdown note while keeping the tab title aligned', async () => {
     const initial = createInitialWorkspace(1);
     initial.chatRefs = [
       createChatReference({
@@ -223,7 +234,7 @@ describe('WorkspaceApp', () => {
 
     render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Note' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Create note' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), {
       target: { value: 'Transactions' },
     });
@@ -237,25 +248,50 @@ describe('WorkspaceApp', () => {
       expect(saved?.notes[0]?.title).toBe('Transactions');
       expect(saved?.notes[0]?.content).toContain('Atomicity');
       expect(saved?.notes[0]?.linkedChatIds).toEqual(['chat-one']);
+      expect(screen.getByRole('tab', { name: 'Transactions' })).toHaveAttribute('aria-selected', 'true');
     });
   });
 
-  it('uses an internal confirmation dialog before deleting folders', async () => {
+  it('collapses note secondary context down to its chars/tags summary and expands it again', async () => {
+    const initial = createInitialWorkspace(1);
+    const note = createLocalNote({ id: 'note-one', title: 'Runbook', folderId: null, now: 1 });
+    initial.notes = [note];
+    initial.tabs = [
+      ...initial.tabs,
+      { id: 'tab-note-note-one', kind: 'note', entityId: note.id, title: note.title, pinned: false },
+    ];
+    initial.activeTabId = 'tab-note-note-one';
+
+    render(<WorkspaceApp repository={new MemoryWorkspaceRepository(initial)} currentUrl={() => 'https://chatgpt.com/'} />);
+
+    expect(await screen.findByRole('region', { name: 'Related local notes' })).toBeVisible();
+    expect(screen.getByText('0 chars · 0 tags')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse note context' }));
+    expect(screen.queryByRole('region', { name: 'Related local notes' })).not.toBeInTheDocument();
+    expect(screen.getByText('0 chars · 0 tags')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Expand note context' }));
+    expect(screen.getByRole('region', { name: 'Related local notes' })).toBeVisible();
+  });
+
+  it('uses an internal confirmation dialog before deleting folders from the target context menu', async () => {
     const initial = createInitialWorkspace(1);
     initial.folders = [createFolder({ id: 'backend', name: 'Backend', parentId: null, now: 1 })];
     const repository = new MemoryWorkspaceRepository(initial);
 
     render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
 
-    fireEvent.click(await screen.findByTitle('Backend'));
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Backend' }));
+    const backendRow = (await screen.findByTitle('Backend')).parentElement;
+    if (backendRow === null) throw new Error('Backend row missing');
+    fireEvent.contextMenu(backendRow, { clientX: 120, clientY: 100 });
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete folder' }));
     expect(screen.getByRole('alertdialog', { name: 'Delete folder?' })).toHaveTextContent('Child items will move to Workspace root.');
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('alertdialog', { name: 'Delete folder?' })).not.toBeInTheDocument();
     expect((await repository.load())?.folders).toHaveLength(1);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Backend' }));
+    fireEvent.contextMenu(backendRow, { clientX: 120, clientY: 100 });
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete folder' }));
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 
     await waitFor(async () => {
@@ -263,21 +299,53 @@ describe('WorkspaceApp', () => {
     });
   });
 
-  it('renames folders through an internal input dialog', async () => {
+  it('renames folders through the target context menu and internal input dialog', async () => {
     const initial = createInitialWorkspace(1);
     initial.folders = [createFolder({ id: 'backend', name: 'Backend', parentId: null, now: 1 })];
     const repository = new MemoryWorkspaceRepository(initial);
 
     render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
 
-    fireEvent.click(await screen.findByTitle('Backend'));
-    fireEvent.click(screen.getByRole('button', { name: 'Rename Backend' }));
+    const backendRow = (await screen.findByTitle('Backend')).parentElement;
+    if (backendRow === null) throw new Error('Backend row missing');
+    fireEvent.contextMenu(backendRow, { clientX: 120, clientY: 100 });
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Rename folder' }));
     expect(screen.getByRole('dialog', { name: 'Rename folder' })).toBeVisible();
     fireEvent.change(screen.getByRole('textbox', { name: 'Folder name' }), { target: { value: 'Platform' } });
     fireEvent.click(screen.getByRole('button', { name: 'Rename' }));
 
     await waitFor(async () => {
       expect((await repository.load())?.folders[0]?.name).toBe('Platform');
+    });
+  });
+
+  it('renames and deletes notes from the note target context menu', async () => {
+    const initial = createInitialWorkspace(1);
+    initial.notes = [createLocalNote({ id: 'note-one', title: 'Runbook', folderId: null, now: 1 })];
+    const repository = new MemoryWorkspaceRepository(initial);
+
+    render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
+
+    let noteRow = (await screen.findByRole('button', { name: 'Runbook' })).parentElement;
+    if (noteRow === null) throw new Error('Note row missing');
+    fireEvent.contextMenu(noteRow, { clientX: 120, clientY: 100 });
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Rename note' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), { target: { value: 'Incident runbook' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Rename' }));
+
+    await waitFor(async () => {
+      expect((await repository.load())?.notes[0]?.title).toBe('Incident runbook');
+    });
+
+    noteRow = screen.getByRole('button', { name: 'Incident runbook' }).parentElement;
+    if (noteRow === null) throw new Error('Renamed note row missing');
+    fireEvent.contextMenu(noteRow, { clientX: 120, clientY: 100 });
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Delete note' }));
+    expect(screen.getByRole('alertdialog', { name: 'Delete note?' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await waitFor(async () => {
+      expect((await repository.load())?.notes).toHaveLength(0);
     });
   });
 
