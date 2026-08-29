@@ -33,7 +33,7 @@ import type { LocalVaultBridge } from '../integrations/obsidian/bridge';
 import type { WorkspaceRepository } from '../persistence/workspaceRepository';
 import { getChatGptCapability, navigateToChatGptTarget } from '../providers/chatgpt/adapter';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
-import { Button } from '../ui/primitives';
+import { Button, IconButton } from '../ui/primitives';
 import { TextInputDialog } from '../ui/TextInputDialog';
 
 export type WorkspaceView = 'workspace' | 'markdown-sync';
@@ -53,10 +53,12 @@ type PersistenceState = 'loading' | 'ready' | 'blocked';
 type PendingDelete =
   | { kind: 'folder'; folder: WorkspaceFolder }
   | { kind: 'chat'; chat: ChatReference }
+  | { kind: 'note'; note: LocalNote }
   | null;
 type PendingRename =
   | { kind: 'folder'; folder: WorkspaceFolder }
   | { kind: 'chat'; chat: ChatReference }
+  | { kind: 'note'; note: LocalNote }
   | null;
 
 function messageFromError(error: unknown): string {
@@ -102,6 +104,7 @@ export function WorkspaceApp({
   const [saveDialogTarget, setSaveDialogTarget] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
   const [pendingRename, setPendingRename] = useState<PendingRename>(null);
+  const [noteContextExpanded, setNoteContextExpanded] = useState(true);
   const [bridgeState, setBridgeState] = useState<BridgeConnectionState>('disconnected');
   const [bridgeMessage, setBridgeMessage] = useState<string | null>(null);
   const [bridgeToken, setBridgeToken] = useState<string | null>(null);
@@ -165,7 +168,7 @@ export function WorkspaceApp({
   }
 
   function noteTab(note: LocalNote): WorkspaceTab {
-    return { id: `tab-note-${note.id}`, kind: 'note', entityId: note.id, title: note.title, pinned: false };
+    return { id: `tab-note-${note.id}`, kind: 'note', entityId: note.id, title: note.title.trim() || 'Untitled note', pinned: false };
   }
 
   function openTab(tab: WorkspaceTab): void {
@@ -202,12 +205,31 @@ export function WorkspaceApp({
     setPendingDelete({ kind: 'folder', folder });
   }
 
-  function addNote(): void {
+  function addNote(folderId: string | null = selectedFolderId): void {
     const now = Date.now();
-    const note = createLocalNote({ id: createEntityId('note'), title: 'Untitled note', folderId: selectedFolderId, now });
+    const note = createLocalNote({ id: createEntityId('note'), title: 'Untitled note', folderId, now });
     dispatch({ type: 'note/create', note });
     dispatch({ type: 'tab/open', tab: noteTab(note), now });
+    setSelectedFolderId(folderId);
     setStatus('Note created locally.');
+  }
+
+  function updateNote(note: LocalNote): void {
+    const now = Date.now();
+    dispatch({ type: 'note/update', note, now });
+    const tab = workspace.tabs.find((item) => item.kind === 'note' && item.entityId === note.id);
+    const title = note.title.trim() || 'Untitled note';
+    if (tab !== undefined && tab.title !== title) {
+      dispatch({ type: 'tab/open', tab: { ...tab, title }, now });
+    }
+  }
+
+  function renameNote(note: LocalNote): void {
+    setPendingRename({ kind: 'note', note });
+  }
+
+  function deleteNote(note: LocalNote): void {
+    setPendingDelete({ kind: 'note', note });
   }
 
   function moveNote(note: LocalNote, folderId: string | null): void {
@@ -282,13 +304,20 @@ export function WorkspaceApp({
       const folder = pendingRename.folder;
       dispatch({ type: 'folder/update', folder: { ...folder, name: value }, now });
       setStatus(`Renamed folder to “${value}”.`);
-    } else {
+    } else if (pendingRename.kind === 'chat') {
       const chat = pendingRename.chat;
       const updated = { ...chat, label: value };
       dispatch({ type: 'chat/update', chat: updated, now });
       const tab = workspace.tabs.find((item) => item.kind === 'chat' && item.entityId === chat.id);
       if (tab !== undefined) dispatch({ type: 'tab/open', tab: { ...tab, title: updated.label }, now });
       setStatus(`Renamed conversation to “${updated.label}”.`);
+    } else {
+      const note = pendingRename.note;
+      const updated = { ...note, title: value };
+      dispatch({ type: 'note/update', note: updated, now });
+      const tab = workspace.tabs.find((item) => item.kind === 'note' && item.entityId === note.id);
+      if (tab !== undefined) dispatch({ type: 'tab/open', tab: { ...tab, title: value }, now });
+      setStatus(`Renamed note to “${value}”.`);
     }
 
     setPendingRename(null);
@@ -303,10 +332,14 @@ export function WorkspaceApp({
       dispatch({ type: 'folder/delete', folderId: folder.id, now });
       if (selectedFolderId === folder.id) setSelectedFolderId(folder.parentId);
       setStatus(`Deleted folder “${folder.name}”.`);
-    } else {
+    } else if (pendingDelete.kind === 'chat') {
       const chat = pendingDelete.chat;
       dispatch({ type: 'chat/delete', chatId: chat.id, now });
       setStatus(`Deleted local reference “${chat.label}”.`);
+    } else {
+      const note = pendingDelete.note;
+      dispatch({ type: 'note/delete', noteId: note.id, now });
+      setStatus(`Deleted note “${note.title}”.`);
     }
 
     setPendingDelete(null);
@@ -477,7 +510,7 @@ export function WorkspaceApp({
       run: () => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed }),
     },
     { id: 'folder-create', label: 'Create folder at root', run: () => addFolder(null) },
-    { id: 'note-create', label: 'Create note', run: addNote },
+    { id: 'note-create', label: 'Create note', run: () => addNote() },
     { id: 'chat-save', label: 'Save current chat', run: saveCurrentChat },
     { id: 'graph-open', label: 'Open graph', run: openGraph },
     { id: 'settings-open', label: 'Open settings', run: openSettings },
@@ -504,14 +537,20 @@ export function WorkspaceApp({
     surfaceContent = <GraphNavigator graph={graph} onOpenNode={openGraphNode} onCreateManualEdge={createManualEdge} />;
   } else if (activeNote !== undefined) {
     surfaceContent = (
-      <div className="grid h-full min-h-0 min-[880px]:grid-cols-[minmax(0,1fr)_260px] max-[879px]:grid-rows-[minmax(0,1fr)_auto]">
+      <div
+        className={noteContextExpanded
+          ? 'grid h-full min-h-0 min-[880px]:grid-cols-[minmax(0,1fr)_260px] max-[879px]:grid-rows-[minmax(0,1fr)_auto]'
+          : 'h-full min-h-0'}
+      >
         <LocalNoteEditor
           note={activeNote}
           chats={workspace.chatRefs}
-          onChange={(note) => dispatch({ type: 'note/update', note, now: Date.now() })}
+          contextExpanded={noteContextExpanded}
+          onChange={updateNote}
           onLinkChat={(chatId) => dispatch({ type: 'note/link-chat', noteId: activeNote.id, chatId, now: Date.now() })}
+          onToggleContext={() => setNoteContextExpanded((current) => !current)}
         />
-        <NoteContextRail note={activeNote} notes={workspace.notes} onOpenNote={openNote} />
+        {noteContextExpanded && <NoteContextRail note={activeNote} notes={workspace.notes} onOpenNote={openNote} />}
       </div>
     );
   } else if (activeChat !== undefined) {
@@ -563,15 +602,15 @@ export function WorkspaceApp({
 
   const tree = (
     <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
-      <div className="grid grid-cols-3 gap-1.5 border-b border-cs-border p-2">
-        <Button className="min-w-0 px-1.5" onClick={() => addFolder(null)}>
-          <FolderPlus size={11} aria-hidden="true" /> <span className="truncate">Folder</span>
-        </Button>
-        <Button className="min-w-0 px-1.5" onClick={addNote}>
-          <FilePlus2 size={11} aria-hidden="true" /> <span className="truncate">Note</span>
-        </Button>
-        <Button variant="primary" className="min-w-0 px-1.5" onClick={saveCurrentChat}>
-          <BookmarkPlus size={11} aria-hidden="true" /> <span className="truncate">Save chat</span>
+      <div className="flex items-center justify-center gap-1 border-b border-cs-border p-1.5">
+        <IconButton aria-label="Create folder" title="Create folder" onClick={() => addFolder(null)}>
+          <FolderPlus size={12} aria-hidden="true" />
+        </IconButton>
+        <IconButton aria-label="Create note" title="Create note" onClick={() => addNote()}>
+          <FilePlus2 size={12} aria-hidden="true" />
+        </IconButton>
+        <Button size="icon" variant="primary" aria-label="Save current chat" title="Save current chat" onClick={saveCurrentChat}>
+          <BookmarkPlus size={12} aria-hidden="true" />
         </Button>
       </div>
       <WorkspaceTree
@@ -581,7 +620,8 @@ export function WorkspaceApp({
         selectedFolderId={selectedFolderId}
         onSelectFolder={setSelectedFolderId}
         onToggleFolder={(folderId) => dispatch({ type: 'folder/toggle', folderId, now: Date.now() })}
-        onCreateChildFolder={(folderId) => addFolder(folderId)}
+        onCreateFolder={addFolder}
+        onCreateNote={addNote}
         onRenameFolder={renameFolder}
         onDeleteFolder={deleteFolder}
         onMoveFolder={moveFolder}
@@ -590,6 +630,8 @@ export function WorkspaceApp({
         onTogglePinChat={togglePinChat}
         onRenameChat={renameChat}
         onDeleteChat={deleteChat}
+        onRenameNote={renameNote}
+        onDeleteNote={deleteNote}
         onMoveChat={moveChat}
         onMoveNote={moveNote}
       />
@@ -610,14 +652,31 @@ export function WorkspaceApp({
     ? `Delete “${pendingDelete.folder.name}”? Child items will move to ${pendingDelete.folder.parentId === null ? 'Workspace root' : 'the parent folder'}.`
     : pendingDelete?.kind === 'chat'
       ? `Delete the local reference “${pendingDelete.chat.label}”? The ChatGPT conversation itself will not be deleted.`
-      : '';
-  const renameTitle = pendingRename?.kind === 'folder' ? 'Rename folder' : 'Rename conversation';
-  const renameLabel = pendingRename?.kind === 'folder' ? 'Folder name' : 'Conversation name';
+      : pendingDelete?.kind === 'note'
+        ? `Delete the local note “${pendingDelete.note.title}”? This removes the note and its local graph relationships.`
+        : '';
+  const deleteTitle = pendingDelete?.kind === 'folder'
+    ? 'Delete folder?'
+    : pendingDelete?.kind === 'chat'
+      ? 'Delete conversation reference?'
+      : 'Delete note?';
+  const renameTitle = pendingRename?.kind === 'folder'
+    ? 'Rename folder'
+    : pendingRename?.kind === 'chat'
+      ? 'Rename conversation'
+      : 'Rename note';
+  const renameLabel = pendingRename?.kind === 'folder'
+    ? 'Folder name'
+    : pendingRename?.kind === 'chat'
+      ? 'Conversation name'
+      : 'Note title';
   const renameInitialValue = pendingRename?.kind === 'folder'
     ? pendingRename.folder.name
     : pendingRename?.kind === 'chat'
       ? pendingRename.chat.label
-      : '';
+      : pendingRename?.kind === 'note'
+        ? pendingRename.note.title
+        : '';
 
   return (
     <>
@@ -646,7 +705,7 @@ export function WorkspaceApp({
       />
       <ConfirmDialog
         open={pendingDelete !== null}
-        title={pendingDelete?.kind === 'folder' ? 'Delete folder?' : 'Delete conversation reference?'}
+        title={deleteTitle}
         description={deleteDescription}
         confirmLabel="Delete"
         danger

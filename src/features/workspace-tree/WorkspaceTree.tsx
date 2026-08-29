@@ -2,6 +2,7 @@ import {
   ChevronDown,
   ChevronRight,
   ExternalLink,
+  FilePlus2,
   FileText,
   Folder,
   FolderOpen,
@@ -13,13 +14,12 @@ import {
   Search,
   Star,
   Trash2,
-  X,
 } from 'lucide-react';
-import { useMemo, useState, type DragEvent } from 'react';
+import { useEffect, useMemo, useState, type DragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 
 import type { ChatReference, LocalNote, WorkspaceFolder } from '../../domain/workspace/model';
 import { cn } from '../../ui/cn';
-import { Button, IconButton, SectionLabel, Select } from '../../ui/primitives';
+import { IconButton, SectionLabel, Select } from '../../ui/primitives';
 
 interface WorkspaceTreeProps {
   folders: WorkspaceFolder[];
@@ -28,7 +28,8 @@ interface WorkspaceTreeProps {
   selectedFolderId: string | null;
   onSelectFolder: (folderId: string | null) => void;
   onToggleFolder: (folderId: string) => void;
-  onCreateChildFolder: (folderId: string) => void;
+  onCreateFolder: (parentId: string | null) => void;
+  onCreateNote: (folderId: string | null) => void;
   onRenameFolder: (folder: WorkspaceFolder) => void;
   onDeleteFolder: (folder: WorkspaceFolder) => void;
   onMoveFolder: (folder: WorkspaceFolder, parentId: string | null) => void;
@@ -37,6 +38,8 @@ interface WorkspaceTreeProps {
   onTogglePinChat: (chat: ChatReference) => void;
   onRenameChat: (chat: ChatReference) => void;
   onDeleteChat: (chat: ChatReference) => void;
+  onRenameNote: (note: LocalNote) => void;
+  onDeleteNote: (note: LocalNote) => void;
   onMoveChat: (chat: ChatReference, folderId: string | null) => void;
   onMoveNote: (note: LocalNote, folderId: string | null) => void;
 }
@@ -46,7 +49,20 @@ type DragPayload =
   | { kind: 'chat'; id: string }
   | { kind: 'note'; id: string };
 
+type TreeContextTarget =
+  | { kind: 'root'; id?: undefined }
+  | { kind: 'folder'; id: string }
+  | { kind: 'chat'; id: string }
+  | { kind: 'note'; id: string };
+
+interface TreeContextMenuState {
+  target: TreeContextTarget;
+  x: number;
+  y: number;
+}
+
 const DRAG_MIME = 'application/x-chatspace-item';
+const CONTEXT_MENU_WIDTH = 190;
 
 function startDrag(event: DragEvent<HTMLElement>, payload: DragPayload): void {
   event.dataTransfer.effectAllowed = 'move';
@@ -82,12 +98,45 @@ function movePayload(props: WorkspaceTreeProps, payload: DragPayload, targetFold
   if (note !== undefined) props.onMoveNote(note, targetFolderId);
 }
 
-interface FolderBranchProps extends WorkspaceTreeProps {
-  parentId: string | null;
-  depth: number;
-  dropTargetId: string | null;
-  onDropTargetChange: (targetId: string | null) => void;
-  onManageChat: (chat: ChatReference) => void;
+function clampMenuPosition(x: number, y: number): { x: number; y: number } {
+  const viewportWidth = typeof window === 'undefined' ? x + CONTEXT_MENU_WIDTH : window.innerWidth;
+  const viewportHeight = typeof window === 'undefined' ? y + 240 : window.innerHeight;
+  return {
+    x: Math.max(8, Math.min(x, viewportWidth - CONTEXT_MENU_WIDTH - 8)),
+    y: Math.max(8, Math.min(y, viewportHeight - 240)),
+  };
+}
+
+function MenuAction({
+  icon,
+  children,
+  danger = false,
+  onClick,
+}: {
+  icon: ReactNode;
+  children: ReactNode;
+  danger?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      className={cn(
+        'flex h-8 w-full items-center gap-2 rounded px-2 text-left text-[10px] outline-none hover:bg-cs-hover focus-visible:bg-cs-hover',
+        danger ? 'text-cs-danger' : 'text-cs-muted hover:text-cs-text focus-visible:text-cs-text',
+      )}
+      onClick={onClick}
+    >
+      {icon}
+      <span className="min-w-0 flex-1 truncate">{children}</span>
+    </button>
+  );
+}
+
+interface LeafMenuProps {
+  onContextMenu: (event: ReactMouseEvent<HTMLElement>) => void;
+  onMenuButtonClick: (event: ReactMouseEvent<HTMLButtonElement>) => void;
 }
 
 function ChatLeaf({
@@ -95,19 +144,20 @@ function ChatLeaf({
   depth,
   onOpenChat,
   onTogglePinChat,
-  onManageChat,
+  onContextMenu,
+  onMenuButtonClick,
 }: {
   chat: ChatReference;
   depth: number;
   onOpenChat: (chat: ChatReference) => void;
   onTogglePinChat: (chat: ChatReference) => void;
-  onManageChat: (chat: ChatReference) => void;
-}) {
+} & LeafMenuProps) {
   return (
     <div
       className="group flex h-7 w-full min-w-0 items-center pr-1 text-cs-muted hover:bg-cs-hover"
       style={{ paddingLeft: `${8 + depth * 14}px` }}
       draggable
+      onContextMenu={onContextMenu}
       onDragStart={(event) => startDrag(event, { kind: 'chat', id: chat.id })}
     >
       <button
@@ -125,14 +175,16 @@ function ChatLeaf({
           chat.pinned && 'text-cs-muted opacity-100',
         )}
         aria-label={`${chat.pinned ? 'Unpin' : 'Pin'} ${chat.label}`}
+        title={chat.pinned ? 'Unpin' : 'Pin'}
         onClick={() => onTogglePinChat(chat)}
       >
         <Star size={11} fill={chat.pinned ? 'currentColor' : 'none'} aria-hidden="true" />
       </IconButton>
       <IconButton
         className="size-6 text-cs-subtle opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-        aria-label={`Manage ${chat.label}`}
-        onClick={() => onManageChat(chat)}
+        aria-label={`Actions for ${chat.label}`}
+        title="Actions"
+        onClick={onMenuButtonClick}
       >
         <MoreHorizontal size={12} aria-hidden="true" />
       </IconButton>
@@ -140,116 +192,51 @@ function ChatLeaf({
   );
 }
 
-function NoteLeaf({ note, depth, onOpenNote }: { note: LocalNote; depth: number; onOpenNote: (note: LocalNote) => void }) {
+function NoteLeaf({
+  note,
+  depth,
+  onOpenNote,
+  onContextMenu,
+  onMenuButtonClick,
+}: {
+  note: LocalNote;
+  depth: number;
+  onOpenNote: (note: LocalNote) => void;
+} & LeafMenuProps) {
   return (
-    <button
-      type="button"
+    <div
+      className="group flex h-7 w-full min-w-0 items-center pr-1 text-cs-muted hover:bg-cs-hover"
+      style={{ paddingLeft: `${8 + depth * 14}px` }}
       draggable
-      className="flex h-7 w-full min-w-0 items-center gap-1.5 overflow-hidden pr-2 text-left text-cs-muted outline-none transition-colors hover:bg-cs-hover hover:text-cs-text focus-visible:bg-cs-hover focus-visible:text-cs-text"
-      style={{ paddingLeft: `${10 + depth * 14}px` }}
-      title={note.title}
-      onClick={() => onOpenNote(note)}
+      onContextMenu={onContextMenu}
       onDragStart={(event) => startDrag(event, { kind: 'note', id: note.id })}
     >
-      <FileText className="shrink-0 text-cs-subtle" size={12} strokeWidth={1.7} aria-hidden="true" />
-      <span className="truncate text-[11px]">{note.title}</span>
-    </button>
-  );
-}
-
-function FolderBranch(props: FolderBranchProps) {
-  const children = props.folders.filter((folder) => folder.parentId === props.parentId);
-
-  return (
-    <>
-      {children.map((folder) => {
-        const active = props.selectedFolderId === folder.id;
-        const dropActive = props.dropTargetId === folder.id;
-        return (
-          <div key={folder.id}>
-            <div
-              className={cn(
-                'group flex h-7 min-w-0 items-center pr-1 transition-colors hover:bg-cs-hover',
-                active && 'bg-cs-active text-cs-text',
-                dropActive && 'bg-cs-active ring-1 ring-inset ring-cs-focus/40',
-              )}
-              style={{ paddingLeft: `${4 + props.depth * 14}px` }}
-              draggable
-              onDragStart={(event) => {
-                event.stopPropagation();
-                startDrag(event, { kind: 'folder', id: folder.id });
-              }}
-              onDragOver={(event) => {
-                event.preventDefault();
-                event.dataTransfer.dropEffect = 'move';
-                props.onDropTargetChange(folder.id);
-              }}
-              onDragLeave={() => {
-                if (props.dropTargetId === folder.id) props.onDropTargetChange(null);
-              }}
-              onDrop={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                props.onDropTargetChange(null);
-                const payload = readDrag(event);
-                if (payload !== null) movePayload(props, payload, folder.id);
-              }}
-            >
-              <IconButton
-                className="size-5 shrink-0 text-cs-subtle"
-                aria-label={`${folder.collapsed ? 'Expand' : 'Collapse'} ${folder.name}`}
-                onClick={() => props.onToggleFolder(folder.id)}
-              >
-                {folder.collapsed ? <ChevronRight size={12} aria-hidden="true" /> : <ChevronDown size={12} aria-hidden="true" />}
-              </IconButton>
-              <button
-                className="flex h-full min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-sm px-1 text-left outline-none focus-visible:bg-cs-hover"
-                type="button"
-                title={folder.name}
-                onClick={() => props.onSelectFolder(folder.id)}
-                onDoubleClick={() => props.onRenameFolder(folder)}
-              >
-                {folder.collapsed ? (
-                  <Folder className="shrink-0 text-cs-subtle" size={12} strokeWidth={1.7} aria-hidden="true" />
-                ) : (
-                  <FolderOpen className="shrink-0 text-cs-subtle" size={12} strokeWidth={1.7} aria-hidden="true" />
-                )}
-                <span className="truncate text-[11px]">{folder.name}</span>
-              </button>
-            </div>
-
-            {!folder.collapsed && <FolderBranch {...props} parentId={folder.id} depth={props.depth + 1} />}
-            {!folder.collapsed &&
-              props.chatRefs
-                .filter((chat) => chat.folderId === folder.id)
-                .map((chat) => (
-                  <ChatLeaf
-                    key={chat.id}
-                    chat={chat}
-                    depth={props.depth + 1}
-                    onOpenChat={props.onOpenChat}
-                    onTogglePinChat={props.onTogglePinChat}
-                    onManageChat={props.onManageChat}
-                  />
-                ))}
-            {!folder.collapsed &&
-              props.notes
-                .filter((note) => note.folderId === folder.id)
-                .map((note) => <NoteLeaf key={note.id} note={note} depth={props.depth + 1} onOpenNote={props.onOpenNote} />)}
-          </div>
-        );
-      })}
-    </>
+      <button
+        type="button"
+        className="flex h-full min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-sm px-1.5 text-left outline-none transition-colors hover:text-cs-text focus-visible:bg-cs-hover focus-visible:text-cs-text"
+        title={note.title}
+        onClick={() => onOpenNote(note)}
+      >
+        <FileText className="shrink-0 text-cs-subtle" size={12} strokeWidth={1.7} aria-hidden="true" />
+        <span className="truncate text-[11px]">{note.title}</span>
+      </button>
+      <IconButton
+        className="size-6 text-cs-subtle opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+        aria-label={`Actions for ${note.title}`}
+        title="Actions"
+        onClick={onMenuButtonClick}
+      >
+        <MoreHorizontal size={12} aria-hidden="true" />
+      </IconButton>
+    </div>
   );
 }
 
 export function WorkspaceTree(props: WorkspaceTreeProps) {
   const [query, setQuery] = useState('');
-  const [managedChatId, setManagedChatId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<TreeContextMenuState | null>(null);
   const normalized = query.trim().toLowerCase();
-  const selectedFolder = props.folders.find((folder) => folder.id === props.selectedFolderId);
-  const managedChat = props.chatRefs.find((chat) => chat.id === managedChatId);
   const pinnedChats = props.chatRefs.filter((chat) => chat.pinned);
   const searchResults = useMemo(() => {
     if (normalized === '') return null;
@@ -260,6 +247,34 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
     };
   }, [normalized, props.chatRefs, props.folders, props.notes]);
 
+  useEffect(() => {
+    if (contextMenu === null) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setContextMenu(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [contextMenu]);
+
+  function openContextMenu(event: ReactMouseEvent<HTMLElement>, target: TreeContextTarget): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const position = clampMenuPosition(event.clientX, event.clientY);
+    setContextMenu({ target, ...position });
+  }
+
+  function openMenuFromButton(event: ReactMouseEvent<HTMLButtonElement>, target: TreeContextTarget): void {
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    const position = clampMenuPosition(rect.right - CONTEXT_MENU_WIDTH, rect.bottom + 4);
+    setContextMenu({ target, ...position });
+  }
+
+  function closeAndRun(action: () => void): void {
+    setContextMenu(null);
+    action();
+  }
+
   const chatLeaf = (chat: ChatReference, key: string, depth = 0) => (
     <ChatLeaf
       key={key}
@@ -267,14 +282,111 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
       depth={depth}
       onOpenChat={props.onOpenChat}
       onTogglePinChat={props.onTogglePinChat}
-      onManageChat={(item) => setManagedChatId(item.id)}
+      onContextMenu={(event) => openContextMenu(event, { kind: 'chat', id: chat.id })}
+      onMenuButtonClick={(event) => openMenuFromButton(event, { kind: 'chat', id: chat.id })}
     />
   );
 
+  const noteLeaf = (note: LocalNote, key: string, depth = 0) => (
+    <NoteLeaf
+      key={key}
+      note={note}
+      depth={depth}
+      onOpenNote={props.onOpenNote}
+      onContextMenu={(event) => openContextMenu(event, { kind: 'note', id: note.id })}
+      onMenuButtonClick={(event) => openMenuFromButton(event, { kind: 'note', id: note.id })}
+    />
+  );
+
+  function renderFolderBranch(parentId: string | null, depth: number): ReactNode {
+    const children = props.folders.filter((folder) => folder.parentId === parentId);
+    return children.map((folder) => {
+      const active = props.selectedFolderId === folder.id;
+      const dropActive = dropTargetId === folder.id;
+      return (
+        <div key={folder.id}>
+          <div
+            className={cn(
+              'group flex h-7 min-w-0 items-center pr-1 transition-colors hover:bg-cs-hover',
+              active && 'bg-cs-active text-cs-text',
+              dropActive && 'bg-cs-active ring-1 ring-inset ring-cs-focus/40',
+            )}
+            style={{ paddingLeft: `${4 + depth * 14}px` }}
+            draggable
+            onContextMenu={(event) => openContextMenu(event, { kind: 'folder', id: folder.id })}
+            onDragStart={(event) => {
+              event.stopPropagation();
+              startDrag(event, { kind: 'folder', id: folder.id });
+            }}
+            onDragOver={(event) => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = 'move';
+              setDropTargetId(folder.id);
+            }}
+            onDragLeave={() => {
+              if (dropTargetId === folder.id) setDropTargetId(null);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setDropTargetId(null);
+              const payload = readDrag(event);
+              if (payload !== null) movePayload(props, payload, folder.id);
+            }}
+          >
+            <IconButton
+              className="size-5 shrink-0 text-cs-subtle"
+              aria-label={`${folder.collapsed ? 'Expand' : 'Collapse'} ${folder.name}`}
+              onClick={() => props.onToggleFolder(folder.id)}
+            >
+              {folder.collapsed ? <ChevronRight size={12} aria-hidden="true" /> : <ChevronDown size={12} aria-hidden="true" />}
+            </IconButton>
+            <button
+              className="flex h-full min-w-0 flex-1 items-center gap-1.5 overflow-hidden rounded-sm px-1 text-left outline-none focus-visible:bg-cs-hover"
+              type="button"
+              title={folder.name}
+              onClick={() => props.onSelectFolder(folder.id)}
+              onDoubleClick={() => props.onRenameFolder(folder)}
+            >
+              {folder.collapsed ? (
+                <Folder className="shrink-0 text-cs-subtle" size={12} strokeWidth={1.7} aria-hidden="true" />
+              ) : (
+                <FolderOpen className="shrink-0 text-cs-subtle" size={12} strokeWidth={1.7} aria-hidden="true" />
+              )}
+              <span className="truncate text-[11px]">{folder.name}</span>
+            </button>
+            <IconButton
+              className="size-6 text-cs-subtle opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+              aria-label={`Actions for ${folder.name}`}
+              title="Actions"
+              onClick={(event) => openMenuFromButton(event, { kind: 'folder', id: folder.id })}
+            >
+              <MoreHorizontal size={12} aria-hidden="true" />
+            </IconButton>
+          </div>
+
+          {!folder.collapsed && renderFolderBranch(folder.id, depth + 1)}
+          {!folder.collapsed && props.chatRefs.filter((chat) => chat.folderId === folder.id).map((chat) => chatLeaf(chat, chat.id, depth + 1))}
+          {!folder.collapsed && props.notes.filter((note) => note.folderId === folder.id).map((note) => noteLeaf(note, note.id, depth + 1))}
+        </div>
+      );
+    });
+  }
+
   const rootDropActive = dropTargetId === 'root';
+  const contextFolder = contextMenu?.target.kind === 'folder'
+    ? props.folders.find((folder) => folder.id === contextMenu.target.id)
+    : undefined;
+  const contextChat = contextMenu?.target.kind === 'chat'
+    ? props.chatRefs.find((chat) => chat.id === contextMenu.target.id)
+    : undefined;
+  const contextNote = contextMenu?.target.kind === 'note'
+    ? props.notes.find((note) => note.id === contextMenu.target.id)
+    : undefined;
+  const menuLabel = contextFolder?.name ?? contextChat?.label ?? contextNote?.title ?? 'Workspace root';
 
   return (
-    <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
+    <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
       <div className="relative mx-2 mt-2">
         <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-cs-subtle" size={12} aria-hidden="true" />
         <input
@@ -291,18 +403,31 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
           <section>
             <SectionLabel className="px-2.5 py-1.5">Results</SectionLabel>
             {searchResults.folders.map((folder) => (
-              <button
+              <div
                 key={folder.id}
-                className="flex h-7 w-full min-w-0 items-center gap-1.5 px-2.5 text-left text-cs-muted outline-none hover:bg-cs-hover hover:text-cs-text focus-visible:bg-cs-hover"
-                type="button"
-                onClick={() => props.onSelectFolder(folder.id)}
+                className="group flex h-7 min-w-0 items-center text-cs-muted hover:bg-cs-hover"
+                onContextMenu={(event) => openContextMenu(event, { kind: 'folder', id: folder.id })}
               >
-                <Folder size={12} strokeWidth={1.7} aria-hidden="true" />
-                <span className="truncate text-[11px]">{folder.name}</span>
-              </button>
+                <button
+                  className="flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5 text-left outline-none hover:text-cs-text focus-visible:bg-cs-hover"
+                  type="button"
+                  onClick={() => props.onSelectFolder(folder.id)}
+                >
+                  <Folder size={12} strokeWidth={1.7} aria-hidden="true" />
+                  <span className="truncate text-[11px]">{folder.name}</span>
+                </button>
+                <IconButton
+                  className="mr-1 size-6 text-cs-subtle opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                  aria-label={`Actions for ${folder.name}`}
+                  title="Actions"
+                  onClick={(event) => openMenuFromButton(event, { kind: 'folder', id: folder.id })}
+                >
+                  <MoreHorizontal size={12} aria-hidden="true" />
+                </IconButton>
+              </div>
             ))}
             {searchResults.chats.map((chat) => chatLeaf(chat, chat.id))}
-            {searchResults.notes.map((note) => <NoteLeaf key={note.id} note={note} depth={0} onOpenNote={props.onOpenNote} />)}
+            {searchResults.notes.map((note) => noteLeaf(note, note.id))}
             {searchResults.folders.length + searchResults.chats.length + searchResults.notes.length === 0 && (
               <p className="px-2.5 py-3 text-[10px] leading-4 text-cs-subtle">No workspace matches.</p>
             )}
@@ -318,10 +443,11 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
             <section>
               <div
                 className={cn(
-                  'mx-1 mb-1 flex h-7 items-center gap-1.5 rounded-md px-1.5 text-cs-subtle transition-colors',
+                  'group mx-1 mb-1 flex h-7 items-center gap-1.5 rounded-md px-1.5 text-cs-subtle transition-colors',
                   props.selectedFolderId === null && 'bg-cs-active text-cs-text',
                   rootDropActive && 'bg-cs-active ring-1 ring-inset ring-cs-focus/40',
                 )}
+                onContextMenu={(event) => openContextMenu(event, { kind: 'root' })}
                 onDragOver={(event) => {
                   event.preventDefault();
                   event.dataTransfer.dropEffect = 'move';
@@ -345,18 +471,19 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
                   <House size={12} strokeWidth={1.7} aria-hidden="true" />
                   <span className="text-[10px] font-medium">Workspace root</span>
                 </button>
-                <span className="text-[9px] text-cs-subtle">Drop here</span>
+                <span className="text-[9px] text-cs-subtle group-hover:hidden">Drop here</span>
+                <IconButton
+                  className="size-6 text-cs-subtle opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                  aria-label="Actions for Workspace root"
+                  title="Actions"
+                  onClick={(event) => openMenuFromButton(event, { kind: 'root' })}
+                >
+                  <MoreHorizontal size={12} aria-hidden="true" />
+                </IconButton>
               </div>
-              <FolderBranch
-                {...props}
-                parentId={null}
-                depth={0}
-                dropTargetId={dropTargetId}
-                onDropTargetChange={setDropTargetId}
-                onManageChat={(chat) => setManagedChatId(chat.id)}
-              />
+              {renderFolderBranch(null, 0)}
               {props.chatRefs.filter((chat) => chat.folderId === null).map((chat) => chatLeaf(chat, chat.id))}
-              {props.notes.filter((note) => note.folderId === null).map((note) => <NoteLeaf key={note.id} note={note} depth={0} onOpenNote={props.onOpenNote} />)}
+              {props.notes.filter((note) => note.folderId === null).map((note) => noteLeaf(note, note.id))}
               {props.folders.length + props.chatRefs.length + props.notes.length === 0 && (
                 <p className="px-2.5 py-3 text-[10px] leading-4 text-cs-subtle">Save the current chat or create a note.</p>
               )}
@@ -365,44 +492,116 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
         )}
       </div>
 
-      {managedChat !== undefined ? (
-        <div className="border-t border-cs-border bg-cs-surface/80 p-2" aria-label={`Conversation actions for ${managedChat.label}`}>
-          <div className="mb-2 flex min-w-0 items-start justify-between gap-2">
-            <div className="min-w-0">
-              <SectionLabel>Conversation</SectionLabel>
-              <strong className="mt-1 block truncate text-[11px] font-medium" title={managedChat.label}>{managedChat.label}</strong>
-            </div>
-            <IconButton className="-mr-1 -mt-1 text-cs-subtle" aria-label="Close conversation actions" onClick={() => setManagedChatId(null)}>
-              <X size={12} aria-hidden="true" />
-            </IconButton>
-          </div>
-          <Select
-            className="mb-2 w-full"
-            aria-label={`Move ${managedChat.label}`}
-            value={managedChat.folderId ?? ''}
-            onChange={(event) => props.onMoveChat(managedChat, event.target.value === '' ? null : event.target.value)}
+      {contextMenu !== null && (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-40 cursor-default bg-transparent"
+            aria-label="Close workspace actions"
+            onClick={() => setContextMenu(null)}
+          />
+          <div
+            className="fixed z-50 w-[190px] rounded-lg border border-cs-border bg-cs-surface p-1 shadow-[0_16px_48px_rgba(0,0,0,0.24)]"
+            role="menu"
+            aria-label={`Actions for ${menuLabel}`}
+            style={{ left: contextMenu.x, top: contextMenu.y }}
           >
-            <option value="">Workspace root</option>
-            {props.folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
-          </Select>
-          <div className="grid grid-cols-3 gap-1">
-            <Button variant="ghost" className="px-1" onClick={() => props.onRenameChat(managedChat)}><Pencil size={11} aria-hidden="true" /> Rename</Button>
-            <Button variant="ghost" className="px-1" onClick={() => props.onTogglePinChat(managedChat)}><Pin size={11} aria-hidden="true" /> {managedChat.pinned ? 'Unpin' : 'Pin'}</Button>
-            <Button variant="danger" className="px-1" onClick={() => { props.onDeleteChat(managedChat); setManagedChatId(null); }}><Trash2 size={11} aria-hidden="true" /> Delete</Button>
+            {contextMenu.target.kind === 'root' && (
+              <>
+                <MenuAction icon={<FolderPlus size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onCreateFolder(null))}>
+                  New folder
+                </MenuAction>
+                <MenuAction icon={<FilePlus2 size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onCreateNote(null))}>
+                  New note
+                </MenuAction>
+              </>
+            )}
+
+            {contextFolder !== undefined && (
+              <>
+                <MenuAction icon={<FolderPlus size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onCreateFolder(contextFolder.id))}>
+                  New subfolder
+                </MenuAction>
+                <MenuAction icon={<FilePlus2 size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onCreateNote(contextFolder.id))}>
+                  New note here
+                </MenuAction>
+                <div className="my-1 border-t border-cs-border" />
+                <MenuAction icon={<Pencil size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onRenameFolder(contextFolder))}>
+                  Rename folder
+                </MenuAction>
+                <MenuAction danger icon={<Trash2 size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onDeleteFolder(contextFolder))}>
+                  Delete folder
+                </MenuAction>
+              </>
+            )}
+
+            {contextChat !== undefined && (
+              <>
+                <MenuAction icon={<ExternalLink size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onOpenChat(contextChat))}>
+                  Open conversation
+                </MenuAction>
+                <MenuAction icon={<Pencil size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onRenameChat(contextChat))}>
+                  Rename
+                </MenuAction>
+                <MenuAction icon={<Pin size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onTogglePinChat(contextChat))}>
+                  {contextChat.pinned ? 'Unpin' : 'Pin'}
+                </MenuAction>
+                <div className="my-1 border-t border-cs-border" />
+                <label className="grid gap-1 px-2 py-1 text-[9px] text-cs-subtle">
+                  Move to
+                  <Select
+                    className="h-7 w-full text-[10px]"
+                    aria-label={`Move ${contextChat.label}`}
+                    value={contextChat.folderId ?? ''}
+                    onChange={(event) => {
+                      const folderId = event.target.value === '' ? null : event.target.value;
+                      closeAndRun(() => props.onMoveChat(contextChat, folderId));
+                    }}
+                  >
+                    <option value="">Workspace root</option>
+                    {props.folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
+                  </Select>
+                </label>
+                <div className="my-1 border-t border-cs-border" />
+                <MenuAction danger icon={<Trash2 size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onDeleteChat(contextChat))}>
+                  Delete reference
+                </MenuAction>
+              </>
+            )}
+
+            {contextNote !== undefined && (
+              <>
+                <MenuAction icon={<FileText size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onOpenNote(contextNote))}>
+                  Edit note
+                </MenuAction>
+                <MenuAction icon={<Pencil size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onRenameNote(contextNote))}>
+                  Rename note
+                </MenuAction>
+                <div className="my-1 border-t border-cs-border" />
+                <label className="grid gap-1 px-2 py-1 text-[9px] text-cs-subtle">
+                  Move to
+                  <Select
+                    className="h-7 w-full text-[10px]"
+                    aria-label={`Move ${contextNote.title}`}
+                    value={contextNote.folderId ?? ''}
+                    onChange={(event) => {
+                      const folderId = event.target.value === '' ? null : event.target.value;
+                      closeAndRun(() => props.onMoveNote(contextNote, folderId));
+                    }}
+                  >
+                    <option value="">Workspace root</option>
+                    {props.folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
+                  </Select>
+                </label>
+                <div className="my-1 border-t border-cs-border" />
+                <MenuAction danger icon={<Trash2 size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onDeleteNote(contextNote))}>
+                  Delete note
+                </MenuAction>
+              </>
+            )}
           </div>
-        </div>
-      ) : selectedFolder !== undefined ? (
-        <div className="grid gap-1.5 border-t border-cs-border bg-cs-surface/80 p-2" aria-label={`Folder actions for ${selectedFolder.name}`}>
-          <div className="flex min-w-0 items-center gap-1">
-            <span className="min-w-0 flex-1 truncate text-[10px] text-cs-muted">{selectedFolder.name}</span>
-            <IconButton aria-label={`Rename ${selectedFolder.name}`} onClick={() => props.onRenameFolder(selectedFolder)}><Pencil size={11} aria-hidden="true" /></IconButton>
-            <IconButton className="text-cs-danger" aria-label={`Delete ${selectedFolder.name}`} onClick={() => props.onDeleteFolder(selectedFolder)}><Trash2 size={11} aria-hidden="true" /></IconButton>
-          </div>
-          <Button variant="ghost" className="w-full justify-start" onClick={() => props.onCreateChildFolder(selectedFolder.id)}>
-            <FolderPlus size={11} aria-hidden="true" /> New subfolder here
-          </Button>
-        </div>
-      ) : null}
+        </>
+      )}
     </div>
   );
 }

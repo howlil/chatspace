@@ -1,15 +1,17 @@
-import { Code2, Dot, Eye, FileText, Link2, Pencil, Tag, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Code2, Dot, Eye, FileText, Link2, Pencil, Tag, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
 import type { ChatReference, LocalNote } from '../../domain/workspace/model';
 import { cn } from '../../ui/cn';
-import { Button, Input, Select } from '../../ui/primitives';
+import { Button, IconButton, Input, Select } from '../../ui/primitives';
 
 interface LocalNoteEditorProps {
   note: LocalNote;
   chats: ChatReference[];
+  contextExpanded: boolean;
   onChange: (note: LocalNote) => void;
   onLinkChat: (chatId: string) => void;
+  onToggleContext: () => void;
 }
 
 type NoteMode = 'edit' | 'preview';
@@ -78,7 +80,14 @@ function renderSafeMarkdown(markdown: string): ReactNode[] {
   return blocks;
 }
 
-export function LocalNoteEditor({ note, chats, onChange, onLinkChat }: LocalNoteEditorProps) {
+export function LocalNoteEditor({
+  note,
+  chats,
+  contextExpanded,
+  onChange,
+  onLinkChat,
+  onToggleContext,
+}: LocalNoteEditorProps) {
   const availableChats = chats.filter((chat) => !note.linkedChatIds.includes(chat.id));
   const [selectedChatId, setSelectedChatId] = useState(availableChats[0]?.id ?? '');
   const [mode, setMode] = useState<NoteMode>('edit');
@@ -98,32 +107,33 @@ export function LocalNoteEditor({ note, chats, onChange, onLinkChat }: LocalNote
         <input
           className="h-7 min-w-0 flex-1 bg-transparent text-[13px] font-semibold tracking-[-0.015em] text-cs-text outline-none placeholder:text-cs-subtle"
           aria-label="Note title"
+          title="Edit note title"
+          placeholder="Untitled note"
           value={note.title}
           onChange={(event) => onChange({ ...note, title: event.target.value })}
+          onBlur={() => {
+            if (note.title.trim() === '') onChange({ ...note, title: 'Untitled note' });
+          }}
         />
         <div className="flex shrink-0 rounded-md border border-cs-border bg-cs-control p-0.5" role="group" aria-label="Note view mode">
-          <button
-            type="button"
+          <IconButton
             data-active={mode === 'edit' ? 'true' : 'false'}
-            className={cn(
-              'flex h-6 items-center gap-1 rounded px-2 text-[9px] font-medium text-cs-subtle outline-none transition-colors hover:bg-cs-hover hover:text-cs-text focus-visible:ring-1 focus-visible:ring-cs-focus/30',
-              mode === 'edit' && 'bg-cs-active text-cs-text',
-            )}
+            className={cn('size-6 rounded text-cs-subtle', mode === 'edit' && 'bg-cs-active text-cs-text')}
+            aria-label="Edit note"
+            title="Edit"
             onClick={() => setMode('edit')}
           >
-            <Pencil size={10} aria-hidden="true" /> Edit
-          </button>
-          <button
-            type="button"
+            <Pencil size={10} aria-hidden="true" />
+          </IconButton>
+          <IconButton
             data-active={mode === 'preview' ? 'true' : 'false'}
-            className={cn(
-              'flex h-6 items-center gap-1 rounded px-2 text-[9px] font-medium text-cs-subtle outline-none transition-colors hover:bg-cs-hover hover:text-cs-text focus-visible:ring-1 focus-visible:ring-cs-focus/30',
-              mode === 'preview' && 'bg-cs-active text-cs-text',
-            )}
+            className={cn('size-6 rounded text-cs-subtle', mode === 'preview' && 'bg-cs-active text-cs-text')}
+            aria-label="Preview note"
+            title="Preview"
             onClick={() => setMode('preview')}
           >
-            <Eye size={10} aria-hidden="true" /> Preview
-          </button>
+            <Eye size={10} aria-hidden="true" />
+          </IconButton>
         </div>
       </div>
 
@@ -187,37 +197,47 @@ export function LocalNoteEditor({ note, chats, onChange, onLinkChat }: LocalNote
         <span className="flex shrink-0 items-center gap-1.5">
           <Code2 size={10} aria-hidden="true" /> {note.content.length} chars · {note.tags.length} tags
         </span>
-        {chats.length > 0 && (
-          <div className="flex min-w-0 items-center gap-1.5">
-            <Link2 size={10} className="shrink-0" aria-hidden="true" />
-            <Select
-              className="h-6 max-w-40 text-[9px]"
-              aria-label="Chat to link"
-              value={selectedChatId}
-              onChange={(event) => setSelectedChatId(event.target.value)}
-            >
-              <option value="">Select chat</option>
-              {availableChats.map((chat) => <option key={chat.id} value={chat.id}>{chat.label}</option>)}
-            </Select>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 px-1.5 text-[9px]"
-              disabled={selectedChatId === ''}
-              onClick={() => {
-                if (selectedChatId !== '') {
-                  onLinkChat(selectedChatId);
-                  setSelectedChatId('');
-                }
-              }}
-            >
-              <Link2 size={9} aria-hidden="true" /> Link chat
-            </Button>
-          </div>
-        )}
+        <div className="flex min-w-0 items-center gap-1.5">
+          {contextExpanded && chats.length > 0 && (
+            <>
+              <Link2 size={10} className="shrink-0" aria-hidden="true" />
+              <Select
+                className="h-6 max-w-40 text-[9px]"
+                aria-label="Chat to link"
+                value={selectedChatId}
+                onChange={(event) => setSelectedChatId(event.target.value)}
+              >
+                <option value="">Select chat</option>
+                {availableChats.map((chat) => <option key={chat.id} value={chat.id}>{chat.label}</option>)}
+              </Select>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-1.5 text-[9px]"
+                disabled={selectedChatId === ''}
+                onClick={() => {
+                  if (selectedChatId !== '') {
+                    onLinkChat(selectedChatId);
+                    setSelectedChatId('');
+                  }
+                }}
+              >
+                <Link2 size={9} aria-hidden="true" /> Link chat
+              </Button>
+            </>
+          )}
+          <IconButton
+            className="size-6 text-cs-subtle"
+            aria-label={contextExpanded ? 'Collapse note context' : 'Expand note context'}
+            title={contextExpanded ? 'Collapse note context' : 'Expand note context'}
+            onClick={onToggleContext}
+          >
+            {contextExpanded ? <ChevronDown size={11} aria-hidden="true" /> : <ChevronUp size={11} aria-hidden="true" />}
+          </IconButton>
+        </div>
       </footer>
 
-      {note.linkedChatIds.length > 0 && (
+      {contextExpanded && note.linkedChatIds.length > 0 && (
         <div className="no-scrollbar flex gap-1 overflow-x-auto border-t border-cs-border bg-cs-panel/60 px-3 py-1.5" aria-label="Linked chats">
           {note.linkedChatIds.map((chatId) => {
             const chat = chats.find((candidate) => candidate.id === chatId);
