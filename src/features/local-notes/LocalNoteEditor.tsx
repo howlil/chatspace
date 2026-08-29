@@ -102,10 +102,10 @@ export function LocalNoteEditor({
 
   return (
     <section className="grid h-full min-h-0 grid-rows-[auto_auto_minmax(0,1fr)_auto_auto] bg-cs-bg" aria-label={`Edit note ${note.title}`}>
-      <div className="flex min-w-0 items-center gap-2 border-b border-cs-border px-3 py-2">
-        <FileText size={13} className="shrink-0 text-cs-subtle" strokeWidth={1.7} aria-hidden="true" />
+      <div className="flex min-w-0 items-center gap-1.5 border-b border-cs-border px-2.5 py-1.5">
+        <FileText size={12} className="shrink-0 text-cs-subtle" strokeWidth={1.7} aria-hidden="true" />
         <input
-          className="h-7 min-w-0 flex-1 bg-transparent text-[13px] font-semibold tracking-[-0.015em] text-cs-text outline-none placeholder:text-cs-subtle"
+          className="h-6 min-w-0 flex-1 bg-transparent text-[12px] font-semibold tracking-[-0.015em] text-cs-text outline-none placeholder:text-cs-subtle"
           aria-label="Note title"
           title="Edit note title"
           placeholder="Untitled note"
@@ -115,10 +115,16 @@ export function LocalNoteEditor({
             if (note.title.trim() === '') onChange({ ...note, title: 'Untitled note' });
           }}
         />
-        <div className="flex shrink-0 rounded-md border border-cs-border bg-cs-control p-0.5" role="group" aria-label="Note view mode">
+        <div className="flex shrink-0 rounded-lg border border-cs-border bg-cs-surface p-0.5" role="group" aria-label="Note view mode">
           <IconButton
             data-active={mode === 'edit' ? 'true' : 'false'}
-            className={cn('size-6 rounded text-cs-subtle', mode === 'edit' && 'bg-cs-active text-cs-text')}
+            aria-pressed={mode === 'edit'}
+            className={cn(
+              'size-6 rounded-md text-cs-subtle transition-colors',
+              mode === 'edit'
+                ? 'bg-cs-text text-cs-bg shadow-sm hover:bg-cs-text hover:text-cs-bg'
+                : 'hover:bg-cs-hover hover:text-cs-text',
+            )}
             aria-label="Edit note"
             title="Edit"
             onClick={() => setMode('edit')}
@@ -127,7 +133,13 @@ export function LocalNoteEditor({
           </IconButton>
           <IconButton
             data-active={mode === 'preview' ? 'true' : 'false'}
-            className={cn('size-6 rounded text-cs-subtle', mode === 'preview' && 'bg-cs-active text-cs-text')}
+            aria-pressed={mode === 'preview'}
+            className={cn(
+              'size-6 rounded-md text-cs-subtle transition-colors',
+              mode === 'preview'
+                ? 'bg-cs-text text-cs-bg shadow-sm hover:bg-cs-text hover:text-cs-bg'
+                : 'hover:bg-cs-hover hover:text-cs-text',
+            )}
             aria-label="Preview note"
             title="Preview"
             onClick={() => setMode('preview')}
@@ -137,8 +149,8 @@ export function LocalNoteEditor({
         </div>
       </div>
 
-      <div className="flex min-w-0 items-center gap-2 border-b border-cs-border bg-cs-panel/70 px-3 py-1.5">
-        <Tag size={11} className="shrink-0 text-cs-subtle" aria-hidden="true" />
+      <div className="flex min-w-0 items-center gap-1.5 border-b border-cs-border bg-cs-panel/70 px-2.5 py-1">
+        <Tag size={10} className="shrink-0 text-cs-subtle" aria-hidden="true" />
         <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" aria-label="Note tags">
           {note.tags.map((tag) => (
             <span className="flex h-5 shrink-0 items-center gap-1 rounded border border-cs-border bg-cs-control pl-1.5 text-[9px] text-cs-muted" key={tag}>
@@ -174,7 +186,7 @@ export function LocalNoteEditor({
       {mode === 'edit' ? (
         <div className="min-h-0 overflow-hidden">
           <textarea
-            className="h-full min-h-0 w-full resize-none border-0 bg-cs-bg px-4 py-4 font-mono text-[12px] leading-6 text-cs-text/90 outline-none placeholder:text-cs-subtle"
+            className="h-full min-h-0 w-full resize-none border-0 bg-cs-bg px-3 py-3 font-mono text-[12px] leading-6 text-cs-text/90 outline-none placeholder:text-cs-subtle"
             aria-label="Markdown content"
             placeholder="Write Markdown…"
             value={note.content}
@@ -182,7 +194,7 @@ export function LocalNoteEditor({
           />
         </div>
       ) : (
-        <article className="min-h-0 overflow-y-auto px-5 py-5" aria-label="Markdown preview">
+        <article className="min-h-0 overflow-y-auto px-4 py-4" aria-label="Markdown preview">
           <div className="mx-auto max-w-3xl">
             {note.content.trim() === '' ? (
               <div className="grid min-h-44 place-items-center text-center text-[10px] text-cs-subtle">
@@ -193,7 +205,7 @@ export function LocalNoteEditor({
         </article>
       )}
 
-      <footer className="flex min-w-0 items-center justify-between gap-3 border-t border-cs-border px-3 py-1.5 text-[9px] text-cs-subtle">
+      <footer className="flex min-w-0 items-center justify-between gap-3 border-t border-cs-border px-2.5 py-1 text-[9px] text-cs-subtle">
         <span className="flex shrink-0 items-center gap-1.5">
           <Code2 size={10} aria-hidden="true" /> {note.content.length} chars · {note.tags.length} tags
         </span>
@@ -238,7 +250,7 @@ export function LocalNoteEditor({
       </footer>
 
       {contextExpanded && note.linkedChatIds.length > 0 && (
-        <div className="no-scrollbar flex gap-1 overflow-x-auto border-t border-cs-border bg-cs-panel/60 px-3 py-1.5" aria-label="Linked chats">
+        <div className="no-scrollbar flex gap-1 overflow-x-auto border-t border-cs-border bg-cs-panel/60 px-2.5 py-1" aria-label="Linked chats">
           {note.linkedChatIds.map((chatId) => {
             const chat = chats.find((candidate) => candidate.id === chatId);
             return (

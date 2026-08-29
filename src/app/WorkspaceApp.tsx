@@ -602,16 +602,16 @@ export function WorkspaceApp({
 
   const tree = (
     <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
-      <div className="flex items-center justify-center gap-1 border-b border-cs-border p-1.5">
-        <IconButton aria-label="Create folder" title="Create folder" onClick={() => addFolder(null)}>
-          <FolderPlus size={12} aria-hidden="true" />
+      <div className="flex h-9 items-center justify-start gap-0.5 border-b border-cs-border px-2 py-1">
+        <IconButton className="size-6 rounded-md text-cs-subtle" aria-label="Create folder" title="Create folder" onClick={() => addFolder(null)}>
+          <FolderPlus size={11} aria-hidden="true" />
         </IconButton>
-        <IconButton aria-label="Create note" title="Create note" onClick={() => addNote()}>
-          <FilePlus2 size={12} aria-hidden="true" />
+        <IconButton className="size-6 rounded-md text-cs-subtle" aria-label="Create note" title="Create note" onClick={() => addNote()}>
+          <FilePlus2 size={11} aria-hidden="true" />
         </IconButton>
-        <Button size="icon" variant="primary" aria-label="Save current chat" title="Save current chat" onClick={saveCurrentChat}>
-          <BookmarkPlus size={12} aria-hidden="true" />
-        </Button>
+        <IconButton className="size-6 rounded-md bg-cs-control text-cs-text" aria-label="Save current chat" title="Save current chat" onClick={saveCurrentChat}>
+          <BookmarkPlus size={11} aria-hidden="true" />
+        </IconButton>
       </div>
       <WorkspaceTree
         folders={workspace.folders}
