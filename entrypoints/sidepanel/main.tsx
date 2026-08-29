@@ -1,9 +1,9 @@
-import { RefreshCw } from 'lucide-react';
+import { HardDrive, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 
-import { WorkspaceApp } from '../../src/app/WorkspaceApp';
+import { WorkspaceApp, type WorkspaceView } from '../../src/app/WorkspaceApp';
 import { ChatspaceShell } from '../../src/app/shell/ChatspaceShell';
 import { WorkspaceErrorBoundary } from '../../src/app/shell/WorkspaceErrorBoundary';
 import { HttpLocalVaultBridge } from '../../src/integrations/obsidian/bridge';
@@ -16,7 +16,7 @@ import {
   type ProviderTabState,
 } from '../../src/providers/chatgpt/browserTabProvider';
 import '../../src/styles/tailwind.css';
-import { Button } from '../../src/ui/primitives';
+import { Button, IconButton } from '../../src/ui/primitives';
 
 const workspaceRepository = createDefaultWorkspaceRepository();
 const vaultBridge = new HttpLocalVaultBridge();
@@ -40,7 +40,7 @@ function stateUrl(state: ProviderTabState): string {
   return state.url ?? 'about:blank';
 }
 
-function SidepanelWorkspace() {
+function SidepanelWorkspace({ view }: { view: WorkspaceView }) {
   const [providerState, setProviderState] = useState<ProviderTabState>({
     kind: 'unavailable',
     url: null,
@@ -82,7 +82,7 @@ function SidepanelWorkspace() {
 
   return (
     <div className="h-full min-h-0 w-full">
-      {providerState.kind === 'unavailable' && (
+      {providerState.kind === 'unavailable' && view === 'workspace' && (
         <div
           className="flex min-w-0 items-center justify-between gap-3 border-b border-amber-200/10 bg-amber-200/[0.045] px-2.5 py-2"
           role="status"
@@ -98,6 +98,7 @@ function SidepanelWorkspace() {
         </div>
       )}
       <WorkspaceApp
+        view={view}
         repository={workspaceRepository}
         bridge={vaultBridge}
         requestBridgePermission={requestLocalBridgePermission}
@@ -112,13 +113,34 @@ function SidepanelWorkspace() {
   );
 }
 
+function SidepanelApp() {
+  const [view, setView] = useState<WorkspaceView>('workspace');
+  const syncActive = view === 'markdown-sync';
+
+  return (
+    <ChatspaceShell
+      headerActions={(
+        <IconButton
+          className={syncActive ? 'size-7 bg-cs-hover text-cs-text' : 'size-7 text-cs-subtle'}
+          aria-label="Markdown sync"
+          title="Markdown sync"
+          aria-pressed={syncActive}
+          onClick={() => setView(syncActive ? 'workspace' : 'markdown-sync')}
+        >
+          <HardDrive size={12} aria-hidden="true" />
+        </IconButton>
+      )}
+    >
+      <SidepanelWorkspace view={view} />
+    </ChatspaceShell>
+  );
+}
+
 const rootElement = document.getElementById('root');
 if (rootElement === null) throw new Error('Chatspace side panel root is missing.');
 
 createRoot(rootElement).render(
   <WorkspaceErrorBoundary>
-    <ChatspaceShell>
-      <SidepanelWorkspace />
-    </ChatspaceShell>
+    <SidepanelApp />
   </WorkspaceErrorBoundary>,
 );
