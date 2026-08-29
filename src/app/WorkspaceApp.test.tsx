@@ -368,7 +368,7 @@ describe('WorkspaceApp', () => {
 
     rerender(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} view="markdown-sync" />);
     expect(screen.getByRole('main', { name: 'Markdown sync' })).toBeVisible();
-    expect(screen.getByText('Local vault bridge')).toBeVisible();
+    expect(screen.getByText('Obsidian vault')).toBeVisible();
 
     const saved = await repository.load();
     expect(saved?.tabs.map((tab) => tab.kind)).toEqual(['home', 'note']);
