@@ -41,6 +41,7 @@ export type WorkspaceView = 'workspace' | 'markdown-sync';
 interface WorkspaceAppProps {
   repository: WorkspaceRepository;
   view?: WorkspaceView;
+  onBackToWorkspace?: () => void;
   currentUrl?: () => string;
   navigate?: (url: string) => void;
   downloadText?: (filename: string, content: string) => void;
@@ -84,6 +85,7 @@ function defaultDownloadText(filename: string, content: string): void {
 export function WorkspaceApp({
   repository: workspaceRepository,
   view = 'workspace',
+  onBackToWorkspace = () => undefined,
   currentUrl = () => window.location.href,
   navigate = (url) => window.location.assign(url),
   downloadText = defaultDownloadText,
@@ -555,7 +557,7 @@ export function WorkspaceApp({
           <Button variant="ghost" className="h-6 px-1.5 text-[9px] text-red-100" onClick={openSettings}>Recover</Button>
         </div>
       )}
-      {surfaceContent}
+      <div className="row-start-3 min-h-0 overflow-hidden">{surfaceContent}</div>
     </div>
   );
 
@@ -624,6 +626,7 @@ export function WorkspaceApp({
           state={bridgeState}
           message={bridgeMessage}
           activeNote={activeNote ?? null}
+          onBack={onBackToWorkspace}
           onConnect={connectBridge}
           onDisconnect={disconnectBridge}
           onSyncActiveNote={async () => {
