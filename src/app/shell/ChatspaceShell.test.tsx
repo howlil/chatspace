@@ -19,6 +19,17 @@ describe('ChatspaceShell', () => {
     expect(screen.getByText('Workbench')).toBeVisible();
   });
 
+  it('renders workspace utility actions beside the theme control', () => {
+    render(
+      <ChatspaceShell headerActions={<button type="button">Markdown sync</button>}>
+        <span>Workbench</span>
+      </ChatspaceShell>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Markdown sync' })).toBeVisible();
+    expect(screen.getByRole('button', { name: /Switch to .* theme/ })).toBeVisible();
+  });
+
   it('switches and persists the appearance theme', () => {
     window.localStorage.setItem('chatspace-theme', 'dark');
     render(<ChatspaceShell><span>Workbench</span></ChatspaceShell>);
