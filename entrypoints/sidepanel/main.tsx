@@ -40,7 +40,13 @@ function stateUrl(state: ProviderTabState): string {
   return state.url ?? 'about:blank';
 }
 
-function SidepanelWorkspace({ view }: { view: WorkspaceView }) {
+function SidepanelWorkspace({
+  view,
+  onBackToWorkspace,
+}: {
+  view: WorkspaceView;
+  onBackToWorkspace: () => void;
+}) {
   const [providerState, setProviderState] = useState<ProviderTabState>({
     kind: 'unavailable',
     url: null,
@@ -99,6 +105,7 @@ function SidepanelWorkspace({ view }: { view: WorkspaceView }) {
       )}
       <WorkspaceApp
         view={view}
+        onBackToWorkspace={onBackToWorkspace}
         repository={workspaceRepository}
         bridge={vaultBridge}
         requestBridgePermission={requestLocalBridgePermission}
@@ -131,7 +138,7 @@ function SidepanelApp() {
         </IconButton>
       )}
     >
-      <SidepanelWorkspace view={view} />
+      <SidepanelWorkspace view={view} onBackToWorkspace={() => setView('workspace')} />
     </ChatspaceShell>
   );
 }
