@@ -27,12 +27,17 @@ class MemoryHandleStore implements DirectoryHandleStore {
 }
 
 function fakeVault(permission: VaultPermissionState = 'granted') {
-  const write = vi.fn(async (_data: string) => undefined);
+  const write = vi.fn(async (data: string) => {
+    void data;
+  });
   const close = vi.fn(async () => undefined);
   const writable: VaultWritable = { write, close };
   const createWritable = vi.fn(async () => writable);
   const fileHandle: VaultFileHandle = { createWritable };
-  const getFileHandle = vi.fn(async (_name: string, _options: { create: boolean }) => fileHandle);
+  const getFileHandle = vi.fn(async (...args: [string, { create: boolean }]) => {
+    void args;
+    return fileHandle;
+  });
   const chatspaceDirectory = {
     name: 'Chatspace',
     queryPermission: vi.fn(async () => permission),
@@ -40,7 +45,10 @@ function fakeVault(permission: VaultPermissionState = 'granted') {
     getDirectoryHandle: vi.fn(),
     getFileHandle,
   } as unknown as VaultDirectoryHandle;
-  const getDirectoryHandle = vi.fn(async (_name: string, _options: { create: boolean }) => chatspaceDirectory);
+  const getDirectoryHandle = vi.fn(async (...args: [string, { create: boolean }]) => {
+    void args;
+    return chatspaceDirectory;
+  });
   const requestPermission = vi.fn(async () => 'granted' as const);
   const queryPermission = vi.fn(async () => permission);
   const handle: VaultDirectoryHandle = {
