@@ -1,4 +1,4 @@
-import { CloudUpload, HardDrive } from 'lucide-react';
+import { ArrowLeft, CloudUpload, HardDrive } from 'lucide-react';
 
 import type { LocalNote } from '../../domain/workspace/model';
 import { Button, Panel } from '../../ui/primitives';
@@ -8,6 +8,7 @@ interface LocalVaultPageProps {
   state: BridgeConnectionState;
   message: string | null;
   activeNote: LocalNote | null;
+  onBack: () => void;
   onConnect: (token: string) => Promise<void>;
   onDisconnect: () => void;
   onSyncActiveNote: () => Promise<void>;
@@ -17,6 +18,7 @@ export function LocalVaultPage({
   state,
   message,
   activeNote,
+  onBack,
   onConnect,
   onDisconnect,
   onSyncActiveNote,
@@ -24,6 +26,10 @@ export function LocalVaultPage({
   return (
     <main className="h-full min-h-0 overflow-y-auto p-3" aria-label="Markdown sync">
       <div className="mx-auto grid w-full max-w-2xl gap-4 py-2">
+        <Button variant="ghost" className="justify-self-start px-1.5" onClick={onBack}>
+          <ArrowLeft size={11} aria-hidden="true" /> Back to workspace
+        </Button>
+
         <header className="flex items-start gap-2.5 px-1">
           <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-cs-border bg-cs-surface text-cs-muted">
             <HardDrive size={14} strokeWidth={1.7} aria-hidden="true" />
