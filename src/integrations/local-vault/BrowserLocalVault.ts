@@ -31,10 +31,13 @@ export type DirectoryPicker = (options: {
 }) => Promise<VaultDirectoryHandle>;
 
 const PERMISSION_OPTIONS = { mode: 'readwrite' } as const;
-const PICKER_OPTIONS = { id: 'chatspace-obsidian-vault', mode: 'readwrite' } as const;
+const PICKER_OPTIONS: Parameters<DirectoryPicker>[0] = {
+  id: 'chatspace-obsidian-vault',
+  mode: 'readwrite',
+};
 const CHATSPACE_DIRECTORY = 'Chatspace';
 
-function defaultDirectoryPicker(options: typeof PICKER_OPTIONS): Promise<VaultDirectoryHandle> {
+function defaultDirectoryPicker(options: Parameters<DirectoryPicker>[0]): Promise<VaultDirectoryHandle> {
   const picker = (window as Window & {
     showDirectoryPicker?: DirectoryPicker;
   }).showDirectoryPicker;
