@@ -22,14 +22,13 @@ import { GraphNavigator } from '../features/graph/GraphNavigator';
 import { DailyHome } from '../features/home/DailyHome';
 import { LocalNoteEditor } from '../features/local-notes/LocalNoteEditor';
 import { NoteContextRail } from '../features/local-notes/NoteContextRail';
-import { LocalVaultPage } from '../features/obsidian-bridge/LocalVaultPage';
-import type { BridgeConnectionState } from '../features/obsidian-bridge/ObsidianBridgePanel';
+import { LocalVaultPage, type VaultPageState } from '../features/obsidian-bridge/LocalVaultPage';
 import { SaveConversationDialog, type SaveConversationInput } from '../features/save-conversation/SaveConversationDialog';
 import { SettingsPanel } from '../features/settings/SettingsPanel';
 import { WorkbenchChrome } from '../features/workbench/WorkbenchChrome';
 import { SpatialWorkspace } from '../features/workspace-layout/SpatialWorkspace';
 import { WorkspaceTree } from '../features/workspace-tree/WorkspaceTree';
-import type { LocalVaultBridge } from '../integrations/obsidian/bridge';
+import type { LocalVault, VaultConnection } from '../integrations/local-vault/BrowserLocalVault';
 import type { WorkspaceRepository } from '../persistence/workspaceRepository';
 import { getChatGptCapability, navigateToChatGptTarget } from '../providers/chatgpt/adapter';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
@@ -45,8 +44,7 @@ interface WorkspaceAppProps {
   currentUrl?: () => string;
   navigate?: (url: string) => void;
   downloadText?: (filename: string, content: string) => void;
-  bridge?: LocalVaultBridge;
-  requestBridgePermission?: () => Promise<boolean>;
+  localVault?: LocalVault;
 }
 
 type PersistenceState = 'loading' | 'ready' | 'blocked';
@@ -84,6 +82,11 @@ function defaultDownloadText(filename: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
+function vaultStateFor(connection: VaultConnection | null): VaultPageState {
+  if (connection === null) return 'disconnected';
+  return connection.permission === 'granted' ? 'connected' : 'permission-required';
+}
+
 export function WorkspaceApp({
   repository: workspaceRepository,
   view = 'workspace',
@@ -91,8 +94,7 @@ export function WorkspaceApp({
   currentUrl = () => window.location.href,
   navigate = (url) => window.location.assign(url),
   downloadText = defaultDownloadText,
-  bridge: vaultBridge,
-  requestBridgePermission = async () => false,
+  localVault,
 }: WorkspaceAppProps) {
   const [workspace, dispatch] = useReducer(workspaceReducer, undefined, () => createInitialWorkspace());
   const [persistenceState, setPersistenceState] = useState<PersistenceState>('loading');
@@ -105,9 +107,10 @@ export function WorkspaceApp({
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
   const [pendingRename, setPendingRename] = useState<PendingRename>(null);
   const [noteContextExpanded, setNoteContextExpanded] = useState(true);
-  const [bridgeState, setBridgeState] = useState<BridgeConnectionState>('disconnected');
-  const [bridgeMessage, setBridgeMessage] = useState<string | null>(null);
-  const [bridgeToken, setBridgeToken] = useState<string | null>(null);
+  const [vaultState, setVaultState] = useState<VaultPageState>('loading');
+  const [vaultConnection, setVaultConnection] = useState<VaultConnection | null>(null);
+  const [vaultMessage, setVaultMessage] = useState<string | null>(null);
+  const [vaultBusy, setVaultBusy] = useState(false);
   const graph = useMemo(() => projectWorkspaceGraph(workspace), [workspace]);
   const exportJson = useMemo(() => exportWorkspaceJson(workspace), [workspace]);
 
@@ -162,6 +165,38 @@ export function WorkspaceApp({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      if (localVault === undefined || !localVault.isSupported()) {
+        if (!cancelled) {
+          setVaultConnection(null);
+          setVaultState('unsupported');
+          setVaultMessage(null);
+        }
+        return;
+      }
+
+      try {
+        const connection = await localVault.getConnection();
+        if (cancelled) return;
+        setVaultConnection(connection);
+        setVaultState(vaultStateFor(connection));
+        setVaultMessage(null);
+      } catch (error) {
+        if (cancelled) return;
+        setVaultConnection(null);
+        setVaultState('error');
+        setVaultMessage(messageFromError(error));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [localVault]);
 
   function chatTab(chat: ChatReference): WorkspaceTab {
     return { id: `tab-chat-${chat.id}`, kind: 'chat', entityId: chat.id, title: chat.label, pinned: false };
@@ -446,47 +481,89 @@ export function WorkspaceApp({
     }
   }
 
-  async function connectBridge(token: string): Promise<void> {
-    setBridgeState('connecting');
-    setBridgeMessage(null);
+  function applyVaultConnection(connection: VaultConnection | null): void {
+    setVaultConnection(connection);
+    setVaultState(vaultStateFor(connection));
+  }
+
+  async function connectVault(): Promise<void> {
+    if (localVault === undefined || !localVault.isSupported()) {
+      setVaultConnection(null);
+      setVaultState('unsupported');
+      return;
+    }
+
+    setVaultBusy(true);
+    setVaultMessage(null);
     try {
-      if (vaultBridge === undefined) throw new Error('Local vault bridge is not configured.');
-      const granted = await requestBridgePermission();
-      if (!granted) throw new Error('Localhost bridge permission was not granted.');
-      await vaultBridge.health(token);
-      setBridgeToken(token);
-      setBridgeState('connected');
-      setBridgeMessage(null);
+      const connection = await localVault.connect();
+      if (connection !== null) applyVaultConnection(connection);
     } catch (error) {
-      setBridgeToken(null);
-      setBridgeState('error');
-      setBridgeMessage(messageFromError(error));
-      throw error;
+      setVaultState('error');
+      setVaultMessage(messageFromError(error));
+    } finally {
+      setVaultBusy(false);
     }
   }
 
-  function disconnectBridge(): void {
-    setBridgeToken(null);
-    setBridgeState('disconnected');
-    setBridgeMessage(null);
+  async function reconnectVault(): Promise<void> {
+    if (localVault === undefined) return;
+
+    setVaultBusy(true);
+    setVaultMessage(null);
+    try {
+      const connection = await localVault.reconnect();
+      applyVaultConnection(connection);
+    } catch (error) {
+      setVaultState('error');
+      setVaultMessage(messageFromError(error));
+    } finally {
+      setVaultBusy(false);
+    }
+  }
+
+  async function disconnectVault(): Promise<void> {
+    if (localVault === undefined) return;
+
+    setVaultBusy(true);
+    setVaultMessage(null);
+    try {
+      await localVault.disconnect();
+      setVaultConnection(null);
+      setVaultState('disconnected');
+    } catch (error) {
+      setVaultState('error');
+      setVaultMessage(messageFromError(error));
+    } finally {
+      setVaultBusy(false);
+    }
   }
 
   async function syncNoteToVault(note: LocalNote): Promise<void> {
-    if (bridgeToken === null || vaultBridge === undefined) {
-      setBridgeMessage(
-        vaultBridge === undefined
-          ? 'Local vault bridge is not configured.'
-          : 'Connect the local vault bridge before syncing a note.',
-      );
+    if (localVault === undefined) {
+      setVaultState('unsupported');
       return;
     }
+
+    setVaultBusy(true);
+    setVaultMessage(null);
     try {
-      const result = await vaultBridge.writeNote(bridgeToken, note);
+      const result = await localVault.writeNote(note);
       setStatus(`Synced note to ${result.path}.`);
-      setBridgeMessage(null);
+      setVaultMessage(`Synced to ${result.path}`);
+      const connection = await localVault.getConnection();
+      applyVaultConnection(connection);
     } catch (error) {
-      setBridgeState('error');
-      setBridgeMessage(messageFromError(error));
+      setVaultMessage(messageFromError(error));
+      try {
+        const connection = await localVault.getConnection();
+        setVaultConnection(connection);
+        setVaultState(connection !== null && connection.permission !== 'granted' ? 'permission-required' : 'error');
+      } catch {
+        setVaultState('error');
+      }
+    } finally {
+      setVaultBusy(false);
     }
   }
 
@@ -682,12 +759,16 @@ export function WorkspaceApp({
     <>
       {view === 'markdown-sync' ? (
         <LocalVaultPage
-          state={bridgeState}
-          message={bridgeMessage}
+          state={vaultState}
+          connection={vaultConnection}
+          message={vaultMessage}
+          busy={vaultBusy}
           activeNote={activeNote ?? null}
           onBack={onBackToWorkspace}
-          onConnect={connectBridge}
-          onDisconnect={disconnectBridge}
+          onConnect={connectVault}
+          onReconnect={reconnectVault}
+          onChangeVault={connectVault}
+          onDisconnect={disconnectVault}
           onSyncActiveNote={async () => {
             if (activeNote !== undefined) await syncNoteToVault(activeNote);
           }}
