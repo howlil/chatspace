@@ -1,4 +1,21 @@
-import type { VaultDirectoryHandle } from './BrowserLocalVault';
+export type VaultPermissionState = 'granted' | 'prompt' | 'denied';
+
+export interface VaultWritable {
+  write(data: string): Promise<void>;
+  close(): Promise<void>;
+}
+
+export interface VaultFileHandle {
+  createWritable(): Promise<VaultWritable>;
+}
+
+export interface VaultDirectoryHandle {
+  readonly name: string;
+  queryPermission(options: { mode: 'readwrite' }): Promise<VaultPermissionState>;
+  requestPermission(options: { mode: 'readwrite' }): Promise<VaultPermissionState>;
+  getDirectoryHandle(name: string, options: { create: boolean }): Promise<VaultDirectoryHandle>;
+  getFileHandle(name: string, options: { create: boolean }): Promise<VaultFileHandle>;
+}
 
 export interface DirectoryHandleStore {
   load(): Promise<VaultDirectoryHandle | null>;
