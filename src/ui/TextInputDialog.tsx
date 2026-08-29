@@ -6,7 +6,7 @@ import { Button, IconButton, Input } from './primitives';
 interface TextInputDialogProps {
   open: boolean;
   title: string;
-  description?: string;
+  description?: string | undefined;
   label: string;
   initialValue: string;
   confirmLabel?: string;
