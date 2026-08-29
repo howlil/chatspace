@@ -50,7 +50,7 @@ type DragPayload =
   | { kind: 'note'; id: string };
 
 type TreeContextTarget =
-  | { kind: 'root' }
+  | { kind: 'root'; id?: undefined }
   | { kind: 'folder'; id: string }
   | { kind: 'chat'; id: string }
   | { kind: 'note'; id: string };
