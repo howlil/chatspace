@@ -387,10 +387,10 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
 
   return (
     <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
-      <div className="relative mx-2 mt-2">
-        <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-cs-subtle" size={12} aria-hidden="true" />
+      <div className="relative mx-1.5 mt-1.5">
+        <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-cs-subtle" size={11} aria-hidden="true" />
         <input
-          className="h-7 w-full rounded-md border border-cs-border bg-cs-control pl-7 pr-2 text-[11px] text-cs-text outline-none placeholder:text-cs-subtle focus:border-cs-focus focus:ring-1 focus:ring-cs-focus/20"
+          className="h-7 w-full rounded-md border border-cs-border bg-cs-control pl-6 pr-2 text-[11px] text-cs-text outline-none placeholder:text-cs-subtle focus:border-cs-focus focus:ring-1 focus:ring-cs-focus/20"
           aria-label="Search workspace"
           placeholder="Search workspace"
           value={query}
@@ -398,7 +398,7 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
         />
       </div>
 
-      <div className="min-h-0 overflow-y-auto py-2">
+      <div className="min-h-0 overflow-y-auto py-1.5">
         {searchResults !== null ? (
           <section>
             <SectionLabel className="px-2.5 py-1.5">Results</SectionLabel>
@@ -443,7 +443,7 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
             <section>
               <div
                 className={cn(
-                  'group mx-1 mb-1 flex h-7 items-center gap-1.5 rounded-md px-1.5 text-cs-subtle transition-colors',
+                  'group mx-1 mb-0.5 flex h-7 items-center gap-1 rounded-md px-1 text-cs-subtle transition-colors',
                   props.selectedFolderId === null && 'bg-cs-active text-cs-text',
                   rootDropActive && 'bg-cs-active ring-1 ring-inset ring-cs-focus/40',
                 )}
@@ -465,13 +465,13 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
               >
                 <button
                   type="button"
-                  className="flex h-full min-w-0 flex-1 items-center gap-1.5 rounded px-1 text-left outline-none hover:text-cs-text focus-visible:bg-cs-hover"
+                  className="flex h-full min-w-0 flex-1 items-center gap-1 rounded px-1.5 text-left outline-none hover:text-cs-text focus-visible:bg-cs-hover"
                   onClick={() => props.onSelectFolder(null)}
                 >
-                  <House size={12} strokeWidth={1.7} aria-hidden="true" />
-                  <span className="text-[10px] font-medium">Workspace root</span>
+                  <House size={11} strokeWidth={1.7} aria-hidden="true" />
+                  <span className="truncate whitespace-nowrap text-[10px] font-medium">Workspace root</span>
                 </button>
-                <span className="text-[9px] text-cs-subtle group-hover:hidden">Drop here</span>
+                {rootDropActive && <span className="shrink-0 text-[8px] font-medium text-cs-muted">Drop here</span>}
                 <IconButton
                   className="size-6 text-cs-subtle opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                   aria-label="Actions for Workspace root"
