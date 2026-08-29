@@ -22,7 +22,8 @@ import { GraphNavigator } from '../features/graph/GraphNavigator';
 import { DailyHome } from '../features/home/DailyHome';
 import { LocalNoteEditor } from '../features/local-notes/LocalNoteEditor';
 import { NoteContextRail } from '../features/local-notes/NoteContextRail';
-import { ObsidianBridgePanel, type BridgeConnectionState } from '../features/obsidian-bridge/ObsidianBridgePanel';
+import { LocalVaultPage } from '../features/obsidian-bridge/LocalVaultPage';
+import type { BridgeConnectionState } from '../features/obsidian-bridge/ObsidianBridgePanel';
 import { SaveConversationDialog, type SaveConversationInput } from '../features/save-conversation/SaveConversationDialog';
 import { SettingsPanel } from '../features/settings/SettingsPanel';
 import { WorkbenchChrome } from '../features/workbench/WorkbenchChrome';
@@ -31,10 +32,15 @@ import { WorkspaceTree } from '../features/workspace-tree/WorkspaceTree';
 import type { LocalVaultBridge } from '../integrations/obsidian/bridge';
 import type { WorkspaceRepository } from '../persistence/workspaceRepository';
 import { getChatGptCapability, navigateToChatGptTarget } from '../providers/chatgpt/adapter';
+import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { Button } from '../ui/primitives';
+import { TextInputDialog } from '../ui/TextInputDialog';
+
+export type WorkspaceView = 'workspace' | 'markdown-sync';
 
 interface WorkspaceAppProps {
   repository: WorkspaceRepository;
+  view?: WorkspaceView;
   currentUrl?: () => string;
   navigate?: (url: string) => void;
   downloadText?: (filename: string, content: string) => void;
@@ -43,6 +49,14 @@ interface WorkspaceAppProps {
 }
 
 type PersistenceState = 'loading' | 'ready' | 'blocked';
+type PendingDelete =
+  | { kind: 'folder'; folder: WorkspaceFolder }
+  | { kind: 'chat'; chat: ChatReference }
+  | null;
+type PendingRename =
+  | { kind: 'folder'; folder: WorkspaceFolder }
+  | { kind: 'chat'; chat: ChatReference }
+  | null;
 
 function messageFromError(error: unknown): string {
   return error instanceof Error ? error.message : 'Local operation failed.';
@@ -69,6 +83,7 @@ function defaultDownloadText(filename: string, content: string): void {
 
 export function WorkspaceApp({
   repository: workspaceRepository,
+  view = 'workspace',
   currentUrl = () => window.location.href,
   navigate = (url) => window.location.assign(url),
   downloadText = defaultDownloadText,
@@ -83,6 +98,8 @@ export function WorkspaceApp({
   const [status, setStatus] = useState('Local workspace ready.');
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [saveDialogTarget, setSaveDialogTarget] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
+  const [pendingRename, setPendingRename] = useState<PendingRename>(null);
   const [bridgeState, setBridgeState] = useState<BridgeConnectionState>('disconnected');
   const [bridgeMessage, setBridgeMessage] = useState<string | null>(null);
   const [bridgeToken, setBridgeToken] = useState<string | null>(null);
@@ -166,9 +183,7 @@ export function WorkspaceApp({
   }
 
   function renameFolder(folder: WorkspaceFolder): void {
-    const nextName = window.prompt('Rename folder', folder.name);
-    if (nextName === null || nextName.trim() === '') return;
-    dispatch({ type: 'folder/update', folder: { ...folder, name: nextName.trim() }, now: Date.now() });
+    setPendingRename({ kind: 'folder', folder });
   }
 
   function moveFolder(folder: WorkspaceFolder, parentId: string | null): void {
@@ -182,9 +197,7 @@ export function WorkspaceApp({
   }
 
   function deleteFolder(folder: WorkspaceFolder): void {
-    if (!window.confirm(`Delete folder “${folder.name}”? Its children will move to the parent folder.`)) return;
-    dispatch({ type: 'folder/delete', folderId: folder.id, now: Date.now() });
-    if (selectedFolderId === folder.id) setSelectedFolderId(folder.parentId);
+    setPendingDelete({ kind: 'folder', folder });
   }
 
   function addNote(): void {
@@ -247,14 +260,7 @@ export function WorkspaceApp({
   }
 
   function renameChat(chat: ChatReference): void {
-    const nextName = window.prompt('Rename conversation', chat.label);
-    if (nextName === null || nextName.trim() === '') return;
-    const updated = { ...chat, label: nextName.trim() };
-    const now = Date.now();
-    dispatch({ type: 'chat/update', chat: updated, now });
-    const tab = workspace.tabs.find((item) => item.kind === 'chat' && item.entityId === chat.id);
-    if (tab !== undefined) dispatch({ type: 'tab/open', tab: { ...tab, title: updated.label }, now });
-    setStatus(`Renamed conversation to “${updated.label}”.`);
+    setPendingRename({ kind: 'chat', chat });
   }
 
   function moveChat(chat: ChatReference, folderId: string | null): void {
@@ -263,9 +269,45 @@ export function WorkspaceApp({
   }
 
   function deleteChat(chat: ChatReference): void {
-    if (!window.confirm(`Delete the local reference “${chat.label}”? The ChatGPT conversation is not deleted.`)) return;
-    dispatch({ type: 'chat/delete', chatId: chat.id, now: Date.now() });
-    setStatus(`Deleted local reference “${chat.label}”.`);
+    setPendingDelete({ kind: 'chat', chat });
+  }
+
+  function confirmRename(value: string): void {
+    if (pendingRename === null) return;
+    const now = Date.now();
+
+    if (pendingRename.kind === 'folder') {
+      const folder = pendingRename.folder;
+      dispatch({ type: 'folder/update', folder: { ...folder, name: value }, now });
+      setStatus(`Renamed folder to “${value}”.`);
+    } else {
+      const chat = pendingRename.chat;
+      const updated = { ...chat, label: value };
+      dispatch({ type: 'chat/update', chat: updated, now });
+      const tab = workspace.tabs.find((item) => item.kind === 'chat' && item.entityId === chat.id);
+      if (tab !== undefined) dispatch({ type: 'tab/open', tab: { ...tab, title: updated.label }, now });
+      setStatus(`Renamed conversation to “${updated.label}”.`);
+    }
+
+    setPendingRename(null);
+  }
+
+  function confirmDelete(): void {
+    if (pendingDelete === null) return;
+    const now = Date.now();
+
+    if (pendingDelete.kind === 'folder') {
+      const folder = pendingDelete.folder;
+      dispatch({ type: 'folder/delete', folderId: folder.id, now });
+      if (selectedFolderId === folder.id) setSelectedFolderId(folder.parentId);
+      setStatus(`Deleted folder “${folder.name}”.`);
+    } else {
+      const chat = pendingDelete.chat;
+      dispatch({ type: 'chat/delete', chatId: chat.id, now });
+      setStatus(`Deleted local reference “${chat.label}”.`);
+    }
+
+    setPendingDelete(null);
   }
 
   function openSavedChat(chat: ChatReference): void {
@@ -401,7 +443,6 @@ export function WorkspaceApp({
           ? 'Local vault bridge is not configured.'
           : 'Connect the local vault bridge before syncing a note.',
       );
-      openSettings();
       return;
     }
     try {
@@ -454,12 +495,6 @@ export function WorkspaceApp({
             onReset={resetLocalData}
             onDownload={downloadText}
           />
-          <ObsidianBridgePanel
-            state={bridgeState}
-            message={bridgeMessage}
-            onConnect={connectBridge}
-            onDisconnect={disconnectBridge}
-          />
         </div>
       </div>
     );
@@ -474,13 +509,7 @@ export function WorkspaceApp({
           onChange={(note) => dispatch({ type: 'note/update', note, now: Date.now() })}
           onLinkChat={(chatId) => dispatch({ type: 'note/link-chat', noteId: activeNote.id, chatId, now: Date.now() })}
         />
-        <NoteContextRail
-          note={activeNote}
-          notes={workspace.notes}
-          bridgeConnected={bridgeState === 'connected'}
-          onOpenNote={openNote}
-          onSync={() => void syncNoteToVault(activeNote)}
-        />
+        <NoteContextRail note={activeNote} notes={workspace.notes} onOpenNote={openNote} />
       </div>
     );
   } else if (activeChat !== undefined) {
@@ -565,16 +594,44 @@ export function WorkspaceApp({
     </div>
   );
 
+  const workspaceSurface = (
+    <SpatialWorkspace
+      tree={tree}
+      surface={surface}
+      treeCollapsed={workspace.layout.treeCollapsed}
+      treeWidth={workspace.layout.treeWidth}
+      onTreeWidthChange={(treeWidth) => updateLayout({ treeWidth })}
+    />
+  );
+
+  const deleteDescription = pendingDelete?.kind === 'folder'
+    ? `Delete “${pendingDelete.folder.name}”? Child items will move to ${pendingDelete.folder.parentId === null ? 'Workspace root' : 'the parent folder'}.`
+    : pendingDelete?.kind === 'chat'
+      ? `Delete the local reference “${pendingDelete.chat.label}”? The ChatGPT conversation itself will not be deleted.`
+      : '';
+  const renameTitle = pendingRename?.kind === 'folder' ? 'Rename folder' : 'Rename conversation';
+  const renameLabel = pendingRename?.kind === 'folder' ? 'Folder name' : 'Conversation name';
+  const renameInitialValue = pendingRename?.kind === 'folder'
+    ? pendingRename.folder.name
+    : pendingRename?.kind === 'chat'
+      ? pendingRename.chat.label
+      : '';
+
   return (
     <>
-      <SpatialWorkspace
-        tree={tree}
-        surface={surface}
-        treeCollapsed={workspace.layout.treeCollapsed}
-        treeWidth={workspace.layout.treeWidth}
-        onTreeWidthChange={(treeWidth) => updateLayout({ treeWidth })}
-      />
-      {paletteOpen && <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />}
+      {view === 'markdown-sync' ? (
+        <LocalVaultPage
+          state={bridgeState}
+          message={bridgeMessage}
+          activeNote={activeNote ?? null}
+          onConnect={connectBridge}
+          onDisconnect={disconnectBridge}
+          onSyncActiveNote={async () => {
+            if (activeNote !== undefined) await syncNoteToVault(activeNote);
+          }}
+        />
+      ) : workspaceSurface}
+      {view === 'workspace' && paletteOpen && <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />}
       <SaveConversationDialog
         open={saveDialogTarget !== null}
         target={saveDialogTarget}
@@ -583,6 +640,25 @@ export function WorkspaceApp({
         defaultLabel={`Conversation ${workspace.chatRefs.length + 1}`}
         onCancel={() => setSaveDialogTarget(null)}
         onSave={confirmSaveCurrentChat}
+      />
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        title={pendingDelete?.kind === 'folder' ? 'Delete folder?' : 'Delete conversation reference?'}
+        description={deleteDescription}
+        confirmLabel="Delete"
+        danger
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
+      <TextInputDialog
+        open={pendingRename !== null}
+        title={renameTitle}
+        description={pendingRename?.kind === 'chat' ? 'This changes only the local Chatspace label.' : undefined}
+        label={renameLabel}
+        initialValue={renameInitialValue}
+        confirmLabel="Rename"
+        onConfirm={confirmRename}
+        onCancel={() => setPendingRename(null)}
       />
     </>
   );

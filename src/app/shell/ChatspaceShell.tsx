@@ -5,6 +5,7 @@ import { IconButton } from '../../ui/primitives';
 
 interface ChatspaceShellProps {
   children?: ReactNode;
+  headerActions?: ReactNode;
 }
 
 type ThemeMode = 'light' | 'dark';
@@ -17,7 +18,7 @@ function initialTheme(): ThemeMode {
   return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
 }
 
-export function ChatspaceShell({ children }: ChatspaceShellProps) {
+export function ChatspaceShell({ children, headerActions }: ChatspaceShellProps) {
   const [theme, setTheme] = useState<ThemeMode>(initialTheme);
 
   useEffect(() => {
@@ -40,14 +41,17 @@ export function ChatspaceShell({ children }: ChatspaceShellProps) {
           <strong className="truncate text-[11px] font-semibold tracking-[-0.01em]">Chatspace</strong>
           <span className="truncate text-[9px] text-cs-subtle">Workspace beside ChatGPT</span>
         </div>
-        <IconButton
-          className="size-7 text-cs-subtle"
-          aria-label={`Switch to ${nextTheme} theme`}
-          title={`Switch to ${nextTheme} theme`}
-          onClick={() => setTheme(nextTheme)}
-        >
-          {theme === 'dark' ? <Sun size={12} aria-hidden="true" /> : <Moon size={12} aria-hidden="true" />}
-        </IconButton>
+        <div className="flex shrink-0 items-center gap-1">
+          {headerActions}
+          <IconButton
+            className="size-7 text-cs-subtle"
+            aria-label={`Switch to ${nextTheme} theme`}
+            title={`Switch to ${nextTheme} theme`}
+            onClick={() => setTheme(nextTheme)}
+          >
+            {theme === 'dark' ? <Sun size={12} aria-hidden="true" /> : <Moon size={12} aria-hidden="true" />}
+          </IconButton>
+        </div>
       </header>
       <div className="min-h-0 overflow-hidden">{children ?? <p className="p-3 text-cs-muted">Workspace ready</p>}</div>
     </section>

@@ -240,6 +240,75 @@ describe('WorkspaceApp', () => {
     });
   });
 
+  it('uses an internal confirmation dialog before deleting folders', async () => {
+    const initial = createInitialWorkspace(1);
+    initial.folders = [createFolder({ id: 'backend', name: 'Backend', parentId: null, now: 1 })];
+    const repository = new MemoryWorkspaceRepository(initial);
+
+    render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
+
+    fireEvent.click(await screen.findByTitle('Backend'));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Backend' }));
+    expect(screen.getByRole('alertdialog', { name: 'Delete folder?' })).toHaveTextContent('Child items will move to Workspace root.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('alertdialog', { name: 'Delete folder?' })).not.toBeInTheDocument();
+    expect((await repository.load())?.folders).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Backend' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await waitFor(async () => {
+      expect((await repository.load())?.folders).toHaveLength(0);
+    });
+  });
+
+  it('renames folders through an internal input dialog', async () => {
+    const initial = createInitialWorkspace(1);
+    initial.folders = [createFolder({ id: 'backend', name: 'Backend', parentId: null, now: 1 })];
+    const repository = new MemoryWorkspaceRepository(initial);
+
+    render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
+
+    fireEvent.click(await screen.findByTitle('Backend'));
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Backend' }));
+    expect(screen.getByRole('dialog', { name: 'Rename folder' })).toBeVisible();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Folder name' }), { target: { value: 'Platform' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Rename' }));
+
+    await waitFor(async () => {
+      expect((await repository.load())?.folders[0]?.name).toBe('Platform');
+    });
+  });
+
+  it('renders Markdown sync as an ephemeral dedicated view without adding a persisted workspace tab', async () => {
+    const initial = createInitialWorkspace(1);
+    const note = createLocalNote({ id: 'note-one', title: 'Runbook', folderId: null, now: 1 });
+    initial.notes = [note];
+    initial.tabs = [
+      ...initial.tabs,
+      { id: 'tab-note-note-one', kind: 'note', entityId: note.id, title: note.title, pinned: false },
+    ];
+    initial.activeTabId = 'tab-note-note-one';
+    const repository = new MemoryWorkspaceRepository(initial);
+    const { rerender } = render(
+      <WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} view="workspace" />,
+    );
+
+    expect(await screen.findByRole('textbox', { name: 'Note title' })).toHaveValue('Runbook');
+    expect(screen.queryByText('Local vault')).not.toBeInTheDocument();
+
+    rerender(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} view="markdown-sync" />);
+    expect(screen.getByRole('main', { name: 'Markdown sync' })).toBeVisible();
+    expect(screen.getByText('Local vault bridge')).toBeVisible();
+
+    const saved = await repository.load();
+    expect(saved?.tabs.map((tab) => tab.kind)).toEqual(['home', 'note']);
+
+    rerender(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} view="workspace" />);
+    expect(screen.getByRole('textbox', { name: 'Note title' })).toHaveValue('Runbook');
+  });
+
   it('persists explorer collapse and resize state as workspace layout', async () => {
     const repository = new MemoryWorkspaceRepository();
     render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
