@@ -6,7 +6,7 @@ This is a short operational snapshot. Durable product/architecture/history belon
 
 ## Current
 
-- `master` includes Explorer hierarchy/theme, canonical lean workflow, coalesced/serialized workspace persistence, obsolete ChatGPT content-script removal, risk-based testing policy, verification cleanup, canonical codebase-quality rules, bounded ownership/integrity cleanup, reproducible frozen pnpm installs, the UI consistency cleanup from PR #19, the workbench-height/navigation correction from PR #21, and the writing-first note/tree interaction cleanup from PR #23.
+- `master` includes Explorer hierarchy/theme, canonical lean workflow, coalesced/serialized workspace persistence, obsolete ChatGPT content-script removal, risk-based testing policy, verification cleanup, canonical codebase-quality rules, bounded ownership/integrity cleanup, reproducible frozen pnpm installs, the UI consistency cleanup from PR #19, the workbench-height/navigation correction from PR #21, the writing-first note/tree interaction cleanup from PR #23, and the compact Explorer/note-mode visual refinement from PR #25.
 - Core daily-driver flow: detect a supported ChatGPT conversation URL, save a local reference, organize it, resume through Home/Explorer/tabs, and navigate native ChatGPT.
 - Production persistence uses extension-owned `chrome.storage.local`, coalesces rapid snapshots, and serializes physical writes.
 - Workspace folder hierarchy and local entity folder ownership are domain invariants: cyclic hierarchy, missing parent folders, and chat/note references to missing folders are rejected at the reducer and persistence/import boundary.
@@ -15,10 +15,12 @@ This is a short operational snapshot. Durable product/architecture/history belon
 - The validated ChatGPT navigation wrapper remains intentional because it protects URL/origin constraints independently of the concrete browser-tab adapter.
 - Dead bootstrap shell code has been removed. Large feature components are not split by line count; extraction requires a real ownership or independent-changeability gain.
 - Browser-native folder/chat rename and delete dialogs have been replaced by Chatspace-owned dialogs. Folder/chat/note destructive mutation occurs only after explicit Chatspace confirmation.
-- Explorer global create/save controls are icon-only with accessible labels/tooltips. Folder/chat/note target actions live in right-click context menus with hover/focus kebab access as a discoverability and keyboard-focus fallback.
+- Explorer global create/save controls are icon-only with accessible labels/tooltips. Their quick-action strip is compact and left-aligned, with 24px controls instead of a visually dominant primary Save tile. Folder/chat/note target actions live in right-click context menus with hover/focus kebab access as a discoverability and keyboard-focus fallback.
+- Explorer search/root chrome is compact. `Workspace root` stays on one line, and the `Drop here` hint appears only during an actual root drag-over rather than consuming permanent row space.
 - Folder context actions include new subfolder, new note here, rename, and delete. Workspace root offers new folder/new note. Chat and note context menus own their corresponding open/edit, rename, move, pin where applicable, and delete actions.
 - Note title remains directly editable in the note header. Title edits synchronize the open note tab title; an empty title falls back to `Untitled note`.
-- Note Edit/Preview is an icon-only mode control with explicit accessible labels/tooltips.
+- Note Edit/Preview is an icon-only segmented control with explicit accessible labels/tooltips, `aria-pressed`, and a high-contrast pressed state so the active mode is immediately visible.
+- Note header, tag row, editor padding, and footer chrome are tightened so the writing surface remains visually primary without changing behavior.
 - Note secondary context is ephemeral and collapsible. Collapsed mode hides `Related locally`, linked-chat controls, and linked-chat chips while retaining the `chars · tags` summary and an explicit expand control so writing space becomes primary.
 - Markdown sync is opened from a header utility icon beside the theme control and rendered as a dedicated ephemeral view that reuses the existing localhost bridge component.
 - The Markdown Sync page exposes an explicit `Back to workspace` action; returning preserves existing workspace state because the utility page remains ephemeral rather than becoming a persisted tab.
@@ -31,7 +33,8 @@ This is a short operational snapshot. Durable product/architecture/history belon
 - PR #19 is merged as `af900a7`: internal rename/delete dialogs, compact note relation rail, and the dedicated Markdown Sync header utility view are in `master`.
 - PR #21 is merged as `f9e003e`: workbench content occupies the intended flexible viewport row and Markdown Sync has explicit back navigation.
 - PR #23 is merged as `ed17df7`: Explorer/note controls are compact, note title/tab titles stay aligned, note context can collapse, and target-owned tree context menus replace the permanent folder action footer.
-- The post-merge `master` CI run for `ed17df7` passed frozen install, lint, strict typecheck, deterministic tests, and WXT build+ZIP packaging.
+- PR #25 is merged as `a0b25b8`: Explorer quick actions/search/root chrome are denser, permanent root drop-hint noise is removed, and the note Edit/Preview state is high-contrast and explicit.
+- The post-merge `master` CI run for `a0b25b8` passed frozen install, lint, strict typecheck, deterministic tests, and WXT build+ZIP packaging.
 - Live-browser interaction/visual acceptance remains outside repository CI.
 
 ## Canonical operating model
@@ -105,27 +108,28 @@ Daily-driver candidate, not yet public/store-ready.
 
 ## Next highest-ROI sequence
 
-1. Perform bounded live-browser acceptance of the current daily-driver flow, including the PR #19, PR #21, and PR #23 UI behavior.
+1. Perform bounded live-browser acceptance of the current daily-driver flow, including the PR #19, PR #21, PR #23, and PR #25 UI behavior.
 2. After real use, treat observed friction as evidence for a user product decision; do not implement unapproved feature scope automatically.
 
 ## Manual acceptance still required for current daily-driver candidate
 
 After reloading the unpacked extension:
 
-1. verify Explorer top-level folder/note/save-chat actions are icon-only, understandable by hover tooltip, and remain keyboard-focus accessible
-2. right-click Workspace root and a folder; verify root offers new folder/new note while a folder offers new subfolder/new note here, and newly created items get the intended parent
-3. right-click folder/chat/note rows and use the kebab fallback; verify the same target-owned actions are available and menu placement stays inside the viewport
-4. rename/delete folder/chat/note targets and confirm Chatspace-owned dialogs appear; cancel must not mutate state and destructive confirmation must mutate only the selected target
-5. drag folder/chat/note into another folder and back to Workspace root; verify ancestor → descendant folder drop still does not mutate hierarchy
-6. edit a note title directly and confirm its open tab title follows; clear the title and blur to confirm the `Untitled note` fallback
-7. verify Edit/Preview is icon-only with clear active state, tooltip, and keyboard focus
-8. collapse note context and confirm only the chars/tags summary plus expand affordance remain below the editor; expand it and confirm `Related locally` and linked-note/chat context return
-9. confirm the note editor still uses the remaining workbench height in both expanded and collapsed context states
-10. on a narrow Side Panel with context expanded, verify `Related locally` remains secondary and scrolls internally when its content exceeds the bounded rail height
-11. open Markdown Sync from the header, confirm `Back to workspace` is obvious, and verify returning preserves the active workspace state
-12. switch light/dark mode, close/reopen Side Panel, verify preference persists
-13. inspect Home, Explorer, notes, tabs, graph, dialogs, context menus, Markdown Sync, and settings in both themes
-14. confirm supported ChatGPT conversation detection/navigation works with no content script registered
+1. verify Explorer top-level folder/note/save-chat controls form a compact quick-action strip, remain understandable by hover tooltip, and remain keyboard-focus accessible
+2. verify Explorer search spacing is compact, `Workspace root` stays on one line at narrow widths, and `Drop here` appears only while dragging over the root row
+3. right-click Workspace root and a folder; verify root offers new folder/new note while a folder offers new subfolder/new note here, and newly created items get the intended parent
+4. right-click folder/chat/note rows and use the kebab fallback; verify the same target-owned actions are available and menu placement stays inside the viewport
+5. rename/delete folder/chat/note targets and confirm Chatspace-owned dialogs appear; cancel must not mutate state and destructive confirmation must mutate only the selected target
+6. drag folder/chat/note into another folder and back to Workspace root; verify ancestor → descendant folder drop still does not mutate hierarchy
+7. edit a note title directly and confirm its open tab title follows; clear the title and blur to confirm the `Untitled note` fallback
+8. switch Edit/Preview and confirm the active mode uses an obvious high-contrast pressed state while the inactive mode remains subdued; tooltip, keyboard focus, and `aria-pressed` semantics must remain correct
+9. collapse note context and confirm only the chars/tags summary plus expand affordance remain below the editor; expand it and confirm `Related locally` and linked-note/chat context return
+10. confirm the note editor still uses the remaining workbench height in both expanded and collapsed context states
+11. on a narrow Side Panel with context expanded, verify `Related locally` remains secondary and scrolls internally when its content exceeds the bounded rail height
+12. open Markdown Sync from the header, confirm `Back to workspace` is obvious, and verify returning preserves the active workspace state
+13. switch light/dark mode, close/reopen Side Panel, verify preference persists
+14. inspect Home, Explorer, notes, tabs, graph, dialogs, context menus, Markdown Sync, and settings in both themes
+15. confirm supported ChatGPT conversation detection/navigation works with no content script registered
 
 ## Blocked
 
