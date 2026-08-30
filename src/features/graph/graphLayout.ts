@@ -43,7 +43,6 @@ function containsChildren(graph: WorkspaceGraph): Map<string, GraphNode[]> {
 export function layoutWorkspaceGraph(graph: WorkspaceGraph): GraphLayout {
   if (graph.nodes.length === 0) return { width: MIN_WIDTH, height: MIN_HEIGHT, nodes: [] };
 
-  const nodeById = new Map(graph.nodes.map((node) => [node.id, node]));
   const workspace = graph.nodes.find((node) => node.kind === 'workspace') ?? graph.nodes[0];
   if (workspace === undefined) return { width: MIN_WIDTH, height: MIN_HEIGHT, nodes: [] };
 
