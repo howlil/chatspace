@@ -448,6 +448,13 @@ export function WorkspaceApp({
     });
   }
 
+  function deleteManualEdge(graphEdgeId: string): void {
+    const prefix = 'manual:';
+    if (!graphEdgeId.startsWith(prefix)) return;
+    dispatch({ type: 'edge/delete', edgeId: graphEdgeId.slice(prefix.length), now: Date.now() });
+    setStatus('Manual graph relation deleted.');
+  }
+
   async function importBackup(json: string): Promise<void> {
     const snapshot = importWorkspaceJson(json);
     try {
@@ -611,7 +618,14 @@ export function WorkspaceApp({
       </div>
     );
   } else if (activeTab?.kind === 'graph') {
-    surfaceContent = <GraphNavigator graph={graph} onOpenNode={openGraphNode} onCreateManualEdge={createManualEdge} />;
+    surfaceContent = (
+      <GraphNavigator
+        graph={graph}
+        onOpenNode={openGraphNode}
+        onCreateManualEdge={createManualEdge}
+        onDeleteManualEdge={deleteManualEdge}
+      />
+    );
   } else if (activeNote !== undefined) {
     surfaceContent = (
       <div
