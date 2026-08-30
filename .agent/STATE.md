@@ -1,12 +1,12 @@
 # Project State
 
-Updated: 2026-08-29
+Updated: 2026-08-30
 
 This is a short operational snapshot. Durable product/architecture/history belongs in the owning `.agent` documents and plans/ADRs.
 
 ## Current
 
-- `master` includes Explorer hierarchy/theme, canonical lean workflow, coalesced/serialized workspace persistence, obsolete ChatGPT content-script removal, risk-based testing policy, verification cleanup, canonical codebase-quality rules, bounded ownership/integrity cleanup, reproducible frozen pnpm installs, the UI consistency cleanup from PR #19, the workbench-height/navigation correction from PR #21, the writing-first note/tree interaction cleanup from PR #23, the compact Explorer/note-mode visual refinement from PR #25, and direct Obsidian folder sync from PR #27.
+- `master` includes Explorer hierarchy/theme, canonical lean workflow, coalesced/serialized workspace persistence, obsolete ChatGPT content-script removal, risk-based testing policy, verification cleanup, canonical codebase-quality rules, bounded ownership/integrity cleanup, reproducible frozen pnpm installs, the UI consistency cleanup from PR #19, the workbench-height/navigation correction from PR #21, the writing-first note/tree interaction cleanup from PR #23, the compact Explorer/note-mode visual refinement from PR #25, direct Obsidian folder sync from PR #27, and the usable spatial graph navigation increment from PR #29.
 - Core daily-driver flow: detect a supported ChatGPT conversation URL, save a local reference, organize it, resume through Home/Explorer/tabs, and navigate native ChatGPT.
 - Production persistence uses extension-owned `chrome.storage.local`, coalesces rapid snapshots, and serializes physical writes.
 - Workspace folder hierarchy and local entity folder ownership are domain invariants: cyclic hierarchy, missing parent folders, and chat/note references to missing folders are rejected at the reducer and persistence/import boundary.
@@ -22,6 +22,7 @@ This is a short operational snapshot. Durable product/architecture/history belon
 - Note Edit/Preview is an icon-only segmented control with explicit accessible labels/tooltips, `aria-pressed`, and a high-contrast pressed state so the active mode is immediately visible.
 - Note header, tag row, editor padding, and footer chrome are tightened so the writing surface remains visually primary without changing behavior.
 - Note secondary context is ephemeral and collapsible. Collapsed mode hides `Related locally`, linked-chat controls, and linked-chat chips while retaining the `chars · tags` summary and an explicit expand control so writing space becomes primary.
+- Graph remains a projection of canonical workspace state, but its interaction layer is now usable as spatial navigation: deterministic containment-aware layout, pan/zoom/fit view, search-to-focus, direct-neighborhood emphasis, inspector navigation, session-only node dragging, graph-native manual relation creation, manual relation deletion through the existing reducer action, and visually distinct hierarchy/reference/manual/derived edges. Dragged positions are intentionally ephemeral and do not change `WorkspaceSnapshot`.
 - Markdown sync is opened from a header utility icon beside the theme control and rendered as a dedicated ephemeral view.
 - The primary Markdown Sync flow now uses direct browser folder access: the user chooses an Obsidian vault through the native directory picker, and manual sync writes note Markdown only below `<vault>/Chatspace/`. No terminal, token, Node process, or localhost server is required in the primary UX.
 - The selected vault directory handle is integration-owned state stored separately in IndexedDB. It is not part of `WorkspaceSnapshot`, workspace import/export, or the canonical `chrome.storage.local` workspace schema.
@@ -40,7 +41,8 @@ This is a short operational snapshot. Durable product/architecture/history belon
 - PR #23 is merged as `ed17df7`: Explorer/note controls are compact, note title/tab titles stay aligned, note context can collapse, and target-owned tree context menus replace the permanent folder action footer.
 - PR #25 is merged as `a0b25b8`: Explorer quick actions/search/root chrome are denser, permanent root drop-hint noise is removed, and the note Edit/Preview state is high-contrast and explicit.
 - PR #27 is merged as `de4eed2`: primary Markdown Sync uses direct selected-folder access, persists the selected directory handle outside workspace state, supports reconnect/change/disconnect, and manually writes the active note below the vault `Chatspace/` directory.
-- The post-merge `master` CI run for `de4eed2` passed frozen install, lint, strict typecheck, deterministic tests, and WXT build+ZIP packaging.
+- PR #29 is merged as `e000d05`: Graph uses deterministic containment-aware placement, pan/zoom/fit controls, search and one-hop focus, session-only drag placement, graph-native relation creation/removal, relationship provenance/semantics, and targeted deterministic tests without adding a dependency or persisted schema change.
+- The PR #29 CI run #171 passed frozen install, lint, strict typecheck, deterministic tests, and WXT build+ZIP packaging.
 - Live-browser interaction/visual acceptance remains outside repository CI.
 
 ## Canonical operating model
@@ -79,7 +81,7 @@ Material changes to data ownership, public/persisted contracts, major communicat
 - direct Markdown/vault integration is user-selected-folder only, manually writes notes below `<vault>/Chatspace/`, and stores its directory handle separately from workspace state in IndexedDB
 - the old authenticated localhost Markdown/vault bridge remains retained but is no longer the primary Side Panel integration path; do not remove it until direct-folder live acceptance is complete
 - Markdown Sync presentation and note-context collapse state are ephemeral shell/workbench UI state, not canonical workspace state
-- graph is a projection, never canonical storage
+- graph is a projection, never canonical storage; manual graph edges remain canonical workspace relations, while temporary dragged node coordinates stay ephemeral UI state
 
 ## Current testing / verification rule
 
@@ -115,9 +117,10 @@ Daily-driver candidate, not yet public/store-ready.
 
 ## Next highest-ROI sequence
 
-1. Perform bounded live-browser acceptance of the current daily-driver flow, especially PR #27 direct-folder Markdown Sync in the actual Chromium Side Panel context.
+1. Perform bounded live-browser acceptance of the current daily-driver flow, especially PR #29 Graph interaction in a real narrow Side Panel and PR #27 direct-folder Markdown Sync in the actual Chromium Side Panel context.
 2. If direct-folder connect/write/restore succeeds in live use, decide whether to remove the retained localhost bridge and optional localhost permission as a bounded cleanup sprint.
-3. After real use, treat observed friction as evidence for a user product decision; do not implement unapproved feature scope automatically.
+3. Observe real Graph use before deciding whether session-only dragged positions need persistence; do not change the persisted workspace contract without an explicit product decision.
+4. After real use, treat observed friction as evidence for a user product decision; do not implement unapproved feature scope automatically.
 
 ## Manual acceptance still required for current daily-driver candidate
 
@@ -145,6 +148,13 @@ After reloading the unpacked extension:
 20. switch light/dark mode, close/reopen Side Panel, verify preference persists
 21. inspect Home, Explorer, notes, tabs, graph, dialogs, context menus, Markdown Sync, and settings in both themes
 22. confirm supported ChatGPT conversation detection/navigation works with no content script registered
+23. open Graph with folders, notes, chats, and mixed relationship types; verify containment produces a stable hierarchy-aware layout rather than a circular index layout
+24. pan the Graph canvas, zoom in/out, and use Fit view; verify navigation remains usable at narrow Side Panel widths
+25. search for a node and confirm the matching node becomes selected/focused; select another node and confirm only its direct neighborhood stays emphasized
+26. use relationship cards in the inspector to navigate between connected nodes and confirm relationship kind/provenance remain understandable
+27. create a manual relation with `Connect` → target-node selection; verify duplicate manual relations are not created for the same pair
+28. delete a manual relation from the inspector and verify canonical/derived relationships do not expose deletion controls
+29. drag one or more graph nodes during the session and verify edges follow the moved nodes; reopen Graph/Side Panel and confirm those coordinates are not persisted by the current product contract
 
 ## Blocked
 
