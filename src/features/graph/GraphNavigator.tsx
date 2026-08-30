@@ -10,7 +10,7 @@ interface GraphNavigatorProps {
   graph: WorkspaceGraph;
   onOpenNode: (node: GraphNode) => void;
   onCreateManualEdge: (sourceEntityId: string, targetEntityId: string) => void;
-  onDeleteManualEdge: (edgeId: string) => void;
+  onDeleteManualEdge?: (edgeId: string) => void;
 }
 
 interface Point {
@@ -347,7 +347,7 @@ export function GraphNavigator({ graph, onOpenNode, onCreateManualEdge, onDelete
                         <strong className="truncate text-[9px] font-medium text-cs-muted">{other?.label ?? otherId}</strong>
                         <small className="text-[8px] text-cs-subtle">{edge.provenance}</small>
                       </button>
-                      {edge.provenance === 'manual' && (
+                      {edge.provenance === 'manual' && onDeleteManualEdge !== undefined && (
                         <IconButton aria-label={`Delete manual relation with ${other?.label ?? otherId}`} onClick={() => onDeleteManualEdge(edge.id)}>
                           <Trash2 size={10} aria-hidden="true" />
                         </IconButton>
