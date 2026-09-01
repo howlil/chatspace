@@ -8,7 +8,7 @@ Chatspace is a local-first workspace that lives **beside ChatGPT**. Native ChatG
 Browser window
 ├── Chatspace Side Panel
 │   ├── Explorer: search / pinned / folders / chat refs / notes
-│   └── Workbench: tabs / notes / graph / settings
+│   └── Workbench: tabs / notes / graph / settings / Markdown Sync
 │
 └── Native ChatGPT page
     └── messages / composer / tools / provider runtime
@@ -21,36 +21,38 @@ Chatspace does not render a duplicate ChatGPT conversation panel and does not co
 - Chromium Side Panel workspace opened from the extension action
 - searchable nested local Explorer
 - pinned conversation references
-- persisted Explorer collapse/resize
+- persisted Explorer collapse/resize and explicit light/dark preference
 - workspace tabs
 - `Ctrl/⌘ K` keyboard command palette
 - explicit URL-only ChatGPT conversation references
-- Markdown notes with Edit/Preview, tags, and linked chats
-- spatial graph canvas with visible edges, zoom, selection inspector, and provenance
+- Markdown notes with Edit/Preview, tags, linked chats, and related-local navigation
+- spatial graph canvas with containment-aware layout, pan/zoom/fit, search/focus, selection inspector, manual relations, and provenance
 - deterministic local related-note suggestions from user-authored local note data
 - schema-validated import/export/reset and corrupted-storage recovery
-- extension-owned persistence through `chrome.storage.local`
-- optional authenticated localhost Markdown/vault bridge
+- extension-owned canonical persistence through `chrome.storage.local`
+- direct user-selected-folder Markdown Sync to `<vault>/Chatspace/`
+- selected vault directory handle stored separately from workspace state in IndexedDB
+- retained authenticated localhost Markdown/vault companion as legacy/fallback code, not the primary Side Panel sync path
 
 ## Provider boundary
 
-The ChatGPT content script is deliberately tiny. It only supports:
+Provider presence and navigation are handled through validated ChatGPT URLs and browser tab APIs.
 
-- reporting the current page URL
-- validating and navigating to an explicit supported `https://chatgpt.com/c/<id>` target
+The core workflow does **not** require a ChatGPT content script or provider DOM bridge.
 
-It does **not** scrape conversations, crawl history, read provider cookies/session tokens, use private endpoints, or extract ChatGPT output.
+Chatspace does not scrape conversations, crawl history, read provider cookies/session tokens, use private endpoints, intercept provider network traffic, or extract ChatGPT output.
 
 ## Development
 
 Requirements: Node 22.12+ and pnpm 11.23.0.
 
 ```bash
-pnpm install
+pnpm install --frozen-lockfile
 pnpm dev
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm verify
 pnpm build
 pnpm zip
 ```
@@ -63,14 +65,34 @@ For Chromium development:
 2. load the generated WXT development extension with **Load unpacked**
 3. open `chatgpt.com`
 4. click the Chatspace extension action; Chatspace opens in the browser Side Panel
-5. keep native ChatGPT in the main page and use the side panel for workspace navigation
+5. keep native ChatGPT in the main page and use the Side Panel for workspace navigation
 
-CI treats lint, strict typecheck, tests, production build, and ZIP packaging as separate gates and uses the same pnpm toolchain as local development.
+CI uses the committed `pnpm-lock.yaml` with frozen install, then runs lint, strict typecheck, deterministic tests, and WXT ZIP packaging.
+
+## Agent/project knowledge
+
+Repository agent guidance is intentionally small and canonical:
+
+```text
+AGENTS.md
+└── .agents/
+    ├── PROJECT.md
+    ├── ARCHITECTURE.md
+    ├── CURRENT_ITERATION.md
+    ├── CODE_PATTERNS.md
+    ├── QUALITY.md
+    ├── DECISIONS.md
+    ├── DESIGN.md
+    ├── SECURITY.md
+    └── RELEASE.md
+```
+
+`AGENTS.md` is the thin entrypoint; `.agents/` owns durable Chatspace-specific project knowledge and active engineering state.
 
 ## Release status
 
-The repository can be a development/daily-driver candidate after product-convergence verification. It should not be called public-store-ready yet: a committed transitive `pnpm-lock.yaml` and full distribution lifecycle checks remain release-hardening work.
+Chatspace is a development/daily-driver candidate, not yet a public/store-ready release. Repository build/package confidence is automated; actual Chromium Side Panel interaction and File System Access behavior still require bounded live-browser acceptance where relevant.
 
 ## Safety and privacy
 
-Local workspace data is extension-owned. Provider integration remains URL-only. See `PRIVACY.md` and `SECURITY.md` for the trust boundary and recovery model.
+Local workspace data is extension-owned. Provider integration remains URL/tab-only. See `PRIVACY.md`, root `SECURITY.md`, and `.agents/SECURITY.md` for the current trust/privacy model.
