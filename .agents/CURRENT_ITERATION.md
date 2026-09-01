@@ -1,84 +1,72 @@
 # Current Milestone
 
-Status: **READY_FOR_MILESTONE**
+Status: **EXECUTING**
 
-Goal: Consolidate Chatspace's existing workspace UX grammar across Explorer, Workbench, Home, Notes, Graph, Settings, and Markdown Sync so equivalent surfaces and interactions use one compact, consistent component language without changing product behavior.
+Goal: Ship a product-specific Astro landing page under `landing/` that explains Chatspace clearly to public repository visitors, demonstrates the real product model, provides a truthful source-install path, and preserves the product's local-first/provider boundaries.
 
-Why: M7 established Radix UI as the interaction foundation and reduced application orchestration. M8 removed repeated UX composition where multiple existing surfaces expressed the same header, feedback, search, or compact-mode semantics without turning the work into a redesign or a generic design-system project.
+Why: Chatspace now has a coherent daily-driver product shape but no dedicated public product surface. Repository visitors currently have to infer the experience from README text and source structure. The landing page should communicate the product in seconds without inventing capabilities, fake social proof, or generic AI/SaaS styling.
 
 ## Feature Compass
 
-**Shape:** Chatspace remains a local-first Chromium Side Panel workspace beside native ChatGPT, with Explorer, Workbench tabs, local notes, spatial Graph navigation, validated ChatGPT URL navigation, settings/recovery, and manual direct-folder Markdown Sync.
+**Shape:** Chatspace remains a local-first Chromium Side Panel workspace beside native ChatGPT. The new landing page is a static public presentation surface only; it does not participate in extension runtime, persistence, provider integration, permissions, or filesystem behavior.
 
-**Position:** M8 is complete. Shared workspace headers, feedback presentation, and search affordances now have proven reusable owners; Note Edit/Preview uses Radix ToggleGroup; feature mechanics and persisted contracts are unchanged.
+**Position:** M9 is executing. Astro scaffold, page structure, product mock, responsive visual system, and landing CI build coverage are being added on `m9-oss-landing`.
 
-**Delta:** M8 consolidated repeated UX composition without expanding product scope or changing persisted/runtime contracts.
+**Delta:** Add `landing/` as an Astro static site that communicates current product capabilities and boundaries, while leaving extension behavior unchanged.
 
-**Next Move:** Bound the next repository milestone from an explicit product/engineering outcome; do not create a black-box/live-browser milestone.
+**Next Move:** Generate and commit the standalone landing lockfile, run PR CI, fix any build/static issues, finalize evidence, and integrate only after gates pass.
 
 ## Scope
 
 ### In
 
-- consolidate repeated page/surface header composition where existing screens express the same title, description, status, or action hierarchy;
-- consolidate repeated empty, informational, success, warning, and error presentation where the semantics are equivalent;
-- consolidate compact action-group / segmented-control behavior where multiple features currently hand-compose the same interaction pattern;
-- use Radix UI Primitives for reusable interactive behavior such as toggle groups, tooltips, collapsibles, menus, dialogs, selects, or equivalent primitives when they fit the existing interaction;
-- keep Chatspace visual styling in semantic `cs-*` tokens and Tailwind; do not introduce Radix Themes;
-- normalize action placement, control density, accessible naming, and tooltip behavior where the underlying action semantics are already the same;
-- preserve narrow Side Panel usability, light/dark behavior, keyboard accessibility, and existing feature ownership;
-- remove superseded one-off helpers/styles only when the shared replacement is already proven by concrete consumers.
+- Astro static site under `landing/`;
+- compact, clean, minimalist, restrained steel-blue visual language aligned with root `DESIGN.md`;
+- product-specific hero showing Chatspace Side Panel beside native ChatGPT rather than generic decorative artwork;
+- truthful Notes, Graph, Markdown Sync, local-first, provider-boundary, privacy/security, status, and install-from-source communication;
+- responsive narrow/mobile behavior, keyboard focus, reduced-motion support, semantic structure, and light/dark themes;
+- direct links to repository, privacy policy, and security policy;
+- standalone landing dependency lock and deterministic landing build in CI;
+- no claim of a specific OSS license while the repository has no `LICENSE` file.
 
 ### Out
 
-- no new product feature or workflow;
-- no navigation or information-architecture redesign;
-- no `WorkspaceSnapshot`, domain entity, persistence, provider, permission, or filesystem contract change;
-- no Graph pan/zoom/drag/layout behavior change and no Graph position persistence;
-- no provider DOM/content integration;
-- no automatic or bidirectional vault sync;
-- no broad visual restyle, new token system, new generic design framework, or Radix Themes;
-- no abstraction created for a single consumer and no speculative component catalog;
-- no material user-facing concept rename; wording may only be normalized when semantics are already identical;
-- no black-box/live-browser milestone or fake browser acceptance claim.
+- no extension feature or behavior change;
+- no `WorkspaceSnapshot`, provider, storage, permission, filesystem, Graph mechanics, or Markdown Sync contract change;
+- no analytics, telemetry, cookies, forms, newsletter, accounts, CMS, or external font dependency;
+- no fabricated user counts, testimonials, stars, benchmarks, or release claims;
+- no Chrome Web Store CTA before a public/store-ready release exists;
+- no new license selection; licensing remains a separate explicit product/legal decision;
+- no broad root visual-system rewrite and no black-box milestone.
 
 ## Slices
 
-- [x] **Slice 1 — Shared UX grammar:** introduced only proven shared presentation primitives with multiple current consumers.
-- [x] **Slice 2 — Home, Settings, Markdown Sync:** aligned page hierarchy and equivalent feedback presentation without changing workflows.
-- [x] **Slice 3 — Notes, Graph, Explorer, Workbench:** aligned search/mode interaction grammar; Note Edit/Preview moved to Radix ToggleGroup; Workbench was reviewed and retained because its existing chrome already fits the shared grammar.
-- [x] **Slice 4 — Cleanup and milestone gate:** removed superseded one-off code, aligned deterministic tests, updated canonical knowledge, and passed repository gates.
+- [x] **Slice 1 — Product narrative and Astro scaffold:** bound public messaging to current repository truth and established the standalone Astro site.
+- [x] **Slice 2 — Landing experience:** implemented hero/product visualization, Notes/Graph/Sync showcases, trust boundaries, install path, responsive behavior, and light/dark theming.
+- [ ] **Slice 3 — Reproducible build:** commit landing lockfile and make Astro static build part of CI.
+- [ ] **Slice 4 — Cleanup and milestone gate:** remove temporary lockfile-generation workflow, inspect final diff, pass CI, finalize canonical state, and integrate.
 
 ## Current Decisions
 
-- Native ChatGPT remains the conversation runtime; Chatspace remains the local Side Panel workspace.
-- Canonical workspace state remains in extension-owned `chrome.storage.local`.
-- Provider integration remains URL/tab-only.
-- Direct-folder Markdown Sync remains manual and one-way; its directory handle remains outside `WorkspaceSnapshot` in IndexedDB.
-- Graph remains a projection; session-only dragged positions remain ephemeral.
-- Radix UI Primitives owns reusable complex interaction behavior; Chatspace owns visual styling, content hierarchy, and product composition.
-- M8 consolidation follows reuse first, then the smallest local abstraction proven by multiple existing consumers.
+- Landing page is a presentation surface, not a second application runtime.
+- Astro is used without React/Tailwind/component-library integrations because the static page does not need client framework state and minimum dependency surface is preferred.
+- The landing reuses Chatspace's neutral + desaturated steel-blue direction but owns its CSS locally; extension `cs-*` runtime tokens are not coupled across package boundaries.
+- Product visuals are HTML/CSS/SVG representations of real Chatspace concepts rather than stock screenshots or unrelated decorative imagery.
+- Public copy must distinguish repository/source availability from an OSS license until a `LICENSE` file exists.
+- Root `DESIGN.md` remains the durable visual/product-experience authority. Root `SECURITY.md` and `PRIVACY.md` remain public-facing repository policies, not `.agents` authority files.
 
 ## Verification / Evidence
 
-- `WorkspaceHeader` is shared by Home, Settings, and Markdown Sync;
-- `InlineFeedback` is shared by Settings and Markdown Sync for equivalent neutral/error messaging;
-- `SearchField` is shared by Explorer and Graph while their search decision logic remains feature-owned;
-- Note Edit/Preview interaction uses Radix `ToggleGroup` directly rather than a one-consumer wrapper;
-- Workbench shell/chrome was reviewed and kept unchanged because it already uses the established compact grammar;
-- no `WorkspaceSnapshot`, provider, Graph mechanics, permission, or filesystem contract changed;
-- deterministic suite passes with 61 tests;
-- repository gate passed: frozen install, lint, strict typecheck, deterministic tests, and WXT ZIP packaging.
+- Astro version pinned to `7.2.0`; Node boundary matches repo requirement (`>=22.12.0`).
+- No landing React integration, analytics SDK, external font, CMS, or client framework dependency added.
+- Landing CI build step added alongside existing extension quality gate.
+- Final CI evidence pending.
 
 ## Blockers / Risks
 
-- No known repository/CI blocker.
-- Do not grow `src/ui/workspace.tsx` into a speculative component catalog; add shared presentation only after concrete repeated ownership exists.
-
-## Candidate next milestone — not authorized
-
-**M9 — Data & Persistence Hardening:** tighten recovery/import/export/storage failure boundaries without changing `WorkspaceSnapshot` unless separately approved.
+- Landing dependency lockfile is not final until the temporary branch workflow generates it.
+- Repository currently has no `LICENSE`; landing deliberately avoids claiming an open-source license.
 
 ## Next Action
 
-Wait for explicit authorization of the next milestone.
+Complete the reproducible landing build and milestone gate, then integrate M9 if CI is green.
