@@ -15,9 +15,7 @@ Chatspace is local-first. Canonical workspace data is stored in Chromium extensi
 
 When the user explicitly connects a local vault and invokes Markdown Sync, Chatspace writes the selected local note beneath `<vault>/Chatspace/` using the browser File System Access API.
 
-Sync is manual and one-way. The selected filesystem handle is not included in `WorkspaceSnapshot` or workspace export/import.
-
-The retained localhost companion is legacy/fallback code and is not required by the primary Side Panel Markdown Sync path.
+Sync is manual and one-way. The selected filesystem handle is not included in `WorkspaceSnapshot` or workspace export/import. Chatspace does not require or expose a localhost vault server.
 
 ## Data Chatspace does not collect
 
@@ -44,9 +42,8 @@ The current extension manifest requests:
 - `storage` for Chatspace-owned workspace persistence
 - `sidePanel` for the primary Chatspace UI
 - host access scoped to `https://chatgpt.com/*` for the supported provider navigation boundary
-- optional host access to `http://127.0.0.1:27123/*` for the retained localhost companion when explicitly used
 
-Chatspace does not request cookies, history, `webRequest`, or `<all_urls>` access for the current product.
+Chatspace does not request cookies, history, `webRequest`, `<all_urls>`, or localhost host access for the current product.
 
 ## Deletion
 

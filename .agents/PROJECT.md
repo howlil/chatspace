@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Chatspace is a local-first browser Side Panel workspace that helps users organize, revisit, and connect work around native ChatGPT conversations without replacing the ChatGPT conversation experience.
+Chatspace is a local-first Chromium Side Panel workspace for organizing, revisiting, and connecting work around native ChatGPT conversations without replacing the ChatGPT conversation experience.
 
 ```text
 ChatGPT   = provider-owned conversation runtime
@@ -11,9 +11,7 @@ Chatspace = local workspace, organization, notes, navigation, and graph
 
 ## Intended experience
 
-Chatspace lives beside ChatGPT in the Chromium Side Panel. The main browser page remains native ChatGPT.
-
-The primary experience is a compact editor-like workspace with:
+The main browser page remains native ChatGPT. Chatspace lives beside it in the Side Panel as a compact editor-like workspace with:
 
 - Explorer for local hierarchy, search, pins, saved chat references, and notes;
 - Workbench tabs for Home, notes, Graph, settings, and local utilities;
@@ -52,11 +50,12 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - Explorer supports local search, nested folders, explicit root/subfolder creation semantics, move operations, pins, and saved chat references.
 - Invalid folder cycles and references to missing folders are rejected.
 - Notes support editable titles, Markdown Edit/Preview, tags, linked chats, and related-local navigation.
-- The Graph is a spatial navigation surface with explicit relationship provenance.
+- Graph is a spatial navigation surface with explicit relationship provenance.
 - Canonical workspace state is local and recoverable; corrupted or unsupported persisted state fails closed instead of silently replacing user data.
 - Explicit light/dark preference is persisted.
 - Destructive local mutations require explicit Chatspace confirmation.
 - Markdown Sync is manual and one-way from Chatspace to the selected vault.
+- Direct selected-folder access is the only current vault-sync runtime path.
 - The selected vault directory handle is integration-owned state and is not part of workspace export/import.
 
 ## Primary daily-driver journey
@@ -94,6 +93,7 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - opaque AI-generated graph edges;
 - cross-device sync;
 - bidirectional or automatic vault sync;
+- localhost/server-based vault sync in the current product;
 - mobile support in the current desktop-first product.
 
 ## Data and contract ownership
@@ -115,7 +115,6 @@ Optional local integration used to manually write Chatspace notes beneath a user
 ## Deferred / requires explicit product decision
 
 - persistence of session-only dragged Graph node coordinates;
-- removal of the retained localhost vault bridge after direct-folder live acceptance;
 - additional provider integrations;
 - automatic/bidirectional vault synchronization;
 - remote analytics/telemetry;
@@ -123,4 +122,4 @@ Optional local integration used to manually write Chatspace notes beneath a user
 
 ## Open validation
 
-The current daily-driver candidate still needs bounded live-browser validation for the Chromium Side Panel environment, especially Graph interaction at narrow widths and direct-folder connect/write/restore behavior.
+The current daily-driver candidate still needs bounded live-browser validation for the Chromium Side Panel environment, especially Graph interaction at narrow widths, provider tab navigation, and direct-folder connect/write/restore behavior.

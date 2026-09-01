@@ -29,85 +29,55 @@ CI runs on pull requests and pushes to `master`.
 
 ## Verification ownership
 
-Use the narrowest stable boundary that protects the affected Chatspace behavior.
+Use the narrowest stable boundary that can actually establish the relevant confidence.
 
-### Domain / application tests
+### Deterministic repository tests
 
-Use deterministic tests for behavior such as:
+Use unit/component tests for behavior that can be proven without pretending to reproduce the browser environment, including:
 
-- workspace hierarchy invariants;
-- move/create/delete semantics;
-- state transitions;
-- graph projection/relationship semantics;
-- persistence transformations and ordering;
-- provider URL classification/navigation decisions;
-- integration state that can be proven without a live browser.
+- workspace hierarchy and reducer invariants;
+- import/export/schema behavior;
+- graph projection and relationship semantics;
+- persistence ordering/coalescing;
+- provider URL normalization and owned-port decisions;
+- pure local-vault filename/path helpers;
+- important keyboard, confirmation, accessibility, and component-wiring semantics.
 
-Prefer fakes at owned ports over browser/provider internals mocked throughout the codebase.
+Prefer pure functions or fakes at owned ports. Do not mock an external runtime deeply enough that the mock itself becomes the specification.
 
-### UI interaction tests
+### Black-box / live-browser acceptance
 
-Use Testing Library/Vitest when observable interaction can be deterministically protected, including important keyboard semantics, confirmation flows, accessible names, and feature wiring.
+The following are environment behavior and must not be claimed as accepted from jsdom or fake browser handles:
 
-Do not freeze Tailwind class lists or layout pixels with low-signal tests.
+- Chromium Side Panel lifecycle and narrow-panel visual usability;
+- real `showDirectoryPicker()` prompts/cancellation behavior;
+- real filesystem permission prompts and restored-handle permission behavior;
+- actual IndexedDB persistence of browser directory handles across extension/browser lifecycle;
+- actual filesystem writes through `FileSystemFileHandle`/writable streams;
+- real provider tab lifecycle/navigation in Chromium;
+- Graph pan/zoom/fit/drag and visual interaction quality in the actual Side Panel.
 
-### Manual browser acceptance
+Repository tests may still protect local decision logic around those boundaries, but acceptance of the environment itself is black-box/live-browser evidence.
 
-Use real Chromium Side Panel acceptance when repository tests cannot prove the environment-specific behavior.
-
-Current high-value manual boundaries include:
-
-- the extension opens and remains usable in the Side Panel;
-- native ChatGPT remains unobscured and usable;
-- supported ChatGPT conversation detection/navigation works without a provider content script;
-- narrow Side Panel layout remains usable;
-- Graph pan/zoom/fit/search/selection/connect/delete/drag behavior works in the actual Side Panel;
-- direct `showDirectoryPicker()` connect/write/update/restore/reconnect/change/disconnect behavior works;
-- workspace reload restores canonical local state;
-- explicit light/dark preference persists.
-
-Do not run the full manual daily-driver journey for unrelated low-risk work.
+Do not create “daily-driver”, “browser”, or “end-to-end” test names around a jsdom/fake-runtime test unless the test actually runs that environment.
 
 ## Persistence and data integrity
 
 Changes touching workspace persistence, schema, import/export, corruption handling, or write ordering require deterministic checks for the affected data risk.
 
-Relevant invariants include:
-
-- accepted snapshots round-trip;
-- malformed/future data fails safely;
-- recovery does not silently overwrite user state;
-- rapid saves preserve the latest accepted snapshot;
-- physical writes remain serialized;
-- reset affects only Chatspace-owned data;
-- migrations are deterministic and preserve intended semantics.
+Relevant invariants include accepted snapshots round-tripping, malformed/future data failing safely, recovery not silently overwriting user state, rapid saves preserving the latest accepted snapshot, serialized writes, scoped reset, and deterministic migrations.
 
 A persisted-contract change requires explicit approval before implementation.
 
 ## Provider boundary
 
-When provider integration changes, verify the affected URL/tab contract at a stable local boundary:
-
-- supported target normalization;
-- active-tab state classification;
-- validated navigation;
-- unsupported origin/target failure;
-- provider unavailability degrading only provider-dependent behavior.
+When provider integration changes, verify target normalization and owned-port decision behavior locally. Actual browser tab lifecycle remains black-box acceptance.
 
 Provider DOM/content automation is outside the current approved architecture.
 
 ## Security-sensitive changes
 
-A focused security review is required for changes to:
-
-- manifest permissions;
-- provider target/navigation boundary;
-- credentials/auth;
-- workspace persistence schema or destructive data behavior;
-- untrusted Markdown rendering;
-- local-vault filesystem/path/permission contract;
-- retained localhost companion command/data/path contract;
-- remote telemetry.
+A focused security review is required for changes to manifest permissions, provider target/navigation boundary, credentials/auth, workspace persistence schema or destructive data behavior, untrusted Markdown rendering, local-vault filesystem/path/permission contract, or remote telemetry.
 
 Verification should target the changed threat boundary.
 
@@ -125,7 +95,7 @@ A logical change is integration-ready when:
 
 Current product state: **daily-driver candidate, not public/store-ready**.
 
-Keep these project-specific confidence states distinct:
+Keep these states distinct:
 
 - **development-ready** — bounded change is correct with sufficient affected-risk evidence;
 - **release-ready increment** — accepted increment can safely remain on releasable `master`;
@@ -134,25 +104,13 @@ Keep these project-specific confidence states distinct:
 
 The package is currently pre-release (`0.0.0`). Do not invent a versioning scheme outside an actual release milestone.
 
-For ordinary unreleased logical changes, rollback is normally a revert. Persisted-schema changes require explicit migration/reversibility handling because code rollback alone may not restore data compatibility.
-
 ## Current known evidence gap
 
-Repository CI cannot prove actual File System Access API behavior inside the Chromium extension Side Panel or complete narrow-panel visual/interaction acceptance. Those remain bounded manual acceptance concerns for the current daily-driver candidate.
-
-The retained localhost companion must not be removed solely because direct-folder code exists. Removal is a separate bounded cleanup after direct-folder live acceptance establishes sufficient confidence.
+Repository CI proves deterministic code/build/package confidence. It does not prove actual File System Access API behavior, real provider tab lifecycle, or complete narrow-panel Graph/Side Panel interaction. Those remain bounded live-browser acceptance concerns.
 
 ## Test data and diagnostics
 
-Use synthetic/invented data.
-
-Do not commit or log:
-
-- real provider conversation exports containing private data;
-- auth/session material;
-- private conversation screenshots unless explicitly sanitized;
-- raw real-user storage/IndexedDB dumps;
-- provider conversation content in diagnostics.
+Use synthetic/invented data. Do not commit or log real provider conversation exports containing private data, auth/session material, unsanitized private screenshots, raw real-user storage/IndexedDB dumps, or provider conversation content in diagnostics.
 
 ## Flaky tests
 

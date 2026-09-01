@@ -2,87 +2,77 @@
 
 Status: **READY_FOR_MILESTONE**
 
-Goal: No product implementation milestone is currently authorized.
+Goal: Legacy/runtime-test-surface cleanup completed; no product implementation milestone is currently active.
 
-Why: The repository is in a releasable daily-driver-candidate state. The next meaningful implementation outcome should be bounded from an explicit user request rather than inferred from backlog/history.
+Why: Before live-browser acceptance, reduce the repository to current runtime ownership and stop deterministic tests from claiming browser-environment confidence they cannot establish.
 
 ## Feature Compass
 
 **Shape:** Chatspace is a local-first Chromium Side Panel workspace beside native ChatGPT, with Explorer, notes, spatial Graph navigation, validated ChatGPT URL navigation, and manual direct-folder Markdown Sync.
 
-**Position:** The latest delivered product state includes direct selected-folder Markdown Sync and usable spatial Graph navigation. Repository CI covers deterministic code/build/package checks; live-browser interaction remains environment-specific.
+**Position:** Direct selected-folder sync is now the sole vault runtime path. Obsolete localhost bridge infrastructure and pseudo browser/daily-driver acceptance tests were removed while deterministic domain, persistence, provider-decision, and stable UI-semantic coverage remains.
 
-**Delta:** No authorized product delta is active.
+**Delta:** Cleanup milestone complete.
 
-**Next Move:** On the next explicit implementation request, bound one meaningful milestone from the requested outcome, write its slices here once, then execute continuously.
+**Next Move:** Run bounded live-browser acceptance when explicitly requested.
 
 ## Scope
 
 ### In
 
-- Keep this file as the single active engineering-state source.
-- Record the next authorized milestone, active slice, completed slices, evidence, blockers, and one next action.
+- remove dead localhost companion/server/client/UI/permission surfaces;
+- remove the unnecessary localhost manifest permission and package command;
+- remove pseudo daily-driver/File System browser tests that relied on jsdom or fake handles;
+- keep pure/deterministic coverage for domain, persistence, provider decisions, path sanitization, and stable UI semantics;
+- keep canonical docs aligned with the resulting runtime.
 
 ### Out
 
-- Do not turn current observations into implementation scope automatically.
-- Do not create per-slice sprint files or `.agents/plans/*`.
-- Do not remove the retained localhost bridge until the user authorizes that cleanup after direct-folder live acceptance.
-- Do not persist dragged Graph positions without an explicit persisted-contract/product decision.
+- no product feature expansion/reduction beyond dead legacy behavior;
+- no persisted workspace-schema change;
+- no Graph position persistence;
+- no provider DOM/content integration;
+- no live-browser acceptance claim from repository tests.
 
 ## Slices
 
-No active milestone slices.
-
-When a milestone starts, use:
-
-```text
-- [ ] Slice A <- ACTIVE
-- [ ] Slice B
-- [ ] Slice C
-```
-
-Integrate at logical-change boundaries; a slice is not automatically a branch or PR.
+- [x] Remove legacy localhost bridge surface.
+- [x] Remove pseudo-black-box tests and preserve narrow deterministic coverage.
+- [x] Align permissions, package scripts, public docs, and canonical project knowledge.
+- [x] Run repository quality gate.
 
 ## Current Decisions
 
 - Native ChatGPT remains the conversation runtime; Chatspace remains the local Side Panel workspace.
 - Canonical workspace state remains in extension-owned `chrome.storage.local`.
 - Provider integration remains URL/tab-only.
-- Direct-folder Markdown Sync is the primary vault path; its directory handle remains separate from `WorkspaceSnapshot` in IndexedDB.
+- Direct-folder Markdown Sync is the only vault runtime path; its directory handle remains separate from `WorkspaceSnapshot` in IndexedDB.
 - Graph remains a projection; session-only dragged positions remain ephemeral.
+- Real Side Panel/provider-tab/File System behavior is a black-box acceptance boundary, not a jsdom/fake-runtime test claim.
 
 ## Verification / Evidence
 
-- `package.json` defines lint, strict typecheck, Vitest, WXT build/zip, and frozen pnpm tooling.
-- CI runs frozen dependency install, lint, typecheck, tests, and WXT ZIP packaging.
-- `ProviderTabsPort` and direct local-vault adapter are present in current source.
-- The latest recorded Graph and direct-folder increments passed repository CI.
+- localhost companion/server/client/UI/permission code removed;
+- localhost optional host permission removed from the extension manifest;
+- obsolete `bridge` package command removed;
+- pseudo `WorkspaceApp.dailyDriver` test removed;
+- fake-handle `BrowserLocalVault` browser acceptance test removed;
+- pure local-vault filename/path sanitization coverage retained;
+- deterministic repository CI remains lint + strict typecheck + tests + WXT package.
 
 ## Blockers / Risks
 
 - No known repository/CI runtime blocker.
-- `showDirectoryPicker()` behavior, write permission, and restored directory-handle behavior inside the actual Chromium Side Panel require live-browser acceptance.
-- Live narrow-panel Graph interaction/visual acceptance is not proven by repository CI.
+- Real `showDirectoryPicker()`, restored directory handles, actual filesystem writes, provider tab lifecycle, and narrow-panel Graph interaction still require live-browser evidence.
 
 ## Candidate next milestone — not authorized
 
-A reasonable candidate is bounded daily-driver live acceptance of:
+Bounded live-browser acceptance of:
 
 1. spatial Graph interaction in a real narrow Side Panel;
 2. direct-folder connect/write/update/restore/reconnect behavior;
 3. provider navigation with no ChatGPT content script.
 
-This is orientation only, not implementation authorization.
-
 ## Next Action
 
-Wait for the next explicit user implementation request. Then:
-
-1. set one milestone goal and why;
-2. define in/out scope and observable milestone acceptance;
-3. list ordered slices;
-4. mark exactly one active slice;
-5. execute slices continuously and update this file only at meaningful state transitions;
-6. run the milestone gate when planned slices are complete;
-7. stop at milestone exit or a material blocker/decision.
+Wait for explicit authorization of the next milestone, then set its goal/scope/acceptance/slices here and execute continuously.

@@ -29,24 +29,22 @@ Chromium
     ├── ProviderTabsPort -> browser.tabs
     ├── WorkspaceRepository -> chrome.storage.local
     └── BrowserLocalVault -> File System Access API + IndexedDB handle store
-
-Retained legacy integration:
-companion/server.mjs -> authenticated loopback Markdown bridge
 ```
+
+There is no current localhost companion/server path.
 
 ## Repository ownership
 
 ```text
-entrypoints/  extension composition roots
-src/app/      application orchestration
-src/domain/   provider/framework-independent workspace behavior
-src/features/ user-facing feature ownership
-src/providers/ provider-specific capability/target logic
-src/persistence/ canonical workspace persistence adapters
-src/integrations/ optional external/local integrations
-src/ui/       reusable UI primitives
-src/styles/   shared styling/tokens
-companion/    retained localhost vault companion
+entrypoints/       extension composition roots
+src/app/           application orchestration
+src/domain/        provider/framework-independent workspace behavior
+src/features/      user-facing feature ownership
+src/providers/     provider-specific capability/target logic
+src/persistence/   canonical workspace persistence adapters
+src/integrations/  optional external/local integrations
+src/ui/            reusable UI primitives
+src/styles/        shared styling/tokens
 ```
 
 ## Side Panel boundary
@@ -59,52 +57,26 @@ The Side Panel composition root constructs external adapters and passes owned ca
 
 Provider-specific logic lives under `src/providers/chatgpt/`.
 
-`ProviderTabsPort` is the owned browser boundary. It may:
+`ProviderTabsPort` is the owned browser boundary. It may read active-tab metadata, classify supported ChatGPT state, validate/normalize supported targets, navigate an existing supported tab, and open a validated target in a new tab when needed.
 
-- read active-tab metadata needed to classify supported ChatGPT state;
-- validate/normalize a supported conversation target;
-- navigate an existing supported tab;
-- open a validated target in a new tab when needed.
-
-Current supported conversation targets are intentionally narrow and origin-scoped to ChatGPT conversation URLs.
-
-The core path does not depend on:
-
-- ChatGPT DOM selectors;
-- a ChatGPT content script;
-- cookies/session state;
-- private provider APIs;
-- provider network interception;
-- conversation-content extraction.
+The core path does not depend on ChatGPT DOM selectors, a ChatGPT content script, cookies/session state, private APIs, network interception, or conversation-content extraction.
 
 Provider failure degrades only provider-dependent navigation.
 
 ## Workspace domain
 
-Canonical local state includes:
+Canonical local state includes folders, saved chat references, notes, tabs, pins, persisted panel layout state, and manual graph relations.
 
-- folders;
-- saved chat references;
-- notes;
-- tabs;
-- pins;
-- persisted panel layout state;
-- manual graph relations.
-
-Domain transitions are deterministic and remain independent from React, WXT, Chrome APIs, and provider-specific browser APIs.
-
-Folder hierarchy and local entity folder ownership are invariants. Cycles, missing parents, and references to missing folders are rejected at domain/persistence boundaries.
+Domain transitions are deterministic and remain independent from React, WXT, Chrome APIs, and provider-specific browser APIs. Folder hierarchy and local entity folder ownership are invariants; cycles, missing parents, and references to missing folders are rejected at domain/persistence boundaries.
 
 ## Persistence
 
-`WorkspaceRepository` owns canonical workspace persistence.
-
-Production uses extension-owned `chrome.storage.local` with schema-versioned JSON.
+`WorkspaceRepository` owns canonical workspace persistence using extension-owned `chrome.storage.local` with schema-versioned JSON.
 
 Persistence invariants:
 
 - corrupted/unsupported state fails closed;
-- failed loads/saves must not silently replace accepted state;
+- failed loads/saves do not silently replace accepted state;
 - export/import/reset/recovery remain explicit;
 - provider credentials/session material are never persisted;
 - rapid snapshots may coalesce to the latest accepted snapshot;
@@ -115,7 +87,7 @@ Persistence invariants:
 
 ## Graph boundary
 
-Graph is a projection over canonical local state.
+Graph is a projection over canonical local state:
 
 ```text
 WorkspaceSnapshot
@@ -124,13 +96,11 @@ WorkspaceSnapshot
 -> spatial renderer + inspector
 ```
 
-Relationship provenance is explicit. Manual relationships may be canonical workspace data; derived relationships and session-only node positions are not another source of truth.
-
-Current dragged node coordinates are intentionally ephemeral.
+Relationship provenance is explicit. Manual relationships may be canonical workspace data; derived relationships and session-only node positions are not another source of truth. Current dragged node coordinates are intentionally ephemeral.
 
 ## Local-vault integration
 
-The primary Markdown Sync path uses the browser File System Access API through `src/integrations/local-vault/`.
+Markdown Sync uses the browser File System Access API through `src/integrations/local-vault/`.
 
 - the user explicitly selects a directory;
 - note Markdown is manually written beneath `<vault>/Chatspace/`;
@@ -139,7 +109,7 @@ The primary Markdown Sync path uses the browser File System Access API through `
 - reconnect/change/disconnect are explicit states/actions;
 - sync is one-way and manual.
 
-The older authenticated localhost bridge remains in the repository as retained fallback/legacy code but is not composed into the primary Side Panel flow. Removal remains deferred until direct-folder behavior passes live-browser acceptance.
+This is the only current vault-sync runtime path.
 
 ## Trust and security boundaries
 
@@ -148,8 +118,7 @@ Current trust boundaries are:
 1. validated Chatspace-owned local workspace data;
 2. browser tab metadata/navigation through the URL-only provider boundary;
 3. native ChatGPT as external provider-owned runtime/content;
-4. explicit user-selected filesystem access for direct local-vault sync;
-5. the retained authenticated localhost companion as a separate loopback/filesystem boundary.
+4. explicit user-selected filesystem access for direct local-vault sync.
 
 Project-specific security invariants:
 
@@ -159,29 +128,19 @@ Project-specific security invariants:
 - user-authored/imported Markdown is rendered without executable raw HTML/script behavior;
 - MV3 CSP is respected: no `eval`, remote executable scripts, or fetched executable provider code;
 - direct filesystem writes remain beneath the selected vault's `Chatspace/` path and must resist traversal/out-of-root writes;
-- the retained companion stays loopback-only, bearer-authenticated, path-restricted, and note-sync-only;
 - diagnostics must not contain provider conversation content, tokens/cookies, private page content, or raw real-user storage dumps.
 
-New privileged permissions, provider DOM/content access, credentials, remote telemetry, expanded filesystem scope, or expanded localhost commands/data are material trust-boundary changes.
+New privileged permissions, provider DOM/content access, credentials, remote telemetry, expanded filesystem scope, or a reintroduced localhost service are material trust-boundary changes.
 
 ## Failure isolation
 
 - provider unavailable -> local workspace remains usable;
 - corrupt workspace storage -> persistence fails closed and recovery is surfaced;
 - Side Panel crash -> native ChatGPT remains unaffected;
-- direct local-vault unavailable -> only Markdown Sync degrades;
-- localhost companion unavailable -> core workspace remains unaffected.
+- direct local-vault unavailable -> only Markdown Sync degrades.
 
 ## Material architecture boundaries
 
-Explicit approval is required before materially changing:
-
-- canonical workspace data ownership/schema;
-- provider URL/tab-only trust boundary;
-- provider DOM/content access;
-- extension permission/trust boundaries;
-- direct local-vault handle ownership or filesystem-write contract;
-- core runtime/service boundaries;
-- destructive/irreversible user-data behavior.
+Explicit approval is required before materially changing canonical workspace data ownership/schema, provider URL/tab-only trust boundary, provider DOM/content access, extension permission/trust boundaries, direct local-vault handle ownership/filesystem-write contract, core runtime/service boundaries, or destructive/irreversible user-data behavior.
 
 See `DECISIONS.md` for durable rationale.

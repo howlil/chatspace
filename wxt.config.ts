@@ -14,6 +14,5 @@ export default defineConfig({
     action: {
       default_title: 'Open Chatspace',
     },
-    optional_host_permissions: ['http://127.0.0.1:27123/*'],
   },
 });

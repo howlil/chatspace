@@ -32,7 +32,8 @@ Chatspace does not render a duplicate ChatGPT conversation panel and does not co
 - extension-owned canonical persistence through `chrome.storage.local`
 - direct user-selected-folder Markdown Sync to `<vault>/Chatspace/`
 - selected vault directory handle stored separately from workspace state in IndexedDB
-- retained authenticated localhost Markdown/vault companion as legacy/fallback code, not the primary Side Panel sync path
+
+Markdown Sync requires no terminal, bearer token, or localhost server.
 
 ## Provider boundary
 
@@ -67,7 +68,7 @@ For Chromium development:
 4. click the Chatspace extension action; Chatspace opens in the browser Side Panel
 5. keep native ChatGPT in the main page and use the Side Panel for workspace navigation
 
-CI uses the committed `pnpm-lock.yaml` with frozen install, then runs lint, strict typecheck, deterministic tests, and WXT ZIP packaging.
+CI uses the committed `pnpm-lock.yaml` with frozen install, then runs lint, strict typecheck, deterministic tests, and WXT ZIP packaging. Real Side Panel/provider-tab/File System environment behavior is validated separately through bounded live-browser acceptance.
 
 ## Agent/project knowledge
 
