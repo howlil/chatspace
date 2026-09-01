@@ -47,7 +47,7 @@ jobs:
         run: pnpm zip
 
       - name: Install landing dependencies
-        run: pnpm --dir landing --ignore-workspace install --frozen-lockfile
+        run: pnpm --dir landing install --frozen-lockfile
 
       - name: Build Astro landing
         run: pnpm --dir landing build
