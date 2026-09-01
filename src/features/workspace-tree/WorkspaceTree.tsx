@@ -15,7 +15,8 @@ import {
   Star,
   Trash2,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type DragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { DropdownMenu } from 'radix-ui';
+import { useMemo, useState, type DragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 
 import type { ChatReference, LocalNote, WorkspaceFolder } from '../../domain/workspace/model';
 import { cn } from '../../ui/cn';
@@ -119,18 +120,16 @@ function MenuAction({
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
-      role="menuitem"
+    <DropdownMenu.Item
       className={cn(
-        'flex h-8 w-full items-center gap-2 rounded px-2 text-left text-[10px] outline-none hover:bg-cs-hover focus-visible:bg-cs-hover',
-        danger ? 'text-cs-danger' : 'text-cs-muted hover:text-cs-text focus-visible:text-cs-text',
+        'flex h-8 w-full cursor-default items-center gap-2 rounded px-2 text-left text-[10px] outline-none data-[highlighted]:bg-cs-hover',
+        danger ? 'text-cs-danger' : 'text-cs-muted data-[highlighted]:text-cs-text',
       )}
-      onClick={onClick}
+      onSelect={() => onClick()}
     >
       {icon}
       <span className="min-w-0 flex-1 truncate">{children}</span>
-    </button>
+    </DropdownMenu.Item>
   );
 }
 
@@ -247,14 +246,6 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
     };
   }, [normalized, props.chatRefs, props.folders, props.notes]);
 
-  useEffect(() => {
-    if (contextMenu === null) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setContextMenu(null);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [contextMenu]);
 
   function openContextMenu(event: ReactMouseEvent<HTMLElement>, target: TreeContextTarget): void {
     event.preventDefault();
@@ -493,19 +484,29 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
       </div>
 
       {contextMenu !== null && (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-40 cursor-default bg-transparent"
-            aria-label="Close workspace actions"
-            onClick={() => setContextMenu(null)}
-          />
-          <div
-            className="fixed z-50 w-[190px] rounded-lg border border-cs-border bg-cs-surface p-1 shadow-[0_16px_48px_rgba(0,0,0,0.24)]"
-            role="menu"
-            aria-label={`Actions for ${menuLabel}`}
-            style={{ left: contextMenu.x, top: contextMenu.y }}
-          >
+        <DropdownMenu.Root
+          open
+          modal={false}
+          onOpenChange={(open) => {
+            if (!open) setContextMenu(null);
+          }}
+        >
+          <DropdownMenu.Trigger asChild>
+            <button
+              type="button"
+              className="pointer-events-none fixed z-40 size-px opacity-0"
+              aria-label={`Actions anchor for ${menuLabel}`}
+              style={{ left: contextMenu.x, top: contextMenu.y }}
+            />
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              sideOffset={2}
+              align="start"
+              aria-label={`Actions for ${menuLabel}`}
+              className="z-50 w-[190px] rounded-lg border border-cs-border bg-cs-surface p-1 shadow-[0_16px_48px_rgba(0,0,0,0.24)]"
+              onCloseAutoFocus={(event) => event.preventDefault()}
+            >
             {contextMenu.target.kind === 'root' && (
               <>
                 <MenuAction icon={<FolderPlus size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onCreateFolder(null))}>
@@ -525,7 +526,7 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
                 <MenuAction icon={<FilePlus2 size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onCreateNote(contextFolder.id))}>
                   New note here
                 </MenuAction>
-                <div className="my-1 border-t border-cs-border" />
+                <DropdownMenu.Separator className="my-1 h-px bg-cs-border" />
                 <MenuAction icon={<Pencil size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onRenameFolder(contextFolder))}>
                   Rename folder
                 </MenuAction>
@@ -546,9 +547,9 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
                 <MenuAction icon={<Pin size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onTogglePinChat(contextChat))}>
                   {contextChat.pinned ? 'Unpin' : 'Pin'}
                 </MenuAction>
-                <div className="my-1 border-t border-cs-border" />
-                <label className="grid gap-1 px-2 py-1 text-[9px] text-cs-subtle">
-                  Move to
+                <DropdownMenu.Separator className="my-1 h-px bg-cs-border" />
+                <div className="grid gap-1 px-2 py-1 text-[9px] text-cs-subtle">
+                  <span>Move to</span>
                   <Select
           className="h-7 w-full text-[10px]"
           aria-label={`Move ${contextChat.label}`}
@@ -561,8 +562,8 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
             closeAndRun(() => props.onMoveChat(contextChat, value === '' ? null : value));
           }}
         />
-                </label>
-                <div className="my-1 border-t border-cs-border" />
+                </div>
+                <DropdownMenu.Separator className="my-1 h-px bg-cs-border" />
                 <MenuAction danger icon={<Trash2 size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onDeleteChat(contextChat))}>
                   Delete reference
                 </MenuAction>
@@ -577,9 +578,9 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
                 <MenuAction icon={<Pencil size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onRenameNote(contextNote))}>
                   Rename note
                 </MenuAction>
-                <div className="my-1 border-t border-cs-border" />
-                <label className="grid gap-1 px-2 py-1 text-[9px] text-cs-subtle">
-                  Move to
+                <DropdownMenu.Separator className="my-1 h-px bg-cs-border" />
+                <div className="grid gap-1 px-2 py-1 text-[9px] text-cs-subtle">
+                  <span>Move to</span>
                   <Select
           className="h-7 w-full text-[10px]"
           aria-label={`Move ${contextNote.title}`}
@@ -592,15 +593,16 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
             closeAndRun(() => props.onMoveNote(contextNote, value === '' ? null : value));
           }}
         />
-                </label>
-                <div className="my-1 border-t border-cs-border" />
+                </div>
+                <DropdownMenu.Separator className="my-1 h-px bg-cs-border" />
                 <MenuAction danger icon={<Trash2 size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onDeleteNote(contextNote))}>
                   Delete note
                 </MenuAction>
               </>
             )}
-          </div>
-        </>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
       )}
     </div>
   );

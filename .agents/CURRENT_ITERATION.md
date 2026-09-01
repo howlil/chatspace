@@ -40,7 +40,7 @@ Why: Reduce `WorkspaceApp` orchestration load and standardize complex UI behavio
 - [x] Extract persistence/recovery coordinator.
 - [x] Extract local-vault lifecycle coordinator and remove stale feature ownership naming.
 - [x] Adopt Radix UI as the reusable interactive primitive layer.
-- [x] Migrate dialogs, tabs, select, checkbox, and command-palette overlay semantics.
+- [x] Migrate dialogs, tabs, select, checkbox, command-palette overlay, and Explorer action-menu semantics.
 - [x] Align tests and canonical project/design knowledge.
 - [x] Run repository quality gate and WXT packaging.
 
@@ -57,7 +57,7 @@ Why: Reduce `WorkspaceApp` orchestration load and standardize complex UI behavio
 ## Verification / Evidence
 
 - `WorkspaceApp` delegates persistence/recovery and local-vault lifecycle to explicit coordinators;
-- reusable dialog/alert-dialog/tab/select/checkbox behavior uses `radix-ui`;
+- reusable dialog/alert-dialog/tab/select/checkbox/menu behavior uses `radix-ui`;
 - the local-vault feature surface lives under `src/features/local-vault/`;
 - deterministic repository tests continue to cover Chatspace-owned domain/application/UI semantics;
 - repository quality gate remains lint + strict typecheck + tests + WXT package.
