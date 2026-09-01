@@ -1,6 +1,6 @@
 # Quality
 
-This file defines Chatspace-specific verification and release-confidence requirements.
+This file defines Chatspace-specific verification, CI, release-confidence, and evidence requirements.
 
 ## Tooling
 
@@ -109,9 +109,9 @@ A focused security review is required for changes to:
 - retained localhost companion command/data/path contract;
 - remote telemetry.
 
-Verification should target the changed threat boundary, not become a repo-wide security ceremony.
+Verification should target the changed threat boundary.
 
-## Release-ready gate
+## Integration-ready gate
 
 A logical change is integration-ready when:
 
@@ -119,13 +119,28 @@ A logical change is integration-ready when:
 - affected deterministic tests/checks are green;
 - required repository CI gates pass where applicable;
 - the diff contains only intended scope;
-- changed canonical `.agents` knowledge/state is current when the change made it stale.
+- changed canonical project knowledge/state is current when the change made it stale.
 
-A public/store release has additional environment/distribution requirements; see `RELEASE.md`.
+## Release confidence
+
+Current product state: **daily-driver candidate, not public/store-ready**.
+
+Keep these project-specific confidence states distinct:
+
+- **development-ready** — bounded change is correct with sufficient affected-risk evidence;
+- **release-ready increment** — accepted increment can safely remain on releasable `master`;
+- **daily-driver candidate** — release-ready plus required real-browser environment acceptance for repeated use;
+- **store-ready** — daily-driver confidence plus reproducible packaging, permission/privacy review, install/update lifecycle, distribution metadata, and applicable store-policy requirements.
+
+The package is currently pre-release (`0.0.0`). Do not invent a versioning scheme outside an actual release milestone.
+
+For ordinary unreleased logical changes, rollback is normally a revert. Persisted-schema changes require explicit migration/reversibility handling because code rollback alone may not restore data compatibility.
 
 ## Current known evidence gap
 
 Repository CI cannot prove actual File System Access API behavior inside the Chromium extension Side Panel or complete narrow-panel visual/interaction acceptance. Those remain bounded manual acceptance concerns for the current daily-driver candidate.
+
+The retained localhost companion must not be removed solely because direct-folder code exists. Removal is a separate bounded cleanup after direct-folder live acceptance establishes sufficient confidence.
 
 ## Test data and diagnostics
 

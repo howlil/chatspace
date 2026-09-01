@@ -91,7 +91,7 @@ Canonical local state includes:
 - persisted panel layout state;
 - manual graph relations.
 
-Domain transitions are deterministic and must remain independent from React, WXT, Chrome APIs, and provider-specific browser APIs.
+Domain transitions are deterministic and remain independent from React, WXT, Chrome APIs, and provider-specific browser APIs.
 
 Folder hierarchy and local entity folder ownership are invariants. Cycles, missing parents, and references to missing folders are rejected at domain/persistence boundaries.
 
@@ -141,6 +141,29 @@ The primary Markdown Sync path uses the browser File System Access API through `
 
 The older authenticated localhost bridge remains in the repository as retained fallback/legacy code but is not composed into the primary Side Panel flow. Removal remains deferred until direct-folder behavior passes live-browser acceptance.
 
+## Trust and security boundaries
+
+Current trust boundaries are:
+
+1. validated Chatspace-owned local workspace data;
+2. browser tab metadata/navigation through the URL-only provider boundary;
+3. native ChatGPT as external provider-owned runtime/content;
+4. explicit user-selected filesystem access for direct local-vault sync;
+5. the retained authenticated localhost companion as a separate loopback/filesystem boundary.
+
+Project-specific security invariants:
+
+- extension permissions remain least-privilege and capability-driven;
+- unsupported provider targets fail closed;
+- no provider cookies/session tokens/private payloads are stored;
+- user-authored/imported Markdown is rendered without executable raw HTML/script behavior;
+- MV3 CSP is respected: no `eval`, remote executable scripts, or fetched executable provider code;
+- direct filesystem writes remain beneath the selected vault's `Chatspace/` path and must resist traversal/out-of-root writes;
+- the retained companion stays loopback-only, bearer-authenticated, path-restricted, and note-sync-only;
+- diagnostics must not contain provider conversation content, tokens/cookies, private page content, or raw real-user storage dumps.
+
+New privileged permissions, provider DOM/content access, credentials, remote telemetry, expanded filesystem scope, or expanded localhost commands/data are material trust-boundary changes.
+
 ## Failure isolation
 
 - provider unavailable -> local workspace remains usable;
@@ -161,4 +184,4 @@ Explicit approval is required before materially changing:
 - core runtime/service boundaries;
 - destructive/irreversible user-data behavior.
 
-See `DECISIONS.md` for durable rationale and `SECURITY.md` for trust/privacy constraints.
+See `DECISIONS.md` for durable rationale.

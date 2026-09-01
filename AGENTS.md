@@ -1,76 +1,52 @@
 # Agent Instructions
 
-This repository uses `.agents/` as the canonical project knowledge and active iteration state.
-
-Before making a meaningful change, inspect the relevant canonical documents.
+This repository uses root `AGENTS.md` as the thin agent entrypoint and `.agents/` as the canonical project knowledge + active engineering state.
 
 ## Canonical Sources
 
-- `.agents/PROJECT.md`
-  Product intent, domain behavior, scope, contracts, ownership, non-goals, deferred work, and open validation.
+- `.agents/PROJECT.md` — WHY + WHAT: product intent, behavior, scope, contracts, ownership, constraints, non-goals, deferred/open decisions.
+- `.agents/ARCHITECTURE.md` — WHERE + HOW boundaries interact: responsibility placement, module/data/trust/infrastructure boundaries, major flows, invariants.
+- `.agents/CURRENT_ITERATION.md` — NOW + NEXT: current milestone, active slice, completed work, evidence, blockers, next action.
+- `.agents/CODE_PATTERNS.md` — Chatspace-specific implementation conventions, ownership patterns, commands, and known traps.
+- `.agents/QUALITY.md` — Chatspace-specific verification strategy, required checks, CI gates, release confidence, and evidence requirements.
+- `.agents/DECISIONS.md` — durable material decisions and rationale.
 
-- `.agents/ARCHITECTURE.md`
-  System boundaries, module ownership, data flow, persistence, integrations, and architecture invariants.
+`DESIGN.md` is the separate root-level durable product-experience and visual-design authority. Read it for UI/UX, interaction, responsive, accessibility, visual-language, token, component-styling, and theme work.
 
-- `.agents/CURRENT_ITERATION.md`
-  Current milestone, active slice, completed work, evidence, blockers, and the single next action.
-
-- `.agents/CODE_PATTERNS.md`
-  Chatspace-specific implementation patterns, repository conventions, and known traps.
-
-- `.agents/QUALITY.md`
-  Verification strategy, test ownership, repository commands, CI gates, and release-ready confidence.
-
-- `.agents/DECISIONS.md`
-  Durable material decisions and rationale.
-
-Optional project authorities used by Chatspace:
-
-- `.agents/DESIGN.md`
-  Side Panel interaction, visual hierarchy, responsive behavior, accessibility, and UI acceptance.
-
-- `.agents/SECURITY.md`
-  Provider, extension-permission, storage, rendering, filesystem, and localhost trust boundaries.
-
-- `.agents/RELEASE.md`
-  Chromium extension packaging, release states, browser acceptance, distribution, and rollback constraints.
-
-Read only the documents relevant to the requested change, but always inspect `.agents/CURRENT_ITERATION.md` when continuing active work.
+Read only the documents relevant to the requested change. Always inspect `.agents/CURRENT_ITERATION.md` when continuing active work.
 
 ## Operating Rule
 
-Follow the canonical engineering lifecycle and user authority model from the user's global SWE preferences.
+Follow the user's canonical global SWE rules. Do not duplicate the global lifecycle, Product Authority, Minimum Change, Design Decision Rule, Feature Compass, milestone delivery, retrospective method, generic testing rules, Git rules, dependency rules, or generic documentation rules inside this repository.
 
-Do not change product behavior, public/persisted contracts, architecture boundaries, data ownership, security/privacy/permission/trust boundaries, or other material decisions without explicit user approval.
+Repository documents define only how Chatspace itself works and any explicit project-specific override.
 
-Prefer the smallest coherent change that satisfies the approved requirement.
+Do not change product behavior, public/persisted contracts, architecture/data ownership, security/privacy/permission/trust boundaries, or other material decisions without explicit user approval.
 
-Do not create persistent task plans, sprint files, retrospective archives, status files, or additional `.agents/*.md` files unless the information has a durable project-level owner or the project genuinely requires an optional canonical document.
+Prefer the smallest coherent change. Do not create persistent sprint/task plans, retrospective archives, status files, workflow-rule files, or additional `.agents/*.md` authorities.
 
-## Chatspace Material Boundaries
+## Material Chatspace Boundaries
 
-Treat these as material project boundaries and read the owning canonical document before changing them:
+Before changing these, read the owning canonical document and obtain approval where required:
 
 - native ChatGPT remains the provider-owned conversation runtime;
 - Chatspace remains the extension-owned Side Panel workspace;
-- provider integration remains validated URL/tab-only unless explicitly changed;
-- `WorkspaceSnapshot` / extension-owned `chrome.storage.local` remains canonical workspace persistence;
-- the direct local-vault directory handle remains integration-owned state outside `WorkspaceSnapshot`;
+- provider integration is validated URL/tab-only;
+- `WorkspaceSnapshot` in extension-owned `chrome.storage.local` is canonical workspace persistence;
+- the selected local-vault directory handle remains integration-owned state outside `WorkspaceSnapshot`;
 - Graph renderer/session state does not become canonical persistence implicitly;
-- provider DOM/content access, new manifest permissions, destructive persisted-data changes, or expanded filesystem/localhost trust boundaries require explicit approval.
+- provider DOM/content access, new privileged permissions, destructive persisted-data behavior, or expanded filesystem/localhost trust boundaries are material changes.
 
-## Authority
-
-When sources conflict, use this order:
+## Authority Order
 
 ```text
 explicit current user instruction
--> PROJECT.md / approved material decisions
--> ARCHITECTURE.md / DESIGN.md / SECURITY.md
--> CURRENT_ITERATION.md
--> CODE_PATTERNS.md / QUALITY.md
+-> .agents/PROJECT.md / approved material decisions
+-> .agents/ARCHITECTURE.md / DESIGN.md
+-> .agents/CURRENT_ITERATION.md
+-> .agents/CODE_PATTERNS.md / .agents/QUALITY.md
 -> current code and tests
 -> historical PRs / stale documentation
 ```
 
-If canonical documentation and current code disagree, determine which is stale and fix the inconsistency as part of the relevant bounded change. Do not silently invent a new product or architecture decision.
+If code and canonical documentation disagree, determine which is stale and correct the inconsistency without inventing a new product or architecture decision.

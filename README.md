@@ -71,23 +71,20 @@ CI uses the committed `pnpm-lock.yaml` with frozen install, then runs lint, stri
 
 ## Agent/project knowledge
 
-Repository agent guidance is intentionally small and canonical:
-
 ```text
 AGENTS.md
-└── .agents/
-    ├── PROJECT.md
-    ├── ARCHITECTURE.md
-    ├── CURRENT_ITERATION.md
-    ├── CODE_PATTERNS.md
-    ├── QUALITY.md
-    ├── DECISIONS.md
-    ├── DESIGN.md
-    ├── SECURITY.md
-    └── RELEASE.md
+DESIGN.md
+
+.agents/
+├── PROJECT.md
+├── ARCHITECTURE.md
+├── CURRENT_ITERATION.md
+├── CODE_PATTERNS.md
+├── QUALITY.md
+└── DECISIONS.md
 ```
 
-`AGENTS.md` is the thin entrypoint; `.agents/` owns durable Chatspace-specific project knowledge and active engineering state.
+`AGENTS.md` is the thin agent entrypoint. `.agents/` contains exactly the six canonical project-knowledge/state files. Root `DESIGN.md` is the separate durable product-experience and visual-design authority.
 
 ## Release status
 
@@ -95,4 +92,4 @@ Chatspace is a development/daily-driver candidate, not yet a public/store-ready 
 
 ## Safety and privacy
 
-Local workspace data is extension-owned. Provider integration remains URL/tab-only. See `PRIVACY.md`, root `SECURITY.md`, and `.agents/SECURITY.md` for the current trust/privacy model.
+Local workspace data is extension-owned. Provider integration remains URL/tab-only. See `PRIVACY.md`, root `SECURITY.md`, and `.agents/ARCHITECTURE.md` for the current trust/privacy model.
