@@ -1,0 +1,44 @@
+name: Generate landing lockfile
+
+on:
+  push:
+    branches: [m9-oss-landing]
+    paths:
+      - landing/package.json
+      - .github/workflows/landing-lock.yml
+
+permissions:
+  contents: write
+
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.23.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Generate standalone landing lockfile
+        run: pnpm --dir landing --ignore-workspace install --lockfile-only
+
+      - name: Commit lockfile
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add landing/pnpm-lock.yaml
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "chore(landing): lock Astro dependencies"
+          git push
