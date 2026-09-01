@@ -213,15 +213,16 @@ export function LocalNoteEditor({
           {contextExpanded && chats.length > 0 && (
             <>
               <Link2 size={10} className="shrink-0" aria-hidden="true" />
-              <Select
-                className="h-6 max-w-40 text-[9px]"
-                aria-label="Chat to link"
-                value={selectedChatId}
-                onChange={(event) => setSelectedChatId(event.target.value)}
-              >
-                <option value="">Select chat</option>
-                {availableChats.map((chat) => <option key={chat.id} value={chat.id}>{chat.label}</option>)}
-              </Select>
+<Select
+  className="h-6 max-w-40 text-[9px]"
+  aria-label="Chat to link"
+  value={selectedChatId}
+  options={[
+    { value: '', label: 'Select chat' },
+    ...availableChats.map((chat) => ({ value: chat.id, label: chat.label })),
+  ]}
+  onValueChange={setSelectedChatId}
+/>
               <Button
                 size="sm"
                 variant="ghost"

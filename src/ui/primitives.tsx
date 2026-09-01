@@ -1,9 +1,12 @@
-import type {
-  ButtonHTMLAttributes,
-  HTMLAttributes,
-  InputHTMLAttributes,
-  SelectHTMLAttributes,
-  TextareaHTMLAttributes,
+
+import { Check, ChevronDown } from 'lucide-react';
+import { Checkbox as RadixCheckbox, Select as RadixSelect, Slot } from 'radix-ui';
+import {
+  forwardRef,
+  type ButtonHTMLAttributes,
+  type HTMLAttributes,
+  type InputHTMLAttributes,
+  type TextareaHTMLAttributes,
 } from 'react';
 
 import { cn } from './cn';
@@ -27,53 +30,180 @@ const buttonSizeClasses: Record<ButtonSize, string> = {
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
+  asChild?: boolean;
 }
 
-export function Button({
-  variant = 'secondary',
-  size = 'sm',
-  className,
-  type = 'button',
-  ...props
-}: ButtonProps) {
-  return (
-    <button
-      type={type}
-      className={cn(
-        'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cs-focus/50 disabled:pointer-events-none disabled:opacity-45',
-        buttonVariantClasses[variant],
-        buttonSizeClasses[size],
-        className,
-      )}
-      {...props}
-    />
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    variant = 'secondary',
+    size = 'sm',
+    className,
+    type = 'button',
+    asChild = false,
+    children,
+    ...props
+  },
+  ref,
+) {
+  const classes = cn(
+    'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cs-focus/50 disabled:pointer-events-none disabled:opacity-45',
+    buttonVariantClasses[variant],
+    buttonSizeClasses[size],
+    className,
   );
-}
 
-export function IconButton({ className, ...props }: ButtonProps) {
-  return <Button size="icon" variant="ghost" className={className} {...props} />;
-}
+  if (asChild) {
+    return (
+      <Slot.Root ref={ref} className={classes} {...props}>
+        {children}
+      </Slot.Root>
+    );
+  }
+
+  return (
+    <button ref={ref} type={type} className={classes} {...props}>
+      {children}
+    </button>
+  );
+});
+
+export const IconButton = forwardRef<HTMLButtonElement, ButtonProps>(function IconButton(
+  { className, ...props },
+  ref,
+) {
+  return <Button ref={ref} size="icon" variant="ghost" className={className} {...props} />;
+});
 
 const controlClass =
   'h-7 min-w-0 rounded-md border border-cs-border bg-cs-control px-2 text-[11px] text-cs-text outline-none transition-colors placeholder:text-cs-subtle focus:border-cs-focus focus:ring-1 focus:ring-cs-focus/20 disabled:cursor-not-allowed disabled:opacity-50';
 
-export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn(controlClass, className)} {...props} />;
+export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
+  { className, ...props },
+  ref,
+) {
+  return <input ref={ref} className={cn(controlClass, className)} {...props} />;
+});
+
+export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
+  function Textarea({ className, ...props }, ref) {
+    return (
+      <textarea
+        ref={ref}
+        className={cn(
+          'min-w-0 rounded-md border border-cs-border bg-cs-control px-2.5 py-2 text-[11px] leading-5 text-cs-text outline-none transition-colors placeholder:text-cs-subtle focus:border-cs-focus focus:ring-1 focus:ring-cs-focus/20 disabled:cursor-not-allowed disabled:opacity-50',
+          className,
+        )}
+        {...props}
+      />
+    );
+  },
+);
+
+export interface SelectOption {
+  value: string;
+  label: string;
+  disabled?: boolean;
 }
 
-export function Select({ className, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select className={cn(controlClass, 'pr-7', className)} {...props} />;
+interface SelectProps {
+  value: string;
+  options: readonly SelectOption[];
+  onValueChange: (value: string) => void;
+  className?: string;
+  disabled?: boolean;
+  'aria-label': string;
 }
 
-export function Textarea({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+const EMPTY_SELECT_VALUE = '__chatspace_empty_select_value__';
+
+function radixValue(value: string): string {
+  return value === '' ? EMPTY_SELECT_VALUE : value;
+}
+
+export function Select({
+  value,
+  options,
+  onValueChange,
+  className,
+  disabled = false,
+  'aria-label': ariaLabel,
+}: SelectProps) {
   return (
-    <textarea
+    <RadixSelect.Root
+      value={radixValue(value)}
+      disabled={disabled}
+      onValueChange={(next) => onValueChange(next === EMPTY_SELECT_VALUE ? '' : next)}
+    >
+      <RadixSelect.Trigger
+        aria-label={ariaLabel}
+        className={cn(
+          controlClass,
+          'inline-flex w-full items-center justify-between gap-2 pr-2 text-left',
+          className,
+        )}
+      >
+        <RadixSelect.Value />
+        <RadixSelect.Icon className="shrink-0 text-cs-subtle">
+          <ChevronDown size={11} aria-hidden="true" />
+        </RadixSelect.Icon>
+      </RadixSelect.Trigger>
+      <RadixSelect.Portal>
+        <RadixSelect.Content
+          position="popper"
+          sideOffset={4}
+          className="z-[80] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-lg border border-cs-border bg-cs-surface p-1 text-cs-text shadow-[0_16px_48px_rgba(0,0,0,0.24)]"
+        >
+          <RadixSelect.Viewport>
+            {options.map((option) => (
+              <RadixSelect.Item
+                key={option.value}
+                value={radixValue(option.value)}
+                disabled={option.disabled ?? false}
+                className="relative flex h-7 cursor-default select-none items-center rounded px-7 pr-2 text-[10px] text-cs-muted outline-none data-[highlighted]:bg-cs-hover data-[highlighted]:text-cs-text data-[disabled]:pointer-events-none data-[disabled]:opacity-40"
+              >
+                <RadixSelect.ItemIndicator className="absolute left-2 grid place-items-center text-cs-text">
+                  <Check size={10} aria-hidden="true" />
+                </RadixSelect.ItemIndicator>
+                <RadixSelect.ItemText>{option.label}</RadixSelect.ItemText>
+              </RadixSelect.Item>
+            ))}
+          </RadixSelect.Viewport>
+        </RadixSelect.Content>
+      </RadixSelect.Portal>
+    </RadixSelect.Root>
+  );
+}
+
+interface CheckboxProps {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  className?: string;
+  disabled?: boolean;
+  'aria-label': string;
+}
+
+export function Checkbox({
+  checked,
+  onCheckedChange,
+  className,
+  disabled = false,
+  'aria-label': ariaLabel,
+}: CheckboxProps) {
+  return (
+    <RadixCheckbox.Root
+      checked={checked}
+      disabled={disabled}
+      aria-label={ariaLabel}
       className={cn(
-        'min-w-0 rounded-md border border-cs-border bg-cs-control px-2.5 py-2 text-[11px] leading-5 text-cs-text outline-none transition-colors placeholder:text-cs-subtle focus:border-cs-focus focus:ring-1 focus:ring-cs-focus/20 disabled:cursor-not-allowed disabled:opacity-50',
+        'grid size-4 shrink-0 place-items-center rounded border border-cs-border bg-cs-control text-cs-text outline-none transition-colors hover:bg-cs-hover focus-visible:ring-1 focus-visible:ring-cs-focus/50 data-[state=checked]:border-cs-primary data-[state=checked]:bg-cs-primary data-[state=checked]:text-cs-primary-contrast disabled:opacity-45',
         className,
       )}
-      {...props}
-    />
+      onCheckedChange={(next) => onCheckedChange(next === true)}
+    >
+      <RadixCheckbox.Indicator>
+        <Check size={10} strokeWidth={2.2} aria-hidden="true" />
+      </RadixCheckbox.Indicator>
+    </RadixCheckbox.Root>
   );
 }
 

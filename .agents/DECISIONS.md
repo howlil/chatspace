@@ -91,3 +91,12 @@ Superseded by extension-owned `chrome.storage.local` canonical persistence and t
 ### Localhost vault bridge
 
 Superseded by direct selected-folder access. The temporary localhost bridge and its optional host permission have been removed.
+
+
+## D-015 — Radix UI Primitives are the interactive component foundation
+
+**Decision:** Use Radix UI Primitives as the canonical behavior foundation for reusable complex UI controls while retaining Chatspace-owned Tailwind/`cs-*` visual styling.
+
+**Why:** Dialog focus management, portals, keyboard navigation, tabs, selects, checkbox state, and related interaction semantics should come from a maintained accessibility-oriented primitive layer rather than bespoke application plumbing.
+
+**Consequences:** Prefer Radix primitives/wrappers for matching interactive composites. Do not introduce Radix Themes as a competing visual system; app-specific layout/content and basic semantic controls may remain native where Radix has no behavior primitive.

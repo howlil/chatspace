@@ -550,17 +550,17 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
                 <label className="grid gap-1 px-2 py-1 text-[9px] text-cs-subtle">
                   Move to
                   <Select
-                    className="h-7 w-full text-[10px]"
-                    aria-label={`Move ${contextChat.label}`}
-                    value={contextChat.folderId ?? ''}
-                    onChange={(event) => {
-                      const folderId = event.target.value === '' ? null : event.target.value;
-                      closeAndRun(() => props.onMoveChat(contextChat, folderId));
-                    }}
-                  >
-                    <option value="">Workspace root</option>
-                    {props.folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
-                  </Select>
+          className="h-7 w-full text-[10px]"
+          aria-label={`Move ${contextChat.label}`}
+          value={contextChat.folderId ?? ''}
+          options={[
+            { value: '', label: 'Workspace root' },
+            ...props.folders.map((folder) => ({ value: folder.id, label: folder.name })),
+          ]}
+          onValueChange={(value) => {
+            closeAndRun(() => props.onMoveChat(contextChat, value === '' ? null : value));
+          }}
+        />
                 </label>
                 <div className="my-1 border-t border-cs-border" />
                 <MenuAction danger icon={<Trash2 size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onDeleteChat(contextChat))}>
@@ -581,17 +581,17 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
                 <label className="grid gap-1 px-2 py-1 text-[9px] text-cs-subtle">
                   Move to
                   <Select
-                    className="h-7 w-full text-[10px]"
-                    aria-label={`Move ${contextNote.title}`}
-                    value={contextNote.folderId ?? ''}
-                    onChange={(event) => {
-                      const folderId = event.target.value === '' ? null : event.target.value;
-                      closeAndRun(() => props.onMoveNote(contextNote, folderId));
-                    }}
-                  >
-                    <option value="">Workspace root</option>
-                    {props.folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
-                  </Select>
+          className="h-7 w-full text-[10px]"
+          aria-label={`Move ${contextNote.title}`}
+          value={contextNote.folderId ?? ''}
+          options={[
+            { value: '', label: 'Workspace root' },
+            ...props.folders.map((folder) => ({ value: folder.id, label: folder.name })),
+          ]}
+          onValueChange={(value) => {
+            closeAndRun(() => props.onMoveNote(contextNote, value === '' ? null : value));
+          }}
+        />
                 </label>
                 <div className="my-1 border-t border-cs-border" />
                 <MenuAction danger icon={<Trash2 size={12} aria-hidden="true" />} onClick={() => closeAndRun(() => props.onDeleteNote(contextNote))}>

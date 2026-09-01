@@ -3,7 +3,7 @@ import { useEffect, useMemo, useReducer, useState, type ReactNode } from 'react'
 
 import { projectWorkspaceGraph, type GraphNode } from '../domain/graph/projectGraph';
 import { canMoveFolder } from '../domain/workspace/integrity';
-import { exportWorkspaceJson, importWorkspaceJson } from '../domain/workspace/io';
+import { exportWorkspaceJson } from '../domain/workspace/io';
 import {
   createChatReference,
   createEntityId,
@@ -22,18 +22,20 @@ import { GraphNavigator } from '../features/graph/GraphNavigator';
 import { DailyHome } from '../features/home/DailyHome';
 import { LocalNoteEditor } from '../features/local-notes/LocalNoteEditor';
 import { NoteContextRail } from '../features/local-notes/NoteContextRail';
-import { LocalVaultPage, type VaultPageState } from '../features/obsidian-bridge/LocalVaultPage';
+import { LocalVaultPage } from '../features/local-vault/LocalVaultPage';
+import { useLocalVaultController } from '../features/local-vault/useLocalVaultController';
 import { SaveConversationDialog, type SaveConversationInput } from '../features/save-conversation/SaveConversationDialog';
 import { SettingsPanel } from '../features/settings/SettingsPanel';
 import { WorkbenchChrome } from '../features/workbench/WorkbenchChrome';
 import { SpatialWorkspace } from '../features/workspace-layout/SpatialWorkspace';
 import { WorkspaceTree } from '../features/workspace-tree/WorkspaceTree';
-import type { LocalVault, VaultConnection } from '../integrations/local-vault/BrowserLocalVault';
+import type { LocalVault } from '../integrations/local-vault/BrowserLocalVault';
 import type { WorkspaceRepository } from '../persistence/workspaceRepository';
 import { getChatGptCapability, navigateToChatGptTarget } from '../providers/chatgpt/adapter';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
 import { Button, IconButton } from '../ui/primitives';
 import { TextInputDialog } from '../ui/TextInputDialog';
+import { useWorkspacePersistence } from './controllers/useWorkspacePersistence';
 
 export type WorkspaceView = 'workspace' | 'markdown-sync';
 
@@ -47,7 +49,6 @@ interface WorkspaceAppProps {
   localVault?: LocalVault;
 }
 
-type PersistenceState = 'loading' | 'ready' | 'blocked';
 type PendingDelete =
   | { kind: 'folder'; folder: WorkspaceFolder }
   | { kind: 'chat'; chat: ChatReference }
@@ -59,19 +60,6 @@ type PendingRename =
   | { kind: 'note'; note: LocalNote }
   | null;
 
-function messageFromError(error: unknown): string {
-  return error instanceof Error ? error.message : 'Local operation failed.';
-}
-
-function recoveryText(raw: unknown | null): string | null {
-  if (raw === null) return null;
-  try {
-    return JSON.stringify(raw, null, 2);
-  } catch {
-    return String(raw);
-  }
-}
-
 function defaultDownloadText(filename: string, content: string): void {
   const blob = new Blob([content], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -82,10 +70,6 @@ function defaultDownloadText(filename: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
-function vaultStateFor(connection: VaultConnection | null): VaultPageState {
-  if (connection === null) return 'disconnected';
-  return connection.permission === 'granted' ? 'connected' : 'permission-required';
-}
 
 export function WorkspaceApp({
   repository: workspaceRepository,
@@ -97,9 +81,6 @@ export function WorkspaceApp({
   localVault,
 }: WorkspaceAppProps) {
   const [workspace, dispatch] = useReducer(workspaceReducer, undefined, () => createInitialWorkspace());
-  const [persistenceState, setPersistenceState] = useState<PersistenceState>('loading');
-  const [persistenceError, setPersistenceError] = useState<string | null>(null);
-  const [recoveryJson, setRecoveryJson] = useState<string | null>(null);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [status, setStatus] = useState('Local workspace ready.');
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -107,98 +88,39 @@ export function WorkspaceApp({
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
   const [pendingRename, setPendingRename] = useState<PendingRename>(null);
   const [noteContextExpanded, setNoteContextExpanded] = useState(true);
-  const [vaultState, setVaultState] = useState<VaultPageState>('loading');
-  const [vaultConnection, setVaultConnection] = useState<VaultConnection | null>(null);
-  const [vaultMessage, setVaultMessage] = useState<string | null>(null);
-  const [vaultBusy, setVaultBusy] = useState(false);
-  const graph = useMemo(() => projectWorkspaceGraph(workspace), [workspace]);
-  const exportJson = useMemo(() => exportWorkspaceJson(workspace), [workspace]);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const saved = await workspaceRepository.load();
-        if (cancelled) return;
-        if (saved !== null) dispatch({ type: 'workspace/replace', snapshot: saved });
-        setPersistenceState('ready');
-      } catch (error) {
-        if (cancelled) return;
-        let raw: unknown | null = null;
-        try {
-          raw = await workspaceRepository.readRaw();
-        } catch {
-          raw = null;
-        }
-        setRecoveryJson(recoveryText(raw));
-        setPersistenceError(`Storage recovery required. ${messageFromError(error)}`);
-        setPersistenceState('blocked');
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [workspaceRepository]);
+const graph = useMemo(() => projectWorkspaceGraph(workspace), [workspace]);
+const exportJson = useMemo(() => exportWorkspaceJson(workspace), [workspace]);
+const { persistenceError, recoveryJson, importBackup, resetLocalData } = useWorkspacePersistence({
+  repository: workspaceRepository,
+  workspace,
+  dispatch,
+  onResetSelection: () => setSelectedFolderId(null),
+  onStatus: setStatus,
+});
+const {
+  state: vaultState,
+  connection: vaultConnection,
+  message: vaultMessage,
+  busy: vaultBusy,
+  connect: connectVault,
+  reconnect: reconnectVault,
+  disconnect: disconnectVault,
+  syncNote: syncNoteToVault,
+} = useLocalVaultController({ localVault, onStatus: setStatus });
 
-  useEffect(() => {
-    if (persistenceState !== 'ready') return;
-    void workspaceRepository.save(workspace).catch(async (error) => {
-      let raw: unknown | null = null;
-      try {
-        raw = await workspaceRepository.readRaw();
-      } catch {
-        raw = null;
-      }
-      setRecoveryJson(recoveryText(raw));
-      setPersistenceError(`Saving was blocked. ${messageFromError(error)}`);
-      setPersistenceState('blocked');
-    });
-  }, [persistenceState, workspace, workspaceRepository]);
+useEffect(() => {
+  const onKeyDown = (event: KeyboardEvent) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      event.preventDefault();
+      setPaletteOpen((current) => !current);
+    }
+  };
+  window.addEventListener('keydown', onKeyDown);
+  return () => window.removeEventListener('keydown', onKeyDown);
+}, []);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        setPaletteOpen((current) => !current);
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      if (localVault === undefined || !localVault.isSupported()) {
-        if (!cancelled) {
-          setVaultConnection(null);
-          setVaultState('unsupported');
-          setVaultMessage(null);
-        }
-        return;
-      }
-
-      try {
-        const connection = await localVault.getConnection();
-        if (cancelled) return;
-        setVaultConnection(connection);
-        setVaultState(vaultStateFor(connection));
-        setVaultMessage(null);
-      } catch (error) {
-        if (cancelled) return;
-        setVaultConnection(null);
-        setVaultState('error');
-        setVaultMessage(messageFromError(error));
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [localVault]);
-
-  function chatTab(chat: ChatReference): WorkspaceTab {
+function chatTab(chat: ChatReference): WorkspaceTab {
     return { id: `tab-chat-${chat.id}`, kind: 'chat', entityId: chat.id, title: chat.label, pinned: false };
   }
 
@@ -453,125 +375,6 @@ export function WorkspaceApp({
     if (!graphEdgeId.startsWith(prefix)) return;
     dispatch({ type: 'edge/delete', edgeId: graphEdgeId.slice(prefix.length), now: Date.now() });
     setStatus('Manual graph relation deleted.');
-  }
-
-  async function importBackup(json: string): Promise<void> {
-    const snapshot = importWorkspaceJson(json);
-    try {
-      await workspaceRepository.save(snapshot);
-      dispatch({ type: 'workspace/replace', snapshot });
-      setPersistenceError(null);
-      setRecoveryJson(null);
-      setPersistenceState('ready');
-      setStatus('Backup imported.');
-    } catch (error) {
-      setPersistenceError(`Import could not be saved. ${messageFromError(error)}`);
-      setPersistenceState('blocked');
-      throw error;
-    }
-  }
-
-  async function resetLocalData(): Promise<void> {
-    try {
-      await workspaceRepository.clear();
-      const reset = createInitialWorkspace();
-      dispatch({ type: 'workspace/replace', snapshot: reset });
-      setSelectedFolderId(null);
-      setPersistenceError(null);
-      setRecoveryJson(null);
-      setPersistenceState('ready');
-      setStatus('Local workspace reset.');
-    } catch (error) {
-      setPersistenceError(`Reset failed. ${messageFromError(error)}`);
-      setPersistenceState('blocked');
-      throw error;
-    }
-  }
-
-  function applyVaultConnection(connection: VaultConnection | null): void {
-    setVaultConnection(connection);
-    setVaultState(vaultStateFor(connection));
-  }
-
-  async function connectVault(): Promise<void> {
-    if (localVault === undefined || !localVault.isSupported()) {
-      setVaultConnection(null);
-      setVaultState('unsupported');
-      return;
-    }
-
-    setVaultBusy(true);
-    setVaultMessage(null);
-    try {
-      const connection = await localVault.connect();
-      if (connection !== null) applyVaultConnection(connection);
-    } catch (error) {
-      setVaultState('error');
-      setVaultMessage(messageFromError(error));
-    } finally {
-      setVaultBusy(false);
-    }
-  }
-
-  async function reconnectVault(): Promise<void> {
-    if (localVault === undefined) return;
-
-    setVaultBusy(true);
-    setVaultMessage(null);
-    try {
-      const connection = await localVault.reconnect();
-      applyVaultConnection(connection);
-    } catch (error) {
-      setVaultState('error');
-      setVaultMessage(messageFromError(error));
-    } finally {
-      setVaultBusy(false);
-    }
-  }
-
-  async function disconnectVault(): Promise<void> {
-    if (localVault === undefined) return;
-
-    setVaultBusy(true);
-    setVaultMessage(null);
-    try {
-      await localVault.disconnect();
-      setVaultConnection(null);
-      setVaultState('disconnected');
-    } catch (error) {
-      setVaultState('error');
-      setVaultMessage(messageFromError(error));
-    } finally {
-      setVaultBusy(false);
-    }
-  }
-
-  async function syncNoteToVault(note: LocalNote): Promise<void> {
-    if (localVault === undefined) {
-      setVaultState('unsupported');
-      return;
-    }
-
-    setVaultBusy(true);
-    setVaultMessage(null);
-    try {
-      const result = await localVault.writeNote(note);
-      setStatus(`Synced note to ${result.path}.`);
-      setVaultMessage(`Synced to ${result.path}`);
-      const connection = await localVault.getConnection();
-      applyVaultConnection(connection);
-    } catch (error) {
-      setVaultMessage(messageFromError(error));
-      try {
-        const connection = await localVault.getConnection();
-        setVaultConnection(connection);
-        setVaultState(connection !== null && connection.permission !== 'granted' ? 'permission-required' : 'error');
-      } catch {
-        setVaultState('error');
-      }
-    } finally {
-      setVaultBusy(false);
-    }
   }
 
   const activeTab = workspace.tabs.find((tab) => tab.id === workspace.activeTabId) ?? workspace.tabs[0];

@@ -1,78 +1,76 @@
+
 # Current Milestone
 
 Status: **READY_FOR_MILESTONE**
 
-Goal: Legacy/runtime-test-surface cleanup completed; no product implementation milestone is currently active.
+Goal: M7 application decomposition and Radix UI foundation completed; no product implementation milestone is currently active.
 
-Why: Before live-browser acceptance, reduce the repository to current runtime ownership and stop deterministic tests from claiming browser-environment confidence they cannot establish.
+Why: Reduce `WorkspaceApp` orchestration load and standardize complex UI behavior on an accessible component foundation without changing product behavior or persisted contracts.
 
 ## Feature Compass
 
-**Shape:** Chatspace is a local-first Chromium Side Panel workspace beside native ChatGPT, with Explorer, notes, spatial Graph navigation, validated ChatGPT URL navigation, and manual direct-folder Markdown Sync.
+**Shape:** Chatspace remains a local-first Chromium Side Panel workspace beside native ChatGPT, with Explorer, notes, spatial Graph navigation, validated ChatGPT URL navigation, and manual direct-folder Markdown Sync.
 
-**Position:** Direct selected-folder sync is now the sole vault runtime path. Obsolete localhost bridge infrastructure and pseudo browser/daily-driver acceptance tests were removed while deterministic domain, persistence, provider-decision, and stable UI-semantic coverage remains.
+**Position:** Persistence/recovery and local-vault lifecycle now have explicit coordinators. Reusable interactive UI uses Radix Primitives for behavior while Chatspace tokens/Tailwind remain the visual layer.
 
-**Delta:** Cleanup milestone complete.
+**Delta:** M7 complete. Product scope and `WorkspaceSnapshot` are unchanged.
 
-**Next Move:** Run bounded live-browser acceptance when explicitly requested.
+**Next Move:** Bound the next repository milestone from an explicit product/engineering outcome; do not create a black-box/live-browser milestone.
 
 ## Scope
 
 ### In
 
-- remove dead localhost companion/server/client/UI/permission surfaces;
-- remove the unnecessary localhost manifest permission and package command;
-- remove pseudo daily-driver/File System browser tests that relied on jsdom or fake handles;
-- keep pure/deterministic coverage for domain, persistence, provider decisions, path sanitization, and stable UI semantics;
-- keep canonical docs aligned with the resulting runtime.
+- extract workspace persistence/recovery coordination from `WorkspaceApp`;
+- extract local-vault connection/sync lifecycle into the local-vault feature owner;
+- standardize dialogs, alert dialogs, tabs, select, checkbox, and composable button behavior on Radix UI Primitives;
+- preserve Chatspace `cs-*` tokens, Tailwind visual styling, product behavior, and persisted contracts;
+- keep deterministic tests focused on Chatspace-owned behavior rather than Radix internals.
 
 ### Out
 
-- no product feature expansion/reduction beyond dead legacy behavior;
-- no persisted workspace-schema change;
-- no Graph position persistence;
+- no product feature expansion or removal;
+- no `WorkspaceSnapshot` schema change;
 - no provider DOM/content integration;
-- no live-browser acceptance claim from repository tests.
+- no Graph position persistence;
+- no black-box/live-browser milestone or fake browser acceptance test.
 
 ## Slices
 
-- [x] Remove legacy localhost bridge surface.
-- [x] Remove pseudo-black-box tests and preserve narrow deterministic coverage.
-- [x] Align permissions, package scripts, public docs, and canonical project knowledge.
-- [x] Run repository quality gate.
+- [x] Extract persistence/recovery coordinator.
+- [x] Extract local-vault lifecycle coordinator and remove stale feature ownership naming.
+- [x] Adopt Radix UI as the reusable interactive primitive layer.
+- [x] Migrate dialogs, tabs, select, checkbox, and command-palette overlay semantics.
+- [x] Align tests and canonical project/design knowledge.
+- [x] Run repository quality gate and WXT packaging.
 
 ## Current Decisions
 
 - Native ChatGPT remains the conversation runtime; Chatspace remains the local Side Panel workspace.
 - Canonical workspace state remains in extension-owned `chrome.storage.local`.
 - Provider integration remains URL/tab-only.
-- Direct-folder Markdown Sync is the only vault runtime path; its directory handle remains separate from `WorkspaceSnapshot` in IndexedDB.
+- Direct-folder Markdown Sync remains the only vault runtime path; its directory handle remains outside `WorkspaceSnapshot` in IndexedDB.
 - Graph remains a projection; session-only dragged positions remain ephemeral.
-- Real Side Panel/provider-tab/File System behavior is a black-box acceptance boundary, not a jsdom/fake-runtime test claim.
+- Radix UI Primitives owns reusable complex interaction behavior; Chatspace owns visual styling and product composition.
+- Browser-environment behavior is not represented as an engineering milestone.
 
 ## Verification / Evidence
 
-- localhost companion/server/client/UI/permission code removed;
-- localhost optional host permission removed from the extension manifest;
-- obsolete `bridge` package command removed;
-- pseudo `WorkspaceApp.dailyDriver` test removed;
-- fake-handle `BrowserLocalVault` browser acceptance test removed;
-- pure local-vault filename/path sanitization coverage retained;
-- deterministic repository CI remains lint + strict typecheck + tests + WXT package.
+- `WorkspaceApp` delegates persistence/recovery and local-vault lifecycle to explicit coordinators;
+- reusable dialog/alert-dialog/tab/select/checkbox behavior uses `radix-ui`;
+- the local-vault feature surface lives under `src/features/local-vault/`;
+- deterministic repository tests continue to cover Chatspace-owned domain/application/UI semantics;
+- repository quality gate remains lint + strict typecheck + tests + WXT package.
 
 ## Blockers / Risks
 
 - No known repository/CI runtime blocker.
-- Real `showDirectoryPicker()`, restored directory handles, actual filesystem writes, provider tab lifecycle, and narrow-panel Graph interaction still require live-browser evidence.
+- Radix is a deliberate UI dependency; feature components should not reimplement focus traps, portal overlays, keyboard roving, select state, or dialog dismissal when a Radix primitive owns that behavior.
 
 ## Candidate next milestone — not authorized
 
-Bounded live-browser acceptance of:
-
-1. spatial Graph interaction in a real narrow Side Panel;
-2. direct-folder connect/write/update/restore/reconnect behavior;
-3. provider navigation with no ChatGPT content script.
+**M8 — Workspace UX Consolidation**: reduce remaining naming/interaction duplication across Explorer, Workbench, Notes, Graph, Settings, and Markdown Sync without expanding product scope.
 
 ## Next Action
 
-Wait for explicit authorization of the next milestone, then set its goal/scope/acceptance/slices here and execute continuously.
+Wait for explicit authorization of the next milestone, then record its goal/scope/slices here and execute continuously.

@@ -22,7 +22,7 @@ describe('WorkspaceTabs', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Graph' }));
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Graph' }), { button: 0, ctrlKey: false });
     expect(onActivate).toHaveBeenCalledWith('tab-graph');
     expect(screen.queryByRole('button', { name: 'Close Home' })).not.toBeInTheDocument();
 

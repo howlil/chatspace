@@ -159,8 +159,11 @@ Support explicit light and dark modes. Persist explicit user preference. Use sys
 
 Light mode and dark mode are both designed surfaces; neither should be treated as a mechanical inversion of the other.
 
+
 ## Component Styling Principles
 
+- Radix UI Primitives is the default interaction foundation for reusable complex controls; Chatspace styling remains token-driven and product-specific;
+- use Radix behavior without importing a generic visual theme that overrides Chatspace hierarchy or tokens;
 - reuse existing tokens/primitives before adding new visual concepts;
 - keep component appearance proportional to its importance;
 - iconography uses Lucide for UI affordances;

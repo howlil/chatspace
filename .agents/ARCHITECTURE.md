@@ -11,6 +11,7 @@ Chatspace is an extension-owned local workspace beside native ChatGPT. The Side 
 - React
 - strict TypeScript
 - Tailwind CSS
+- Radix UI Primitives for reusable complex interaction behavior
 - `chrome.storage.local` for canonical workspace persistence
 - IndexedDB for the selected local-vault directory handle
 - Vitest + Testing Library

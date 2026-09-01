@@ -90,7 +90,12 @@ WorkspaceSnapshot
 
 Keep relationship provenance explicit. Renderer types and session-only dragged coordinates must not become canonical storage accidentally.
 
+
 ## UI composition
+
+Radix UI Primitives is the canonical behavior layer for reusable interactive composites. Use Radix for dialogs/alert dialogs, overlays/portals, tabs, selects, checkbox/toggle/menu/tooltip/collapsible behavior when that primitive fits. Keep Chatspace visual styling in local wrappers with semantic `cs-*` tokens and Tailwind.
+
+Do not hand-roll focus traps, Escape/outside-dismissal plumbing, roving tab focus, portal layering, or select/menu keyboard behavior when Radix already owns the interaction. Basic semantic text inputs/textarea and app-specific layout/content remain native React/HTML where Radix has no corresponding behavior primitive.
 
 - reuse existing semantic `cs-*` design tokens;
 - use Lucide for UI iconography;

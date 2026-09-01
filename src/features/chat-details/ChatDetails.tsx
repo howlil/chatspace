@@ -47,14 +47,15 @@ export function ChatDetails({ chat, folder, folders, onRename, onTogglePin, onMo
             <span className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-cs-subtle">
               <FolderInput size={10} aria-hidden="true" /> Location
             </span>
-            <Select
-              aria-label={`Move ${chat.label}`}
-              value={chat.folderId ?? ''}
-              onChange={(event) => onMove(event.target.value === '' ? null : event.target.value)}
-            >
-              <option value="">Workspace root</option>
-              {folders.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-            </Select>
+<Select
+  aria-label={`Move ${chat.label}`}
+  value={chat.folderId ?? ''}
+  options={[
+    { value: '', label: 'Workspace root' },
+    ...folders.map((item) => ({ value: item.id, label: item.name })),
+  ]}
+  onValueChange={(value) => onMove(value === '' ? null : value)}
+/>
           </label>
         </Panel>
       </div>

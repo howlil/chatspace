@@ -155,13 +155,11 @@ describe('WorkspaceApp', () => {
       />,
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Save current chat' }));
+    fireEvent.click(await screen.findByTitle('Database'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save current chat' }));
     expect(screen.getByRole('dialog', { name: 'Save conversation' })).toBeVisible();
     fireEvent.change(screen.getByRole('textbox', { name: 'Conversation name' }), {
       target: { value: 'PostgreSQL locking' },
-    });
-    fireEvent.change(screen.getByRole('combobox', { name: 'Conversation folder' }), {
-      target: { value: 'database' },
     });
     fireEvent.click(screen.getByRole('checkbox', { name: 'Pin this conversation' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
