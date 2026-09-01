@@ -17,7 +17,8 @@ No new product behavior is authorized by this state file.
 - No product implementation milestone is currently active.
 - `master` is the current integration branch and contains the delivered daily-driver candidate summarized in `.agent/STATE.md` and `.agent/DELIVERY.md`.
 - The latest recorded product increment is the spatial Graph navigation work from PR #29, followed by the state refresh in PR #30.
-- Repository CI for that increment passed frozen install, lint, strict typecheck, deterministic tests, and WXT build+ZIP packaging.
+- Agent governance is aligned through PR #31 with milestone planning, continuous slice execution, logical-change integration, canonical current-iteration state, Feature Compass, and evidence-driven retrospective rules.
+- Repository CI for PR #31 passed frozen install, lint, strict typecheck, deterministic tests, and WXT build+ZIP packaging.
 - Live-browser interaction/visual acceptance remains outside repository CI.
 - Direct-folder Markdown Sync still requires real Chromium Side Panel acceptance before the retained localhost bridge can be considered for bounded removal.
 
@@ -25,7 +26,7 @@ No new product behavior is authorized by this state file.
 
 There is no authorized product delta in progress.
 
-The agent-workflow contract is being aligned to the canonical delivery model:
+The canonical delivery model is active:
 
 ```text
 Milestone -> Slice -> Logical Change -> Commit
