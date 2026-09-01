@@ -1,9 +1,10 @@
-import { Link2, Maximize2, Network, Search, Trash2, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { Link2, Maximize2, Network, Trash2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 
 import type { GraphEdge, GraphNode, WorkspaceGraph } from '../../domain/graph/projectGraph';
 import { cn } from '../../ui/cn';
 import { Button, IconButton, SectionLabel } from '../../ui/primitives';
+import { SearchField } from '../../ui/workspace';
 import { directNeighborhood, edgeVisualWeight, layoutWorkspaceGraph, type PositionedGraphNode } from './graphLayout';
 
 interface GraphNavigatorProps {
@@ -200,16 +201,13 @@ export function GraphNavigator({ graph, onOpenNode, onCreateManualEdge, onDelete
   return (
     <section className="grid h-full min-h-0 grid-rows-[38px_minmax(0,1fr)] bg-cs-bg" aria-label="Workspace graph">
       <header className="flex min-w-0 items-center gap-2 border-b border-cs-border bg-cs-panel/70 px-2.5">
-        <div className="relative min-w-0 flex-1 max-w-xs">
-          <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-cs-subtle" size={11} aria-hidden="true" />
-          <input
-            className="h-7 w-full rounded-md border border-cs-border bg-cs-bg pl-7 pr-2 text-[10px] text-cs-text outline-none placeholder:text-cs-subtle focus:border-cs-focus focus:ring-1 focus:ring-cs-focus/20"
-            aria-label="Search graph"
-            placeholder="Find and focus a node"
-            value={query}
-            onChange={(event) => handleSearch(event.target.value)}
-          />
-        </div>
+        <SearchField
+          className="min-w-0 max-w-xs flex-1"
+          aria-label="Search graph"
+          placeholder="Find and focus a node"
+          value={query}
+          onValueChange={handleSearch}
+        />
         <span className="hidden shrink-0 text-[9px] text-cs-subtle min-[620px]:inline">
           {graph.nodes.length} nodes · {graph.edges.length} edges
         </span>

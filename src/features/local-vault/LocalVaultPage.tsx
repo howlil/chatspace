@@ -12,6 +12,7 @@ import {
 import type { LocalNote } from '../../domain/workspace/model';
 import type { VaultConnection } from '../../integrations/local-vault/BrowserLocalVault';
 import { Button, Panel } from '../../ui/primitives';
+import { InlineFeedback, WorkspaceHeader } from '../../ui/workspace';
 
 export type VaultPageState =
   | 'loading'
@@ -58,17 +59,11 @@ export function LocalVaultPage({
           <ArrowLeft size={11} aria-hidden="true" /> Back to workspace
         </Button>
 
-        <header className="flex items-start gap-2.5 px-1">
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg border border-cs-border bg-cs-surface text-cs-muted">
-            <HardDrive size={14} strokeWidth={1.7} aria-hidden="true" />
-          </span>
-          <div className="grid min-w-0 gap-0.5">
-            <h1 className="m-0 text-sm font-semibold tracking-[-0.01em]">Markdown sync</h1>
-            <p className="m-0 text-[10px] leading-4 text-cs-muted">
-              Save Chatspace notes directly into an Obsidian vault. No terminal, token, or local server required.
-            </p>
-          </div>
-        </header>
+        <WorkspaceHeader
+          icon={HardDrive}
+          title="Markdown sync"
+          description="Save Chatspace notes directly into an Obsidian vault. No terminal, token, or local server required."
+        />
 
         <Panel className="grid gap-3 p-3" aria-label="Obsidian vault connection">
           <div className="flex items-start gap-2.5">
@@ -117,17 +112,15 @@ export function LocalVaultPage({
               )}
 
               {state === 'error' && (
-                <p className="m-0 text-[9px] leading-4 text-cs-danger">
+                <InlineFeedback tone="danger">
                   {message ?? 'The Obsidian vault connection could not be used.'}
-                </p>
+                </InlineFeedback>
               )}
             </div>
           </div>
 
           {message !== null && state !== 'error' && (
-            <p className="m-0 rounded-md border border-cs-border bg-cs-surface px-2 py-1.5 text-[9px] leading-4 text-cs-muted">
-              {message}
-            </p>
+            <InlineFeedback>{message}</InlineFeedback>
           )}
 
           <div className="flex flex-wrap items-center gap-2">

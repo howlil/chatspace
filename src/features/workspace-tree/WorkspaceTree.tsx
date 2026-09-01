@@ -11,7 +11,6 @@ import {
   MoreHorizontal,
   Pencil,
   Pin,
-  Search,
   Star,
   Trash2,
 } from 'lucide-react';
@@ -21,6 +20,7 @@ import { useMemo, useState, type DragEvent, type MouseEvent as ReactMouseEvent, 
 import type { ChatReference, LocalNote, WorkspaceFolder } from '../../domain/workspace/model';
 import { cn } from '../../ui/cn';
 import { IconButton, SectionLabel, Select } from '../../ui/primitives';
+import { SearchField } from '../../ui/workspace';
 
 interface WorkspaceTreeProps {
   folders: WorkspaceFolder[];
@@ -378,16 +378,13 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
 
   return (
     <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
-      <div className="relative mx-1.5 mt-1.5">
-        <Search className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-cs-subtle" size={11} aria-hidden="true" />
-        <input
-          className="h-7 w-full rounded-md border border-cs-border bg-cs-control pl-6 pr-2 text-[11px] text-cs-text outline-none placeholder:text-cs-subtle focus:border-cs-focus focus:ring-1 focus:ring-cs-focus/20"
-          aria-label="Search workspace"
-          placeholder="Search workspace"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </div>
+      <SearchField
+        className="mx-1.5 mt-1.5"
+        aria-label="Search workspace"
+        placeholder="Search workspace"
+        value={query}
+        onValueChange={setQuery}
+      />
 
       <div className="min-h-0 overflow-y-auto py-1.5">
         {searchResults !== null ? (

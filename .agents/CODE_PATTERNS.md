@@ -97,6 +97,7 @@ Radix UI Primitives is the canonical behavior layer for reusable interactive com
 
 Do not hand-roll focus traps, Escape/outside-dismissal plumbing, roving tab focus, portal layering, or select/menu keyboard behavior when Radix already owns the interaction. Basic semantic text inputs/textarea and app-specific layout/content remain native React/HTML where Radix has no corresponding behavior primitive.
 
+- reusable workspace presentation grammar that has multiple concrete consumers lives in `src/ui/workspace.tsx`; keep single-feature composition with its feature owner;
 - reuse existing semantic `cs-*` design tokens;
 - use Lucide for UI iconography;
 - icon-only controls require accessible names;

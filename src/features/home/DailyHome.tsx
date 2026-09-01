@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 
 import type { ChatReference, LocalNote } from '../../domain/workspace/model';
 import { Panel } from '../../ui/primitives';
+import { WorkspaceHeader } from '../../ui/workspace';
 
 interface DailyHomeProps {
   chats: ChatReference[];
@@ -76,10 +77,7 @@ export function DailyHome({ chats, notes, status, onOpenChat, onOpenNote }: Dail
   return (
     <section className="h-full min-h-0 overflow-y-auto" aria-label="Chatspace home">
       <div className="mx-auto grid w-full max-w-3xl gap-5 px-4 py-5 sm:px-5">
-        <header className="grid gap-1">
-          <h1 className="m-0 text-[15px] font-semibold tracking-[-0.02em] text-cs-text">Workspace</h1>
-          <p className="m-0 text-[10px] leading-4 text-cs-muted">{status}</p>
-        </header>
+        <WorkspaceHeader title="Workspace" description={status} />
 
         {empty ? (
           <Panel className="grid min-h-44 place-items-center px-6 py-8 text-center">

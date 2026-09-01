@@ -1,8 +1,8 @@
 import { ChevronDown, ChevronUp, Code2, Dot, Eye, FileText, Link2, Pencil, Tag, X } from 'lucide-react';
+import { ToggleGroup } from 'radix-ui';
 import { useState, type ReactNode } from 'react';
 
 import type { ChatReference, LocalNote } from '../../domain/workspace/model';
-import { cn } from '../../ui/cn';
 import { Button, IconButton, Input, Select } from '../../ui/primitives';
 
 interface LocalNoteEditorProps {
@@ -115,38 +115,32 @@ export function LocalNoteEditor({
             if (note.title.trim() === '') onChange({ ...note, title: 'Untitled note' });
           }}
         />
-        <div className="flex shrink-0 rounded-lg border border-cs-border bg-cs-surface p-0.5" role="group" aria-label="Note view mode">
-          <IconButton
-            data-active={mode === 'edit' ? 'true' : 'false'}
-            aria-pressed={mode === 'edit'}
-            className={cn(
-              'size-6 rounded-md text-cs-subtle transition-colors',
-              mode === 'edit'
-                ? 'bg-cs-text text-cs-bg shadow-sm hover:bg-cs-text hover:text-cs-bg'
-                : 'hover:bg-cs-hover hover:text-cs-text',
-            )}
+        <ToggleGroup.Root
+          type="single"
+          value={mode}
+          aria-label="Note view mode"
+          className="flex shrink-0 rounded-lg border border-cs-border bg-cs-surface p-0.5"
+          onValueChange={(value) => {
+            if (value === 'edit' || value === 'preview') setMode(value);
+          }}
+        >
+          <ToggleGroup.Item
+            value="edit"
             aria-label="Edit note"
             title="Edit"
-            onClick={() => setMode('edit')}
+            className="grid size-6 place-items-center rounded-md text-cs-subtle outline-none transition-colors hover:bg-cs-hover hover:text-cs-text focus-visible:ring-1 focus-visible:ring-cs-focus/50 data-[state=on]:bg-cs-text data-[state=on]:text-cs-bg data-[state=on]:shadow-sm"
           >
             <Pencil size={10} aria-hidden="true" />
-          </IconButton>
-          <IconButton
-            data-active={mode === 'preview' ? 'true' : 'false'}
-            aria-pressed={mode === 'preview'}
-            className={cn(
-              'size-6 rounded-md text-cs-subtle transition-colors',
-              mode === 'preview'
-                ? 'bg-cs-text text-cs-bg shadow-sm hover:bg-cs-text hover:text-cs-bg'
-                : 'hover:bg-cs-hover hover:text-cs-text',
-            )}
+          </ToggleGroup.Item>
+          <ToggleGroup.Item
+            value="preview"
             aria-label="Preview note"
             title="Preview"
-            onClick={() => setMode('preview')}
+            className="grid size-6 place-items-center rounded-md text-cs-subtle outline-none transition-colors hover:bg-cs-hover hover:text-cs-text focus-visible:ring-1 focus-visible:ring-cs-focus/50 data-[state=on]:bg-cs-text data-[state=on]:text-cs-bg data-[state=on]:shadow-sm"
           >
             <Eye size={10} aria-hidden="true" />
-          </IconButton>
-        </div>
+          </ToggleGroup.Item>
+        </ToggleGroup.Root>
       </div>
 
       <div className="flex min-w-0 items-center gap-1.5 border-b border-cs-border bg-cs-panel/70 px-2.5 py-1">

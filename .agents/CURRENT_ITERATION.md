@@ -1,20 +1,20 @@
 # Current Milestone
 
-Status: **PLANNED**
+Status: **READY_FOR_MILESTONE**
 
 Goal: Consolidate Chatspace's existing workspace UX grammar across Explorer, Workbench, Home, Notes, Graph, Settings, and Markdown Sync so equivalent surfaces and interactions use one compact, consistent component language without changing product behavior.
 
-Why: M7 established Radix UI as the interaction foundation and reduced application orchestration, but the current feature surfaces still compose repeated headers, action groups, empty/status/error states, and compact controls independently. M8 should remove that duplication without turning the work into a redesign or a new design-system project.
+Why: M7 established Radix UI as the interaction foundation and reduced application orchestration. M8 removed repeated UX composition where multiple existing surfaces expressed the same header, feedback, search, or compact-mode semantics without turning the work into a redesign or a generic design-system project.
 
 ## Feature Compass
 
 **Shape:** Chatspace remains a local-first Chromium Side Panel workspace beside native ChatGPT, with Explorer, Workbench tabs, local notes, spatial Graph navigation, validated ChatGPT URL navigation, settings/recovery, and manual direct-folder Markdown Sync.
 
-**Position:** M7 is complete. Complex reusable interaction behavior is Radix-backed, while several feature surfaces still implement similar UX presentation and compact action patterns separately.
+**Position:** M8 is complete. Shared workspace headers, feedback presentation, and search affordances now have proven reusable owners; Note Edit/Preview uses Radix ToggleGroup; feature mechanics and persisted contracts are unchanged.
 
-**Delta:** Consolidate only repeated UX composition and interaction patterns already present in the product. Preserve current workflows, information architecture, persisted contracts, and visual direction.
+**Delta:** M8 consolidated repeated UX composition without expanding product scope or changing persisted/runtime contracts.
 
-**Next Move:** Wait for explicit execution authorization, then mark Slice 1 active and execute M8 continuously through the milestone gate.
+**Next Move:** Bound the next repository milestone from an explicit product/engineering outcome; do not create a black-box/live-browser milestone.
 
 ## Scope
 
@@ -44,28 +44,10 @@ Why: M7 established Radix UI as the interaction foundation and reduced applicati
 
 ## Slices
 
-- [ ] **Slice 1 — Shared UX grammar:** identify the concrete repeated surface/header/feedback/action patterns and introduce only the smallest reusable UI primitives or Radix-backed wrappers needed by multiple current consumers.
-- [ ] **Slice 2 — Home, Settings, Markdown Sync:** align page hierarchy, section headers, status/error/empty presentation, and primary-vs-secondary action placement using the shared grammar without changing workflows.
-- [ ] **Slice 3 — Notes, Graph, Explorer, Workbench:** align compact toolbars/action groups/search affordances and contextual controls; replace remaining reusable hand-rolled interaction behavior with the appropriate Radix primitive while preserving feature mechanics.
-- [ ] **Slice 4 — Cleanup and milestone gate:** remove superseded duplication, keep feature ownership clear, update deterministic component coverage for Chatspace-owned behavior, run repository quality gates, and update canonical project state.
-
-No slice is active while the milestone is only planned.
-
-## Milestone Acceptance
-
-M8 is complete when:
-
-- equivalent surface-header, feedback-state, and compact-action patterns no longer have materially different one-off implementations without a product reason;
-- reusable complex interaction behavior introduced or touched by M8 is Radix-backed when a fitting Radix primitive exists;
-- Chatspace-specific layout/content primitives remain local semantic React components rather than forcing non-interactive layout into Radix;
-- Home, Settings, Markdown Sync, Notes, Graph, Explorer, and Workbench preserve their existing user workflows and feature semantics;
-- no persisted workspace, provider, Graph data, permission, or filesystem contract changes;
-- no new visual token is added unless an existing semantic `cs-*` token cannot express the required intent;
-- compact/narrow-panel layout, light/dark themes, keyboard focus, accessible names, and destructive-action clarity are preserved;
-- superseded one-off UI code is removed rather than retained beside the shared replacement;
-- deterministic affected-risk tests are green;
-- `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm zip` pass in CI;
-- repository state does not claim live-browser acceptance that CI cannot prove.
+- [x] **Slice 1 — Shared UX grammar:** introduced only proven shared presentation primitives with multiple current consumers.
+- [x] **Slice 2 — Home, Settings, Markdown Sync:** aligned page hierarchy and equivalent feedback presentation without changing workflows.
+- [x] **Slice 3 — Notes, Graph, Explorer, Workbench:** aligned search/mode interaction grammar; Note Edit/Preview moved to Radix ToggleGroup; Workbench was reviewed and retained because its existing chrome already fits the shared grammar.
+- [x] **Slice 4 — Cleanup and milestone gate:** removed superseded one-off code, aligned deterministic tests, updated canonical knowledge, and passed repository gates.
 
 ## Current Decisions
 
@@ -75,23 +57,28 @@ M8 is complete when:
 - Direct-folder Markdown Sync remains manual and one-way; its directory handle remains outside `WorkspaceSnapshot` in IndexedDB.
 - Graph remains a projection; session-only dragged positions remain ephemeral.
 - Radix UI Primitives owns reusable complex interaction behavior; Chatspace owns visual styling, content hierarchy, and product composition.
-- M8 is consolidation work: reuse first, then the smallest local abstraction proven by existing duplication.
+- M8 consolidation follows reuse first, then the smallest local abstraction proven by multiple existing consumers.
 
-## Planning Evidence
+## Verification / Evidence
 
-- Workbench already has a stable compact shell and tab chrome, so M8 does not need a shell rewrite.
-- Home, Settings, and Markdown Sync each compose their own page/section header and panel hierarchy despite sharing similar title/description/action semantics.
-- Notes and Graph independently compose compact toolbars and state/action groups; Note Edit/Preview is still a hand-composed pressed-button group rather than a shared Radix-backed segmented interaction.
-- Settings and Markdown Sync independently render informational/error/status messaging with different local structures.
-- Explorer now uses Radix DropdownMenu, but search/action presentation and secondary-control affordances should be checked against the same compact workspace grammar rather than redesigned.
+- `WorkspaceHeader` is shared by Home, Settings, and Markdown Sync;
+- `InlineFeedback` is shared by Settings and Markdown Sync for equivalent neutral/error messaging;
+- `SearchField` is shared by Explorer and Graph while their search decision logic remains feature-owned;
+- Note Edit/Preview interaction uses Radix `ToggleGroup` directly rather than a one-consumer wrapper;
+- Workbench shell/chrome was reviewed and kept unchanged because it already uses the established compact grammar;
+- no `WorkspaceSnapshot`, provider, Graph mechanics, permission, or filesystem contract changed;
+- deterministic suite passes with 61 tests;
+- repository gate passed: frozen install, lint, strict typecheck, deterministic tests, and WXT ZIP packaging.
 
 ## Blockers / Risks
 
 - No known repository/CI blocker.
-- Main risk is over-abstraction: M8 must not convert every visual fragment into a generic component.
-- Main product risk is accidental redesign or wording change; observable workflow/semantics stay unchanged unless separately approved.
-- Real Side Panel visual acceptance remains an external evidence boundary and is not represented as a repository engineering milestone.
+- Do not grow `src/ui/workspace.tsx` into a speculative component catalog; add shared presentation only after concrete repeated ownership exists.
+
+## Candidate next milestone — not authorized
+
+**M9 — Data & Persistence Hardening:** tighten recovery/import/export/storage failure boundaries without changing `WorkspaceSnapshot` unless separately approved.
 
 ## Next Action
 
-On explicit execution authorization, mark **Slice 1 — Shared UX grammar** active, implement the smallest proven shared primitives, then execute Slices 2–4 continuously through the milestone gate.
+Wait for explicit authorization of the next milestone.

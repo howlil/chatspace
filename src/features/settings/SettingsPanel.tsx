@@ -1,7 +1,8 @@
-import { AlertTriangle, Database, Download, RotateCcw, Upload } from 'lucide-react';
+import { Database, Download, RotateCcw, Upload } from 'lucide-react';
 import { useState } from 'react';
 
-import { Button, Panel, SectionLabel, Textarea } from '../../ui/primitives';
+import { Button, Panel, Textarea } from '../../ui/primitives';
+import { InlineFeedback, WorkspaceHeader } from '../../ui/workspace';
 
 interface SettingsPanelProps {
   exportJson: string;
@@ -75,23 +76,18 @@ export function SettingsPanel({ exportJson, recoveryJson, persistenceError, onIm
 
   return (
     <section className="grid gap-4" aria-label="Chatspace settings">
-      <div className="flex items-center gap-2 px-1">
-        <Database size={13} className="text-cs-subtle" strokeWidth={1.7} aria-hidden="true" />
-        <div>
-          <SectionLabel>Local workspace</SectionLabel>
-          <p className="m-0 mt-0.5 text-[9px] text-cs-muted">Extension-owned storage and recovery.</p>
-        </div>
-      </div>
+      <WorkspaceHeader
+        icon={Database}
+        title="Local workspace"
+        description="Extension-owned storage and recovery."
+      />
 
       <SettingsCard
         title="Local data"
         description="Workspace metadata, notes, graph relationships, tabs, and validated ChatGPT conversation URLs stay in extension-local storage."
       >
         {persistenceError !== null ? (
-          <div className="flex items-start gap-2 rounded-md border border-red-500/20 bg-red-500/[0.06] p-2 text-[9px] leading-4 text-cs-danger" role="alert">
-            <AlertTriangle size={11} className="mt-0.5 shrink-0" aria-hidden="true" />
-            <span>{persistenceError}</span>
-          </div>
+          <InlineFeedback tone="danger">{persistenceError}</InlineFeedback>
         ) : (
           <p className="m-0 text-[9px] leading-4 text-cs-muted">Storage is healthy. Provider credentials and ChatGPT output are not stored.</p>
         )}
@@ -161,10 +157,7 @@ export function SettingsPanel({ exportJson, recoveryJson, persistenceError, onIm
       </div>
 
       {actionError !== null && (
-        <div className="flex items-start gap-2 rounded-md border border-red-500/20 bg-red-500/[0.06] p-2 text-[9px] leading-4 text-cs-danger" role="alert">
-          <AlertTriangle size={11} className="mt-0.5 shrink-0" aria-hidden="true" />
-          <span>{actionError}</span>
-        </div>
+        <InlineFeedback tone="danger">{actionError}</InlineFeedback>
       )}
       <p className="m-0 px-1 text-[9px] leading-4 text-cs-subtle">
         No provider cookies, auth tokens, private API responses, or automatically extracted ChatGPT output are stored by Chatspace.

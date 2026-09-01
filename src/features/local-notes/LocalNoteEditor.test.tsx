@@ -46,7 +46,7 @@ describe('LocalNoteEditor', () => {
         onToggleContext={vi.fn()}
       />,
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Preview note' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Preview note' }));
 
     expect(screen.getByRole('article', { name: 'Markdown preview' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'TCP' })).toBeVisible();
