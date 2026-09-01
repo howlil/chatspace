@@ -2,7 +2,7 @@
 
 This file is the **single canonical execution contract** for every coding agent working on Chatspace: Codex, Claude Code, GPT web, GitHub/IDE agents, and future agents.
 
-`.agent/` stores project knowledge and detailed engineering policy. It must not define a competing lifecycle. Agent-specific files may only point here and add tool-specific behavior.
+`.agent/` stores project knowledge, current iteration state, and detailed engineering policy. It must not define a competing lifecycle. Agent-specific files may only point here and add tool-specific behavior.
 
 ## 1. Operating principle
 
@@ -14,7 +14,7 @@ validated user value
 engineering time + waiting + rework + cognitive load + compute/context cost
 ```
 
-Production quality is required. Architecture sophistication, test volume, documentation volume, and process ceremony are not goals.
+Production quality is required. Architecture sophistication, test volume, documentation volume, planning ceremony, branch count, and PR count are not goals.
 
 The operating model is:
 
@@ -30,61 +30,53 @@ The user owns:
 - WHY / product problem and intent
 - WHAT / product behavior and semantics
 - product scope and non-goals
-- material architecture boundaries
+- architecture boundaries
+- acceptance criteria when they introduce or change observable semantics
+- public/persisted contracts, data ownership, and security/trust boundaries
 - final approve / reject / release / change-direction decisions
 
-The agent may analyze, surface evidence, identify risks, recommend implementation approaches, and draft acceptance criteria from an already clear requirement. It must not:
+The agent owns ordinary implementation decisions inside approved boundaries: repository inspection, local design, coding, testing, debugging, verification, touched-only refactoring, and quality gates.
+
+The agent must not:
 
 - invent a product requirement
-- add a feature/capability/workflow because it seems useful or best practice
+- add adjacent capability because it seems useful or best practice
 - silently reinterpret material ambiguity
 - expand scope through acceptance criteria
-- treat a recommendation, observation, or feedback item as authorization
+- treat a recommendation, observation, or backlog candidate as authorization
 
 Existing approved requirements and durable decisions remain authoritative until explicitly changed.
-
-## 3. Engineering autonomy
-
-Inside approved scope and existing material boundaries, the agent should execute ordinary local engineering decisions autonomously. Do not request approval for normal implementation choices such as:
-
-- naming and file placement consistent with existing conventions
-- implementation sequencing
-- local code structure
-- reuse of an existing pattern/component
-- a small local abstraction justified by the current change
-- touched-only refactoring
-- risk-appropriate verification selection
-- ordinary error handling and internal implementation details
-
-Prefer making the smallest sound local decision and continuing.
 
 Explicit user approval is required before materially changing:
 
 - service/runtime boundaries
 - data ownership
 - public/user-visible APIs or persisted compatibility contracts
-- communication patterns between major components/services
-- consistency model
+- communication or consistency models between major components
 - security/privacy/permission/trust boundaries
 - infrastructure architecture
 - destructive or irreversible data behavior
 - another major cross-cutting architecture boundary
 
-## 4. Minimum context principle
+## 3. Minimum-context principle
 
 Default read path:
 
 ```text
 task
 -> AGENTS.md
--> .agent/STATE.md
+-> .agent/CURRENT_ITERATION.md
 -> affected source/tests
 -> only task-relevant .agent documents
 ```
 
-Use `.agent/README.md` as a context router. Do not recursively scan the repository or preload all `.agent` documents for an ordinary bounded task.
+Read `.agent/STATE.md` only when broader project-state/history is needed. Use `.agent/README.md` as the context router. Do not recursively scan the repository or preload all `.agent` documents for an ordinary bounded task.
 
-## 5. Canonical lifecycle
+Conversation history is context, not the source of truth for active engineering state.
+
+## 4. Delivery lifecycle
+
+Plan at **milestone boundaries**. Execute continuously at **slice boundaries**. Integrate at **logical-change boundaries**.
 
 ```text
 USER INTENT
@@ -93,216 +85,233 @@ UNDERSTAND
     ↓
 BOUND
     ↓
-SPECIFY
+MILESTONE PLAN
     ↓
-DESIGN
+EXECUTE SLICES CONTINUOUSLY
     ↓
-IMPLEMENT
-    ↓
-VERIFY
-    ↓
-QUALITY GATES
+MILESTONE GATE
     ↓
 RELEASE READY
     ↓
 STOP
 ```
 
-This is the only canonical development lifecycle. Detailed documents explain specific concerns; they do not redefine this sequence.
+This is the default delivery lifecycle. Do not re-plan the whole milestone after every slice unless evidence materially changes scope, constraints, or the chosen product/architecture boundary.
 
-### USER INTENT
-
-Start from the explicit user request or already-approved requirement.
-
-- preserve the requested outcome
-- do not add adjacent product scope
-- distinguish a request for implementation from a request for product recommendations
-
-### UNDERSTAND
-
-Separate:
+Inside `EXECUTE SLICES CONTINUOUSLY`, use the engineering loop as needed:
 
 ```text
-Problem:
-Proposed solution, if any:
-Explicit requirement:
-Current behavior / relevant repository state:
+SPECIFY -> DESIGN -> IMPLEMENT -> VERIFY -> QUALITY GATES -> INTEGRATE
 ```
 
-Inspect only enough existing code/context to understand the affected behavior and ownership.
+Stages may be fused for small, clear work. The lifecycle is guidance for control and evidence, not mandatory ceremony.
 
-When product uncertainty materially affects what should be built, identify the **minimum evidence** needed to resolve it. Do not create a broad research phase for ordinary implementation work.
-
-### BOUND
-
-Define the smallest safe change boundary:
-
-- in-scope behavior
-- non-goals
-- affected ownership/boundaries
-- any decision that crosses a product/material-architecture approval boundary
-
-Do not silently choose through a material ambiguity. Surface only the decision that actually blocks safe execution; continue autonomously on unaffected local work.
-
-### SPECIFY
-
-Turn the approved product decision into implementation-ready expectations:
+## 5. Work hierarchy
 
 ```text
-Expected outcome:
-Explicit requirements:
-1-3 observable acceptance criteria:
-Relevant constraints/non-goals:
+Milestone -> Slice -> Logical Change -> Commit
 ```
 
-Acceptance criteria may be drafted by the agent when they directly restate an explicit requirement or existing approved behavior. They must not create new product semantics or expand scope.
+### Milestone
+
+A bounded meaningful product, engineering, reliability, migration, or release outcome worth planning as a whole.
+
+A milestone plan must define only what is needed to execute safely:
+
+```text
+WHY / desired outcome
+in-scope and non-goals
+material constraints/boundaries
+observable milestone acceptance
+ordered slices
+known risks/blockers
+milestone gate
+```
+
+Do not create a sprint plan for every small change inside a milestone.
+
+### Slice
+
+A coherent vertical step that advances the milestone and can be verified independently. A slice is an execution boundary, not automatically a branch, PR, release, or new planning ceremony.
+
+### Logical Change
+
+The smallest coherent integration/review unit. Integrate it as soon as it is correct, sufficiently verified, and required gates pass. Do not hold verified logical changes until the entire milestone is finished.
+
+### Commit
+
+A checkpoint inside a logical change. Commit boundaries should help reasoning/recovery; they are not product planning units.
+
+## 6. Milestone planning and active iteration state
+
+`.agent/CURRENT_ITERATION.md` is the canonical source of truth for the active meaningful iteration/milestone.
+
+It must make these questions cheap to answer:
+
+- What are we building and why?
+- What does the intended feature/outcome look like?
+- What is inside and outside scope?
+- Which slice is active?
+- What has already been completed?
+- What evidence exists?
+- What is the single next meaningful action?
+
+Use the compact orientation model:
+
+```text
+Feature Shape -> Current Position -> Delta -> Next Move
+```
+
+Update `CURRENT_ITERATION.md` when meaningful iteration state changes: milestone starts, a slice completes, scope materially changes by user decision, evidence changes the next move, the milestone gate completes, or work becomes blocked.
+
+Do not update it after every trivial edit or commit.
+
+`.agent/STATE.md` is broader project/operational knowledge and history. It is not the active iteration source and must not compete with `CURRENT_ITERATION.md`.
+
+## 7. Slice execution
+
+For each slice:
+
+### UNDERSTAND / SPECIFY
+
+Start from the milestone outcome and explicit user requirement. Define only the observable delta needed for this slice.
+
+Acceptance criteria may be drafted by the agent when they directly restate approved behavior. They must not create new product semantics.
 
 ### DESIGN
 
-Design only as far as needed for the current requirement.
-
-Before introducing a new design, determine:
+Determine:
 
 1. What behavior must change?
-2. Which existing component/module owns that behavior?
-3. Can the requirement use the current architecture and patterns?
-4. What is the smallest design with the lowest justified blast radius?
+2. Which existing owner/component owns it?
+3. Can current architecture/patterns satisfy it?
+4. What is the smallest low-blast-radius design?
 
-Prefer, in order:
+Preference order:
 
 ```text
 reuse existing pattern
 -> extend existing owner/component
--> introduce a small local abstraction
--> change architecture only when existing architecture cannot reasonably satisfy the requirement
+-> small local abstraction
+-> new component when ownership requires it
+-> architecture change only when necessary and approved
 ```
 
-When several designs satisfy the requirement, prefer lower coupling, smaller change surface, fewer dependencies/abstractions, lower migration cost, easier reversibility, and clearer ownership.
-
-Do not introduce architecture for hypothetical scale, flexibility, reuse, or future requirements. Follow `.agent/SYSTEM.md` for material design boundaries.
+No speculative abstractions, framework-first design, or future-proofing.
 
 ### IMPLEMENT
 
-Implement the smallest vertical change that satisfies the specification.
+Implement the smallest coherent vertical change.
 
-- preserve current boundaries unless the approved design changes them
-- avoid unrelated refactoring/cleanup
-- do not build frontend/backend/layers independently around guessed contracts
-- define the shared contract first when multiple components must coordinate
+- preserve current boundaries unless explicitly approved otherwise
+- avoid unrelated cleanup/refactoring
+- define shared contracts before coordinating multiple components
 - prefer explicit boring code over speculative extensibility
-- refactor touched complexity only when it improves the current change
+- refactor only touched complexity that materially improves the current change
 
 ### VERIFY
 
-Verification is risk-based.
-
-For every change:
+Verification is risk-based:
 
 ```text
 realistic failure
-      ↓
-impact + likelihood
-      ↓
-cheapest high-signal verification
-      ↓
-broaden only when risk requires it
-      ↓
-sufficient change confidence
+-> impact + likelihood
+-> cheapest high-signal evidence
+-> broaden only when risk requires it
 ```
 
-Tests exist to reduce meaningful delivery risk, not to maximize coverage/test count or enforce ceremony.
-
-Use TDD when a deterministic automated test is the cheapest high-signal way to define or protect important behavior. Do not require TDD for presentation-only changes, styling/layout, static markup, copy, trivial wiring, exploratory implementation, or cases better verified another way.
-
-Before adding or running a test/check, ask:
-
-> What realistic regression or failure does this detect?
-
-Before adding a broader layer, ask:
-
-> Is this already protected more cheaply elsewhere?
+Before adding/running a check, ask what realistic regression it detects. TDD is useful when a deterministic automated test is the cheapest high-signal way to define/protect behavior; it is not mandatory for presentation-only changes, static copy, trivial wiring, or cases better verified another way.
 
 Detailed policy lives in `.agent/TESTING.md`.
 
 ### QUALITY GATES
 
-Risk-based verification does not remove repository quality gates.
+Required repository/CI gates remain mandatory before integration/merge where applicable. Local fast feedback and merge gates are different concerns; do not mechanically run the entire CI surface after every edit.
 
-Before merge, satisfy the checks actually required by the repository/CI for the changed codebase, such as lint, strict type checking, deterministic tests, build/package checks, or other configured checks.
+### INTEGRATE
 
-Do not mechanically duplicate all CI commands locally after every edit. Use fast targeted feedback during development, then let required quality gates provide merge confidence.
+Integrate verified logical changes continuously.
 
-A failing required gate is not optional merely because the local risk classification was low.
+Branch and PR are **integration mechanisms, not planning units**:
 
-### RELEASE READY
+- do not create a branch per file, layer, agent, micro-task, or every slice by default
+- do not keep a milestone in one giant long-lived branch
+- use a short-lived branch/PR when repository policy, review, CI, risk, or collaboration benefits from it
+- one branch/PR may contain the commits needed for one coherent logical change
+- when safe direct integration is permitted, a tiny low-risk logical change does not require artificial branch churn
+- prefer squash merge for PR-based logical changes unless history needs otherwise
+- keep `master` releasable
+- recheck after meaningful base movement
 
-A merged change should be the smallest complete increment that can safely remain on releasable `master`.
+The goal is small-batch integration with low WIP and low delivery latency.
 
-Before calling an increment release-ready:
+## 8. Milestone gate
 
-- acceptance criteria are satisfied
-- risk-appropriate evidence exists
-- required quality gates pass
-- only docs/state made stale by the change are updated
-- no accidental debug/dead code remains in the touched slice
-- release-specific checks are performed only when this is actually a release candidate or the changed risk requires them
+Run a milestone gate after the planned slices are complete, not after every slice.
 
-If evaluating the expected product outcome requires instrumentation, decide whether instrumentation is necessary before release. Instrumentation is **not mandatory by default** and must not collect provider content or create unapproved telemetry.
+Check:
 
-### STOP
+- milestone acceptance is satisfied
+- all intended slices are integrated or explicitly removed from scope by user decision
+- no known material blocker remains inside scope
+- required quality gates for the integrated code are green
+- relevant project/state/docs are current
+- release-specific checks are performed only when this is actually a release candidate or the risk requires them
 
-Stop when the approved scope is satisfied, verification is sufficient, required gates pass, and no material issue remains inside scope.
+If the gate fails, identify the smallest missing slice or decision. Do not restart planning from zero.
 
-Do not continue into:
+## 9. Release ready and stop
 
-- optional cleanup
-- aesthetic refactoring
-- future-proofing
-- speculative optimization
-- new dependencies/architecture
-- adjacent features
-- extra tests without meaningful risk reduction
-- unnecessary status/report documents
+A release-ready increment is the smallest complete accepted outcome that can safely remain on releasable `master`.
 
-A useful follow-up may be recorded briefly as a separate task; it is not part of the completed change.
+Stop when:
 
-## 6. Product-learning loop after release
+- approved scope is satisfied
+- verification is sufficient
+- required gates pass
+- milestone state is current
+- no material issue remains inside scope
 
-The development lifecycle ends at STOP. When a released change is being evaluated as a product decision, use this separate learning loop only when relevant:
+Do not continue into optional cleanup, aesthetic refactoring, future-proofing, speculative optimization, new dependencies, adjacent features, or redundant tests.
+
+Useful follow-up work may be recorded briefly as a candidate; it is not authorized implementation.
+
+## 10. Retrospective rule
+
+Retrospective is evidence-driven improvement, not a recurring ceremony.
+
+Use:
 
 ```text
-PRODUCT DECISION
--> REQUIREMENT
--> canonical development lifecycle
--> RELEASE
--> OBSERVE
--> EVIDENCE
--> KEEP / ITERATE / REVERT / REMOVE / INVESTIGATE
--> USER DECISION
+Evidence -> Bottleneck -> Root Cause -> Small Improvement -> Verify
 ```
 
-Observe only signals relevant to the expected outcome, potentially including:
+Run a retrospective when:
 
-- technical health
-- user behavior
-- product outcome
+- a meaningful milestone/release finishes
+- delivery was materially slower than expected
+- significant rework occurred
+- a production failure/repeated defect occurred
+- the same engineering friction repeats
+- the user explicitly requests one
 
-Do not invent instrumentation or a metrics program just to satisfy this loop. The user owns the final product decision.
+Do not run a retrospective after every trivial slice/change.
 
-## 7. Git and release defaults
+Evidence may include diff/batch size, PR/review cycles, CI/build failures, defects, repeated debugging, rework, waiting time, unnecessary abstraction/dependencies, agent/tool loops, context waste, duplicated work, user corrections, and acceptance failures.
 
-- one logical outcome = one short-lived branch + one PR
-- branch from current `master`
-- keep concurrent WIP low
-- prefer squash merge
-- keep `master` releasable
-- no long-lived release branch by default
-- release the smallest complete accepted increment
-- no unrelated feature code in a release-only change
+Adopt at most the smallest process/code/tool improvement justified by the evidence; verify whether it actually reduces the bottleneck.
 
-Detailed repository release policy lives in `.agent/ENGINEERING.md` and `.agent/DELIVERY.md`.
+## 11. Product-learning loop after release
 
-## 8. Stop and escalation conditions
+The development lifecycle ends at STOP. When a released change is being evaluated as a product decision, use this separate loop only when relevant:
+
+```text
+RELEASE -> OBSERVE -> EVIDENCE -> KEEP / ITERATE / REVERT / REMOVE / INVESTIGATE -> USER DECISION
+```
+
+Observe only signals relevant to the expected outcome. Instrumentation is optional and must never be added merely to satisfy process. Any remote telemetry requires explicit product/privacy consideration and must not collect provider conversation content.
+
+## 12. Stop and escalation conditions
 
 Surface a decision before proceeding when the change requires:
 
@@ -314,7 +323,7 @@ Surface a decision before proceeding when the change requires:
 - changing data ownership or another material architecture boundary
 - an unsafe provider mechanism or unsupported capability
 
-When escalation is needed, keep it narrow:
+Keep escalation narrow:
 
 ```text
 Required decision:
@@ -324,30 +333,27 @@ Material impact/risk:
 Recommended implementation option, if useful:
 ```
 
-Do not turn an implementation recommendation into an unapproved product decision.
+Three failed implementation attempts without a stronger root-cause hypothesis trigger model reassessment rather than another blind patch.
 
-Reassess the engineering model before another patch when three implementation attempts fail without a stronger root-cause hypothesis or when verification expands significantly without a clearer failure model.
-
-## 9. Do / Don't
+## 13. Do / Don't
 
 | Do | Don't |
 |---|---|
+| plan a bounded milestone once | re-plan every slice as a new sprint |
+| execute vertical slices continuously | turn each slice into process ceremony |
+| integrate at logical-change boundaries | batch the entire milestone before integration |
+| keep one canonical active iteration file | depend on chat history for current position |
+| use Feature Shape -> Position -> Delta -> Next Move | dump full project history into every update |
 | start from explicit user intent | generate adjacent product scope |
-| separate problem / proposed solution / requirement | treat proposed solution as automatically correct requirement |
-| bound the smallest safe change | conduct mandatory repo-wide reconnaissance |
-| draft AC from approved behavior | invent product semantics through AC |
 | reuse current owner/pattern | redesign architecture by default |
-| make ordinary local engineering decisions autonomously | ask approval for trivial implementation details |
-| escalate material architecture/product decisions | silently change boundaries |
-| vertical slices | horizontal scaffolding by default |
-| risk-based verification | run every possible test by habit |
-| cheapest high-signal evidence | duplicate confidence across layers |
-| required quality gates before merge | confuse local fast loop with merge gates |
-| smallest complete release-ready increment | giant feature batch |
-| stop when done | continue into optional future-proofing |
+| make local engineering decisions autonomously | ask approval for trivial implementation details |
+| escalate material product/architecture decisions | silently change boundaries |
+| risk-based verification + required gates | maximize test/check volume |
+| retrospective from evidence when useful | mandatory retrospective per small change |
+| stop when accepted scope is done | continue into optional future-proofing |
 
-## 10. Project-context routing
+## 14. Project-context routing
 
-`.agent/README.md` identifies the authoritative project document for product, architecture, code patterns, testing, security, design, delivery, state, and durable decisions.
+`.agent/README.md` identifies the authoritative project document for product, architecture, code patterns, testing, security, design, delivery, active iteration, broader state, and durable decisions.
 
 Project knowledge must be preserved when workflow/process rules are cleaned up. Never delete requirements, architecture, plans/rationale, security constraints, testing rationale, delivery context, or durable decisions merely because they are old; mark them completed/superseded when appropriate.

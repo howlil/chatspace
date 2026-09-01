@@ -1,6 +1,6 @@
 # Lean Engineering Policy
 
-`AGENTS.md` is the single canonical product/engineering lifecycle. This file provides detailed engineering policy only; it must not redefine the lifecycle or product authority.
+`AGENTS.md` is the single canonical product/engineering delivery contract. This file provides detailed engineering policy only; it must not redefine product authority or create a competing lifecycle.
 
 ## 1. Engineering economics
 
@@ -10,31 +10,32 @@ Optimize for:
 Value Delivered / (Engineering Time + Waiting + Rework + Cognitive Load + Compute Cost + Agent Context Cost)
 ```
 
-Speed comes primarily from small batches, low WIP, low rework, clear boundaries, and fast feedback. Never trade correctness/security for superficial coding speed.
+Speed comes from small batches, low WIP, clear boundaries, fast feedback, continuous integration of verified logical changes, and avoiding unnecessary planning/branch churn. Never trade correctness or security for superficial coding speed.
 
-Testing/checking cost is engineering cost. Verification depth is justified only by meaningful risk plus repository-required quality gates.
+## 2. Delivery model
 
-## 2. Requirement handling
-
-Follow `AGENTS.md` for USER INTENT → UNDERSTAND → BOUND → SPECIFY.
-
-For a bounded implementation task, the working summary should normally fit in:
+Use the hierarchy:
 
 ```text
-Problem:
-Explicit requirement:
-Expected outcome:
+Milestone -> Slice -> Logical Change -> Commit
+```
+
+Plan the milestone once. Execute slices continuously. Integrate each coherent logical change when it is verified and required gates pass.
+
+Do not create a fresh sprint plan, branch, PR, status document, or retrospective merely because the next slice starts.
+
+Inside a slice, the working summary should normally fit in:
+
+```text
+Problem / approved requirement:
+Expected slice outcome:
 Acceptance: 1-3 observable outcomes
 Non-goals:
 Risk:
 Evidence:
 ```
 
-Separate a proposed solution from the underlying requirement. A proposed solution can be evaluated technically; it is not permission to invent adjacent product behavior.
-
-The agent may draft acceptance criteria when they directly restate explicit requirements or existing approved behavior. Material product semantics remain user-owned.
-
-Do not turn requirement intake into mandatory broad discovery, bottleneck analysis, P0/P1 inventory, metrics work, or a giant plan for ordinary bounded changes.
+Do not turn requirement intake into mandatory broad discovery, bottleneck analysis, P0/P1 inventory, metrics work, or a giant plan for ordinary bounded work.
 
 ## 3. Local engineering autonomy
 
@@ -49,14 +50,15 @@ Examples:
 - small local abstraction justified by current behavior
 - touched-only refactor
 - verification boundary selection
+- normal commit decomposition
 
 Escalate only when the material approval boundaries in `AGENTS.md` or `.agent/SYSTEM.md` are crossed.
 
-## 4. Small-batch implementation
+## 4. Small-batch slice implementation
 
-Use the thinnest vertical slice that proves the approved outcome.
+Use the thinnest vertical slice that advances the milestone and proves an observable delta.
 
-Typical implementation loop inside the canonical lifecycle:
+Typical inner loop:
 
 ```text
 specify / reproduce
@@ -65,9 +67,13 @@ specify / reproduce
 -> minimum change
 -> touched-only refactor when useful
 -> targeted verification
+-> required gates
+-> integrate logical change
 ```
 
-Do not introduce architecture-first scaffolding, feature bundles, broad rewrites, or “while here” cleanup.
+Do not introduce architecture-first scaffolding, broad rewrites, horizontal layer batches, or “while here” cleanup.
+
+A slice may contain multiple logical changes when that lowers risk and keeps integration small. A logical change may contain multiple commits. Do not force 1:1 relationships between slice, branch, PR, and commit.
 
 ## 5. Verification economics
 
@@ -79,17 +85,37 @@ For every change:
 2. estimate impact + likelihood
 3. choose cheapest high-signal evidence
 4. broaden only when risk requires it
-5. satisfy repository-required quality gates before merge
+5. satisfy repository-required quality gates before integration/merge where applicable
 
 Local fast feedback and merge gates are different concerns. Do not reproduce the full CI gate after every edit, but do not waive required CI/quality gates because a local change seems low-risk.
 
 No arbitrary coverage target. Flaky tests are defects because they lower signal.
 
-## 6. Git and WIP strategy
+## 6. Git, branches, PRs, and WIP
 
 `master` is the integration branch and should stay releasable.
 
-Branches:
+Branch and PR are delivery mechanisms, not planning hierarchy.
+
+Rules:
+
+- integrate at coherent logical-change boundaries
+- keep concurrent WIP low
+- keep branches short-lived when branches are used
+- do not create a branch per file, layer, agent, micro-task, or every slice by default
+- do not keep all milestone work in one giant long-lived branch
+- one short-lived branch/PR may contain the commits needed for one coherent logical change
+- use a branch/PR when repository policy, CI, review, risk, or collaboration makes it useful
+- when safe direct integration is permitted, a tiny low-risk logical change does not require artificial branch churn
+- avoid stacked PRs unless a dependency makes them necessary
+- no unrelated cleanup in a product/fix change
+- prefer squash merge for PR-based logical changes unless preserving commit history has concrete value
+- recheck after meaningful base movement
+- parallelize only genuinely independent work with stable contracts
+
+When a PR is used, communicate compactly: Why, What, Non-goals, Risk, Verification.
+
+Branch naming when useful:
 
 - `feat/<outcome>`
 - `fix/<defect>`
@@ -97,23 +123,32 @@ Branches:
 - `chore/<maintenance-outcome>`
 - `spike/<question>`
 
-Rules:
+These are conventions, not a requirement to open a branch for every task.
 
-- one logical outcome = one branch + one PR
-- branch from current `master`
-- keep branches short-lived
-- keep concurrent WIP low
-- avoid stacked PRs unless a dependency makes them necessary
-- never branch per file/layer/agent/micro-task
-- no unrelated cleanup in a feature/fix PR
-- commits are checkpoints; PR is the review unit
-- prefer squash merge
-- recheck after meaningful base movement
-- parallelize only genuinely independent work with stable contracts
+## 7. Active iteration state
 
-A PR should communicate: Why, What, Non-goals, Risk, Verification.
+`.agent/CURRENT_ITERATION.md` is the canonical resumable execution state.
 
-## 7. Code and abstraction rule
+Update it only on meaningful transitions:
+
+- milestone starts
+- slice completes or active slice changes
+- user materially changes scope/acceptance/boundaries
+- new evidence changes the next move
+- milestone becomes blocked/unblocked
+- milestone gate completes
+
+Do not log every commit or restate all project history.
+
+The minimum orientation is:
+
+```text
+Feature Shape -> Current Position -> Delta -> Next Move
+```
+
+`.agent/STATE.md` remains broader project/operational history and does not own current iteration progress.
+
+## 8. Code and abstraction rule
 
 Use `.agent/CODE_PATTERNS.md` for project conventions and `.agent/SYSTEM.md` for design decisions.
 
@@ -125,7 +160,8 @@ Prefer:
 reuse existing pattern
 -> extend existing owner
 -> small local abstraction
--> architecture change only when necessary
+-> new component when ownership requires it
+-> architecture change only when necessary and approved
 ```
 
 Extract when there is current evidence of:
@@ -138,14 +174,12 @@ Extract when there is current evidence of:
 
 A dependency must solve a current problem and materially beat platform/native code on correctness, security, maintenance, or delivery cost.
 
-Preserve boundaries that already provide domain isolation, failure isolation, security, ownership clarity, or testability.
-
-## 8. Agent context and token discipline
+## 9. Agent context and token discipline
 
 Default context:
 
 ```text
-AGENTS.md + STATE.md + affected code/tests + task-relevant project docs only
+AGENTS.md + CURRENT_ITERATION.md + affected code/tests + task-relevant project docs only
 ```
 
 Treat these as waste unless evidence says otherwise:
@@ -153,17 +187,18 @@ Treat these as waste unless evidence says otherwise:
 - recursive repo scans for bounded work
 - preloading all `.agent` docs
 - repeated architecture analysis for ordinary local changes
+- re-planning the milestone after every slice
 - mandatory bottleneck analysis before ordinary coding
-- large speculative plans
 - repeated full verification during the local loop
 - duplicate tests/checks for the same failure
 - duplicate workflow/status documents
+- branch/PR churn without review/integration value
 - tightly coupled parallel-agent work
 - continuing after acceptance is satisfied
 
 Reuse known project state rather than rediscovering it.
 
-## 9. Delivery measurement
+## 10. Delivery measurement
 
 Metrics are diagnostic tools, not mandatory deliverables for every task.
 
@@ -178,7 +213,8 @@ Where existing evidence supports a real delivery decision, useful signals may in
 
 ### Flow
 
-- PR/cycle time
+- milestone lead time
+- logical-change/PR cycle time
 - waiting/review time
 - CI duration/queue time
 - batch size
@@ -192,11 +228,12 @@ Where existing evidence supports a real delivery decision, useful signals may in
 - avoidable replanning
 - conflicting instructions
 - unnecessary handoffs
+- branch/PR churn
 - low-value test maintenance
 
 Do not fabricate telemetry. Do not build a metrics platform unless a concrete decision is blocked without it.
 
-## 10. Legacy cleanup
+## 11. Legacy cleanup
 
 “Legacy” means obsolete implementation or obsolete workflow machinery, not old project knowledge.
 
@@ -221,7 +258,7 @@ Never delete as legacy:
 
 Mark durable knowledge completed/superseded/historical instead.
 
-## 11. Review order
+## 12. Review order
 
 Review in this order:
 
@@ -238,9 +275,30 @@ Do not block delivery on subjective style or tests that protect no realistic fai
 
 Three failed implementation attempts without a stronger hypothesis trigger root-cause/model reassessment rather than a fourth blind patch.
 
-## 12. Release strategy
+## 13. Milestone gate and retrospective
 
-Development merges do not automatically become public releases. `master` stays releasable; distribute the smallest coherent accepted increment.
+Do not run a full gate after every slice.
+
+At milestone completion, confirm:
+
+- milestone acceptance is satisfied
+- planned slices are complete or explicitly de-scoped by user decision
+- integrated code satisfies required repository quality gates
+- no material blocker remains inside scope
+- relevant iteration/project state is current
+- release-specific verification is performed only when actually needed
+
+Retrospective is conditional and evidence-driven:
+
+```text
+Evidence -> Bottleneck -> Root Cause -> Small Improvement -> Verify
+```
+
+Run it after meaningful milestone/release completion, material delay/rework/failure, repeated friction, or explicit user request. Do not make it a per-slice ceremony.
+
+## 14. Release strategy
+
+Development integration does not automatically become a public release. `master` stays releasable; distribute the smallest coherent accepted milestone/increment.
 
 Pre-1.0:
 
@@ -249,8 +307,9 @@ Pre-1.0:
 - `1.0.0`: core workflow, recovery/upgrades, permissions/privacy, and distribution lifecycle are stable
 
 ```text
-accepted feature/fix
--> merge to releasable master
+verified logical changes
+-> integrate continuously to releasable master
+-> milestone gate
 -> release-candidate decision
 -> release-specific verification when needed
 -> tiny release-only change if version/release notes are required
@@ -260,20 +319,18 @@ accepted feature/fix
 
 No long-lived release branch. No feature expansion inside a release-only change.
 
-Before release, decide whether product instrumentation is actually needed to evaluate the expected outcome. It is not mandatory by default.
+Rollback before public distribution: revert the bounded merge/change and rebuild the last accepted tag. Persisted-schema changes must define migration/rollback safety in the change itself.
 
-Rollback before public distribution: revert the bounded merge and rebuild the last accepted tag. Persisted-schema changes must define migration/rollback safety in the change itself.
+## 15. Definition of done
 
-## 13. Definition of done
+Engineering completion for a logical change means:
 
-Engineering completion means:
-
-- approved observable acceptance passes
+- approved observable slice acceptance passes
 - realistic affected risks were identified
 - sufficient high-signal evidence exists
-- repository-required quality gates pass
-- required environment-specific/manual acceptance is recorded only when applicable
+- repository-required gates pass where applicable
 - diff contains only intended scope
-- changed operational state/docs are current
+
+Milestone completion additionally requires the milestone gate and current iteration state update.
 
 Then follow the STOP rule in `AGENTS.md`.
