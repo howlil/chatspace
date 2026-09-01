@@ -116,6 +116,15 @@ Use a restrained modern workspace language:
 - limited accent usage;
 - selective translucent/glass surfaces where depth or layering benefits comprehension.
 
+The canonical secondary/accent direction is **desaturated steel blue** over otherwise neutral workspace surfaces. Use it for selected/active context, focus treatment, graph/reference emphasis, and similarly meaningful state—not as a wash over ordinary panels or content. Hover may carry only a slight cool tint so active state remains clearer than incidental pointer state.
+
+Current reference values:
+
+- dark: `cs-hover #19202a`, `cs-active #1b2636`, `cs-focus #7fa6c9`;
+- light: `cs-hover #f0f4f8`, `cs-active #e8eef6`, `cs-focus #4f7396`.
+
+Do not introduce saturated electric blue, purple-blue gradients, or blue glow to amplify this accent. The steel blue should remain subordinate to content and typography.
+
 Glassmorphism is an accent, not the entire interface. Use it selectively for layered shell/overlay/floating contexts where translucency communicates hierarchy. Avoid glass on every card or row.
 
 Avoid “AI slop” styling:
