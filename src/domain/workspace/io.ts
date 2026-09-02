@@ -196,6 +196,9 @@ export function importWorkspaceJson(json: string): WorkspaceSnapshot {
   if (migrated !== null) return migrated;
 
   if (isRecord(parsed) && parsed.schemaVersion !== undefined) {
+    if (parsed.schemaVersion === 1 || parsed.schemaVersion === WORKSPACE_SCHEMA_VERSION) {
+      throw new Error('Invalid workspace payload.');
+    }
     throw new Error(`Unsupported workspace schema version: ${String(parsed.schemaVersion)}.`);
   }
 
