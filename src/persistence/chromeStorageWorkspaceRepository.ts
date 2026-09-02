@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
 
-import { isWorkspaceSnapshot } from '../domain/workspace/io';
+import { migrateWorkspaceSnapshot } from '../domain/workspace/io';
 import type { WorkspaceSnapshot } from '../domain/workspace/model';
 import { CoalescingWorkspaceRepository } from './coalescingWorkspaceRepository';
 import {
@@ -18,10 +18,11 @@ export class ChromeStorageWorkspaceRepository implements WorkspaceRepository {
     if (value === undefined) {
       return null;
     }
-    if (!isWorkspaceSnapshot(value)) {
+    const snapshot = migrateWorkspaceSnapshot(value);
+    if (snapshot === null) {
       throw new WorkspaceCorruptionError();
     }
-    return value;
+    return snapshot;
   }
 
   async save(snapshot: WorkspaceSnapshot): Promise<void> {
