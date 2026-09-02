@@ -12,8 +12,26 @@ describe('workspace schema migration', () => {
     const legacy = {
       ...current,
       schemaVersion: 1,
-      chatRefs: current.chatRefs.map(({ archivedAt: _archivedAt, ...chat }) => chat),
-      notes: current.notes.map(({ archivedAt: _archivedAt, ...note }) => note),
+      chatRefs: current.chatRefs.map((chat) => ({
+        id: chat.id,
+        provider: chat.provider,
+        target: chat.target,
+        label: chat.label,
+        folderId: chat.folderId,
+        pinned: chat.pinned,
+        createdAt: chat.createdAt,
+        updatedAt: chat.updatedAt,
+      })),
+      notes: current.notes.map((note) => ({
+        id: note.id,
+        title: note.title,
+        content: note.content,
+        tags: note.tags,
+        folderId: note.folderId,
+        linkedChatIds: note.linkedChatIds,
+        createdAt: note.createdAt,
+        updatedAt: note.updatedAt,
+      })),
     };
 
     const migrated = migrateWorkspaceSnapshot(legacy);
