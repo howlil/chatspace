@@ -1,22 +1,63 @@
 import { ChevronDown, ChevronUp, Code2, Dot, Eye, FileText, Link2, Pencil, Tag, X } from 'lucide-react';
 import { ToggleGroup } from 'radix-ui';
-import { useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 
+import {
+  findActiveWikilinkQuery,
+  resolveNoteLinkTitle,
+  type ActiveWikilinkQuery,
+} from '../../domain/notes/noteLinks';
 import type { ChatReference, LocalNote } from '../../domain/workspace/model';
 import { Button, IconButton, Input, Select } from '../../ui/primitives';
 
 interface LocalNoteEditorProps {
   note: LocalNote;
+  notes: LocalNote[];
   chats: ChatReference[];
   contextExpanded: boolean;
   onChange: (note: LocalNote) => void;
   onLinkChat: (chatId: string) => void;
+  onOpenNote: (note: LocalNote) => void;
   onToggleContext: () => void;
 }
 
 type NoteMode = 'edit' | 'preview';
 
-function renderSafeMarkdown(markdown: string): ReactNode[] {
+function renderInlineNoteLinks(text: string, notes: LocalNote[], onOpenNote: (note: LocalNote) => void): ReactNode[] {
+  const parts = text.split(/(\[\[[^\]\n]+\]\])/g);
+  return parts.map((part, index) => {
+    const match = /^\[\[([^\]\n]+)\]\]$/.exec(part);
+    if (match === null) return part;
+    const title = (match[1] ?? '').trim();
+    const resolution = resolveNoteLinkTitle(title, notes);
+    if (resolution.status === 'resolved' && resolution.targetNoteId !== null) {
+      const target = notes.find((note) => note.id === resolution.targetNoteId);
+      if (target !== undefined) {
+        return (
+          <button
+            type="button"
+            key={`${part}-${index}`}
+            className="inline rounded-sm bg-cs-active px-0.5 text-cs-focus underline decoration-cs-focus/40 underline-offset-2 outline-none hover:text-cs-text focus-visible:ring-1 focus-visible:ring-cs-focus/50"
+            onClick={() => onOpenNote(target)}
+          >
+            {part}
+          </button>
+        );
+      }
+    }
+    return (
+      <span
+        key={`${part}-${index}`}
+        className="rounded-sm border-b border-dashed border-cs-subtle text-cs-subtle"
+        title={resolution.status === 'ambiguous' ? 'Ambiguous note link: multiple notes have this title.' : 'Unresolved note link.'}
+      >
+        {part}
+      </span>
+    );
+  });
+}
+
+function renderSafeMarkdown(markdown: string, notes: LocalNote[], onOpenNote: (note: LocalNote) => void): ReactNode[] {
   const lines = markdown.replace(/\r\n/g, '\n').split('\n');
   const blocks: ReactNode[] = [];
   let codeLines: string[] | null = null;
@@ -44,28 +85,28 @@ function renderSafeMarkdown(markdown: string): ReactNode[] {
     }
 
     if (line.startsWith('### ')) {
-      blocks.push(<h3 className="mb-1.5 mt-5 text-[13px] font-semibold" key={index}>{line.slice(4)}</h3>);
+      blocks.push(<h3 className="mb-1.5 mt-5 text-[13px] font-semibold" key={index}>{renderInlineNoteLinks(line.slice(4), notes, onOpenNote)}</h3>);
     } else if (line.startsWith('## ')) {
-      blocks.push(<h2 className="mb-2 mt-6 text-[15px] font-semibold tracking-[-0.015em]" key={index}>{line.slice(3)}</h2>);
+      blocks.push(<h2 className="mb-2 mt-6 text-[15px] font-semibold tracking-[-0.015em]" key={index}>{renderInlineNoteLinks(line.slice(3), notes, onOpenNote)}</h2>);
     } else if (line.startsWith('# ')) {
-      blocks.push(<h1 className="mb-2 mt-7 text-[18px] font-semibold tracking-[-0.025em]" key={index}>{line.slice(2)}</h1>);
+      blocks.push(<h1 className="mb-2 mt-7 text-[18px] font-semibold tracking-[-0.025em]" key={index}>{renderInlineNoteLinks(line.slice(2), notes, onOpenNote)}</h1>);
     } else if (/^[-*] /.test(line)) {
       blocks.push(
         <div className="my-1 flex gap-1 pl-1 text-[12px] leading-5" key={index}>
           <Dot className="mt-[3px] shrink-0 text-cs-subtle" size={14} strokeWidth={2.2} aria-hidden="true" />
-          <span>{line.slice(2)}</span>
+          <span>{renderInlineNoteLinks(line.slice(2), notes, onOpenNote)}</span>
         </div>,
       );
     } else if (line.startsWith('> ')) {
       blocks.push(
         <blockquote className="my-3 border-l-2 border-cs-border pl-3 text-[12px] leading-5 text-cs-muted" key={index}>
-          {line.slice(2)}
+          {renderInlineNoteLinks(line.slice(2), notes, onOpenNote)}
         </blockquote>,
       );
     } else if (line.trim() === '') {
       blocks.push(<div className="h-2" aria-hidden="true" key={index} />);
     } else {
-      blocks.push(<p className="my-1 text-[12px] leading-6 text-cs-text/90" key={index}>{line}</p>);
+      blocks.push(<p className="my-1 text-[12px] leading-6 text-cs-text/90" key={index}>{renderInlineNoteLinks(line, notes, onOpenNote)}</p>);
     }
   }
 
@@ -82,22 +123,63 @@ function renderSafeMarkdown(markdown: string): ReactNode[] {
 
 export function LocalNoteEditor({
   note,
+  notes,
   chats,
   contextExpanded,
   onChange,
   onLinkChat,
+  onOpenNote,
   onToggleContext,
 }: LocalNoteEditorProps) {
   const availableChats = chats.filter((chat) => !note.linkedChatIds.includes(chat.id));
   const [selectedChatId, setSelectedChatId] = useState(availableChats[0]?.id ?? '');
   const [mode, setMode] = useState<NoteMode>('edit');
   const [tagDraft, setTagDraft] = useState('');
+  const [activeLink, setActiveLink] = useState<ActiveWikilinkQuery | null>(null);
+  const [activeLinkIndex, setActiveLinkIndex] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const linkCandidates = useMemo(() => {
+    if (activeLink === null) return [];
+    const query = activeLink.query.trim().toLocaleLowerCase();
+    return notes
+      .filter((candidate) => candidate.id !== note.id)
+      .filter((candidate) => query === '' || candidate.title.toLocaleLowerCase().includes(query))
+      .sort((left, right) => {
+        const leftPrefix = query !== '' && left.title.toLocaleLowerCase().startsWith(query) ? 0 : 1;
+        const rightPrefix = query !== '' && right.title.toLocaleLowerCase().startsWith(query) ? 0 : 1;
+        return leftPrefix - rightPrefix || left.title.localeCompare(right.title);
+      })
+      .slice(0, 8);
+  }, [activeLink, note.id, notes]);
 
   function addTag(): void {
     const tag = tagDraft.trim().toLowerCase();
     if (tag === '') return;
     if (!note.tags.includes(tag)) onChange({ ...note, tags: [...note.tags, tag] });
     setTagDraft('');
+  }
+
+  function updateActiveLink(content: string, cursor: number): void {
+    setActiveLink(findActiveWikilinkQuery(content, cursor));
+    setActiveLinkIndex(0);
+  }
+
+  function insertNoteLink(target: LocalNote): void {
+    const textarea = textareaRef.current;
+    if (textarea === null) return;
+    const query = findActiveWikilinkQuery(note.content, textarea.selectionStart);
+    if (query === null) return;
+    const replacement = `[[${target.title}]]`;
+    const content = `${note.content.slice(0, query.start)}${replacement}${note.content.slice(query.end)}`;
+    const nextCaret = query.start + replacement.length;
+    onChange({ ...note, content });
+    setActiveLink(null);
+    setActiveLinkIndex(0);
+    window.requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(nextCaret, nextCaret);
+    });
   }
 
   return (
@@ -178,14 +260,61 @@ export function LocalNoteEditor({
       </div>
 
       {mode === 'edit' ? (
-        <div className="min-h-0 overflow-hidden">
+        <div className="relative min-h-0 overflow-hidden">
           <textarea
+            ref={textareaRef}
             className="h-full min-h-0 w-full resize-none border-0 bg-cs-bg px-3 py-3 font-mono text-[12px] leading-6 text-cs-text/90 outline-none placeholder:text-cs-subtle"
             aria-label="Markdown content"
             placeholder="Write Markdown…"
             value={note.content}
-            onChange={(event) => onChange({ ...note, content: event.target.value })}
+            onChange={(event) => {
+              const content = event.target.value;
+              onChange({ ...note, content });
+              updateActiveLink(content, event.target.selectionStart);
+            }}
+            onClick={(event) => updateActiveLink(note.content, event.currentTarget.selectionStart)}
+            onKeyUp={(event) => {
+              if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Enter' && event.key !== 'Escape') {
+                updateActiveLink(note.content, event.currentTarget.selectionStart);
+              }
+            }}
+            onKeyDown={(event) => {
+              if (activeLink === null || linkCandidates.length === 0) return;
+              if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                setActiveLinkIndex((current) => (current + 1) % linkCandidates.length);
+              } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                setActiveLinkIndex((current) => (current - 1 + linkCandidates.length) % linkCandidates.length);
+              } else if (event.key === 'Enter') {
+                event.preventDefault();
+                const target = linkCandidates[activeLinkIndex];
+                if (target !== undefined) insertNoteLink(target);
+              } else if (event.key === 'Escape') {
+                event.preventDefault();
+                setActiveLink(null);
+              }
+            }}
           />
+          {activeLink !== null && linkCandidates.length > 0 && (
+            <div className="absolute bottom-2 left-3 right-3 z-10 max-h-44 overflow-y-auto rounded-lg border border-cs-border bg-cs-surface p-1 shadow-[0_12px_36px_rgba(0,0,0,0.24)]" role="listbox" aria-label="Link note">
+              {linkCandidates.map((candidate, index) => (
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={index === activeLinkIndex}
+                  key={candidate.id}
+                  className={index === activeLinkIndex
+                    ? 'flex h-7 w-full items-center rounded px-2 text-left text-[10px] text-cs-text bg-cs-active'
+                    : 'flex h-7 w-full items-center rounded px-2 text-left text-[10px] text-cs-muted hover:bg-cs-hover hover:text-cs-text'}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => insertNoteLink(candidate)}
+                >
+                  <span className="truncate">{candidate.title}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <article className="min-h-0 overflow-y-auto px-4 py-4" aria-label="Markdown preview">
@@ -194,7 +323,7 @@ export function LocalNoteEditor({
               <div className="grid min-h-44 place-items-center text-center text-[10px] text-cs-subtle">
                 <span>Nothing to preview yet.</span>
               </div>
-            ) : renderSafeMarkdown(note.content)}
+            ) : renderSafeMarkdown(note.content, notes, onOpenNote)}
           </div>
         </article>
       )}
@@ -207,16 +336,16 @@ export function LocalNoteEditor({
           {contextExpanded && chats.length > 0 && (
             <>
               <Link2 size={10} className="shrink-0" aria-hidden="true" />
-<Select
-  className="h-6 max-w-40 text-[9px]"
-  aria-label="Chat to link"
-  value={selectedChatId}
-  options={[
-    { value: '', label: 'Select chat' },
-    ...availableChats.map((chat) => ({ value: chat.id, label: chat.label })),
-  ]}
-  onValueChange={setSelectedChatId}
-/>
+              <Select
+                className="h-6 max-w-40 text-[9px]"
+                aria-label="Chat to link"
+                value={selectedChatId}
+                options={[
+                  { value: '', label: 'Select chat' },
+                  ...availableChats.map((chat) => ({ value: chat.id, label: chat.label })),
+                ]}
+                onValueChange={setSelectedChatId}
+              />
               <Button
                 size="sm"
                 variant="ghost"
