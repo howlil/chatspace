@@ -143,7 +143,7 @@ export function isWorkspaceSnapshot(value: unknown): value is WorkspaceSnapshot 
     value.notes.every(isLocalNote)
   );
 
-  return structurallyValid && hasValidWorkspaceSemantics(value as WorkspaceSnapshot);
+  return structurallyValid && hasValidWorkspaceSemantics(value as unknown as WorkspaceSnapshot);
 }
 
 function migrateV1Workspace(value: Record<string, unknown>): WorkspaceSnapshot | null {
