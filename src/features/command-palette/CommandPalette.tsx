@@ -75,8 +75,8 @@ export function CommandPalette({ commands, items = [], onClose }: CommandPalette
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/35 backdrop-blur-[1px]" />
         <Dialog.Content className="fixed left-1/2 top-14 z-[60] h-fit w-[calc(100%-1.5rem)] max-w-lg -translate-x-1/2 overflow-hidden rounded-xl border border-cs-border bg-cs-panel shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
-          <Dialog.Title className="sr-only">Quick open</Dialog.Title>
-          <Dialog.Description className="sr-only">Search local notes, saved chats, folders, and workspace commands.</Dialog.Description>
+          <Dialog.Title className="sr-only">Command palette</Dialog.Title>
+          <Dialog.Description className="sr-only">Quick-open local notes, saved chats, folders, and workspace commands.</Dialog.Description>
           <div className="flex h-10 items-center gap-2 border-b border-cs-border px-3">
             <Search size={14} className="shrink-0 text-cs-subtle" aria-hidden="true" />
             <Input
