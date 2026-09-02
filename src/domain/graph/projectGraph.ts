@@ -31,6 +31,14 @@ function nodeId(kind: GraphNodeKind, entityId: string): string {
 
 export function projectWorkspaceGraph(snapshot: WorkspaceSnapshot): WorkspaceGraph {
   const workspaceNodeId = nodeId('workspace', snapshot.id);
+  const activeChats = snapshot.chatRefs.filter((chat) => chat.archivedAt === null);
+  const activeNotes = snapshot.notes.filter((note) => note.archivedAt === null);
+  const activeEntityIds = new Set([
+    snapshot.id,
+    ...snapshot.folders.map((folder) => folder.id),
+    ...activeChats.map((chat) => chat.id),
+    ...activeNotes.map((note) => note.id),
+  ]);
   const nodes: GraphNode[] = [
     { id: workspaceNodeId, entityId: snapshot.id, kind: 'workspace', label: snapshot.name },
     ...snapshot.folders.map((folder) => ({
@@ -39,13 +47,13 @@ export function projectWorkspaceGraph(snapshot: WorkspaceSnapshot): WorkspaceGra
       kind: 'folder' as const,
       label: folder.name,
     })),
-    ...snapshot.chatRefs.map((chat) => ({
+    ...activeChats.map((chat) => ({
       id: nodeId('chat', chat.id),
       entityId: chat.id,
       kind: 'chat' as const,
       label: chat.label,
     })),
-    ...snapshot.notes.map((note) => ({
+    ...activeNotes.map((note) => ({
       id: nodeId('note', note.id),
       entityId: note.id,
       kind: 'note' as const,
@@ -67,7 +75,7 @@ export function projectWorkspaceGraph(snapshot: WorkspaceSnapshot): WorkspaceGra
     });
   }
 
-  for (const chat of snapshot.chatRefs) {
+  for (const chat of activeChats) {
     const sourceId = chat.folderId === null ? workspaceNodeId : nodeId('folder', chat.folderId);
     edges.push({
       id: `contains:${sourceId}:${nodeId('chat', chat.id)}`,
@@ -78,7 +86,7 @@ export function projectWorkspaceGraph(snapshot: WorkspaceSnapshot): WorkspaceGra
     });
   }
 
-  for (const note of snapshot.notes) {
+  for (const note of activeNotes) {
     const noteId = nodeId('note', note.id);
     const sourceId = note.folderId === null ? workspaceNodeId : nodeId('folder', note.folderId);
     edges.push({
@@ -90,7 +98,7 @@ export function projectWorkspaceGraph(snapshot: WorkspaceSnapshot): WorkspaceGra
     });
 
     for (const chatId of note.linkedChatIds) {
-      if (snapshot.chatRefs.some((chat) => chat.id === chatId)) {
+      if (activeChats.some((chat) => chat.id === chatId)) {
         edges.push({
           id: `references:${noteId}:${nodeId('chat', chatId)}`,
           sourceId: noteId,
@@ -104,6 +112,7 @@ export function projectWorkspaceGraph(snapshot: WorkspaceSnapshot): WorkspaceGra
 
   const manualPairs = new Set<string>();
   for (const edge of snapshot.manualEdges) {
+    if (!activeEntityIds.has(edge.sourceEntityId) || !activeEntityIds.has(edge.targetEntityId)) continue;
     const sourceId = graphIdByEntityId.get(edge.sourceEntityId);
     const targetId = graphIdByEntityId.get(edge.targetEntityId);
     if (sourceId !== undefined && targetId !== undefined) {
@@ -118,7 +127,7 @@ export function projectWorkspaceGraph(snapshot: WorkspaceSnapshot): WorkspaceGra
     }
   }
 
-  for (const relation of deriveLocalNoteRelations(snapshot.notes)) {
+  for (const relation of deriveLocalNoteRelations(activeNotes)) {
     if (manualPairs.has(localRelationPairKey(relation.sourceNoteId, relation.targetNoteId))) continue;
     edges.push({
       id: `local:${relation.sourceNoteId}:${relation.targetNoteId}`,

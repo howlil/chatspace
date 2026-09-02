@@ -8,6 +8,7 @@ import type {
   WorkspaceSnapshot,
   WorkspaceTab,
 } from './model';
+import type { WorkspaceArtifactRef } from './retrieval';
 
 export type WorkspaceAction =
   | { type: 'folder/create'; folder: WorkspaceFolder }
@@ -21,6 +22,10 @@ export type WorkspaceAction =
   | { type: 'note/update'; note: LocalNote; now: number }
   | { type: 'note/delete'; noteId: string; now: number }
   | { type: 'note/link-chat'; noteId: string; chatId: string; now: number }
+  | { type: 'artifact/bulk-move'; refs: WorkspaceArtifactRef[]; folderId: string | null; now: number }
+  | { type: 'artifact/bulk-pin'; refs: WorkspaceArtifactRef[]; pinned: boolean; now: number }
+  | { type: 'artifact/bulk-archive'; refs: WorkspaceArtifactRef[]; archivedAt: number | null; now: number }
+  | { type: 'artifact/bulk-delete'; refs: WorkspaceArtifactRef[]; now: number }
   | { type: 'tab/open'; tab: WorkspaceTab; now: number }
   | { type: 'tab/activate'; tabId: string; now: number }
   | { type: 'tab/close'; tabId: string; now: number }
@@ -41,6 +46,10 @@ function removeEntityTabs(tabs: WorkspaceTab[], entityId: string): WorkspaceTab[
   return tabs.filter((tab) => tab.entityId !== entityId || tab.pinned);
 }
 
+function removeEntityTabsMany(tabs: WorkspaceTab[], entityIds: Set<string>): WorkspaceTab[] {
+  return tabs.filter((tab) => tab.entityId === null || !entityIds.has(tab.entityId) || tab.pinned);
+}
+
 function safeActiveTab(tabs: WorkspaceTab[], requested: string): string {
   if (tabs.some((tab) => tab.id === requested)) {
     return requested;
@@ -50,6 +59,10 @@ function safeActiveTab(tabs: WorkspaceTab[], requested: string): string {
 
 function folderExists(folders: WorkspaceFolder[], folderId: string | null): boolean {
   return folderId === null || folders.some((folder) => folder.id === folderId);
+}
+
+function refIds(refs: WorkspaceArtifactRef[], kind: WorkspaceArtifactRef['kind']): Set<string> {
+  return new Set(refs.filter((ref) => ref.kind === kind).map((ref) => ref.id));
 }
 
 export function workspaceReducer(state: WorkspaceSnapshot, action: WorkspaceAction): WorkspaceSnapshot {
@@ -96,9 +109,7 @@ export function workspaceReducer(state: WorkspaceSnapshot, action: WorkspaceActi
 
     case 'folder/delete': {
       const removed = state.folders.find((folder) => folder.id === action.folderId);
-      if (removed === undefined) {
-        return state;
-      }
+      if (removed === undefined) return state;
       const replacementParent = removed.parentId;
       return {
         ...state,
@@ -188,9 +199,7 @@ export function workspaceReducer(state: WorkspaceSnapshot, action: WorkspaceActi
     }
 
     case 'note/link-chat': {
-      if (!state.chatRefs.some((chat) => chat.id === action.chatId)) {
-        return state;
-      }
+      if (!state.chatRefs.some((chat) => chat.id === action.chatId)) return state;
       return {
         ...state,
         notes: state.notes.map((note) =>
@@ -198,6 +207,75 @@ export function workspaceReducer(state: WorkspaceSnapshot, action: WorkspaceActi
             ? { ...note, linkedChatIds: [...note.linkedChatIds, action.chatId], updatedAt: action.now }
             : note,
         ),
+        updatedAt: action.now,
+      };
+    }
+
+    case 'artifact/bulk-move': {
+      if (!folderExists(state.folders, action.folderId)) return state;
+      const chatIds = refIds(action.refs, 'chat');
+      const noteIds = refIds(action.refs, 'note');
+      return {
+        ...state,
+        chatRefs: state.chatRefs.map((chat) =>
+          chatIds.has(chat.id) ? { ...chat, folderId: action.folderId, updatedAt: action.now } : chat,
+        ),
+        notes: state.notes.map((note) =>
+          noteIds.has(note.id) ? { ...note, folderId: action.folderId, updatedAt: action.now } : note,
+        ),
+        updatedAt: action.now,
+      };
+    }
+
+    case 'artifact/bulk-pin': {
+      const chatIds = refIds(action.refs, 'chat');
+      return {
+        ...state,
+        chatRefs: state.chatRefs.map((chat) =>
+          chatIds.has(chat.id) ? { ...chat, pinned: action.pinned, updatedAt: action.now } : chat,
+        ),
+        updatedAt: action.now,
+      };
+    }
+
+    case 'artifact/bulk-archive': {
+      const chatIds = refIds(action.refs, 'chat');
+      const noteIds = refIds(action.refs, 'note');
+      const affected = new Set([...chatIds, ...noteIds]);
+      const tabs = action.archivedAt === null ? state.tabs : removeEntityTabsMany(state.tabs, affected);
+      return {
+        ...state,
+        chatRefs: state.chatRefs.map((chat) =>
+          chatIds.has(chat.id) ? { ...chat, archivedAt: action.archivedAt, updatedAt: action.now } : chat,
+        ),
+        notes: state.notes.map((note) =>
+          noteIds.has(note.id) ? { ...note, archivedAt: action.archivedAt, updatedAt: action.now } : note,
+        ),
+        tabs,
+        activeTabId: safeActiveTab(tabs, state.activeTabId),
+        updatedAt: action.now,
+      };
+    }
+
+    case 'artifact/bulk-delete': {
+      const chatIds = refIds(action.refs, 'chat');
+      const noteIds = refIds(action.refs, 'note');
+      const deletedIds = new Set([...chatIds, ...noteIds]);
+      const tabs = removeEntityTabsMany(state.tabs, deletedIds);
+      return {
+        ...state,
+        chatRefs: state.chatRefs.filter((chat) => !chatIds.has(chat.id)),
+        notes: state.notes
+          .filter((note) => !noteIds.has(note.id))
+          .map((note) => ({
+            ...note,
+            linkedChatIds: note.linkedChatIds.filter((chatId) => !chatIds.has(chatId)),
+          })),
+        manualEdges: state.manualEdges.filter(
+          (edge) => !deletedIds.has(edge.sourceEntityId) && !deletedIds.has(edge.targetEntityId),
+        ),
+        tabs,
+        activeTabId: safeActiveTab(tabs, state.activeTabId),
         updatedAt: action.now,
       };
     }
@@ -215,9 +293,7 @@ export function workspaceReducer(state: WorkspaceSnapshot, action: WorkspaceActi
 
     case 'tab/close': {
       const target = state.tabs.find((tab) => tab.id === action.tabId);
-      if (target === undefined || target.pinned) {
-        return state;
-      }
+      if (target === undefined || target.pinned) return state;
       const tabs = state.tabs.filter((tab) => tab.id !== action.tabId);
       return {
         ...state,

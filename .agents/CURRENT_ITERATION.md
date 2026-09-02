@@ -2,77 +2,70 @@
 
 Status: **READY_FOR_MILESTONE**
 
-Goal: Ship a product-specific Astro landing page under `landing/` that explains Chatspace clearly to public repository visitors, demonstrates the real product model, provides a truthful source-install path, and preserves the product's local-first/provider boundaries.
+Goal: Make a larger local Chatspace workspace fast to triage and retrieve without adding provider-content access or AI search.
 
-Why: Chatspace had a coherent daily-driver product shape but no dedicated public product surface. Repository visitors previously had to infer the experience from README text and source structure. M9 gives the project a truthful public entry surface without inventing capabilities, fake social proof, or generic AI/SaaS styling.
+Why: The existing workspace was effective at capture and organization but required mostly one-item-at-a-time operations. M10 adds one coherent large-workspace use case: find → select → organize → archive → retrieve.
 
 ## Feature Compass
 
-**Shape:** Chatspace remains a local-first Chromium Side Panel workspace beside native ChatGPT. `landing/` is a static public presentation surface only; it does not participate in extension runtime, persistence, provider integration, permissions, or filesystem behavior.
+**Shape:** Explorer is now a local triage surface as well as a hierarchy. Notes and saved chat references can be filtered, searched, multi-selected, moved, pinned where applicable, archived/restored, or deleted in bulk. `Ctrl/⌘ K` is a universal local Quick Open for active notes, saved chats, folders, and commands.
 
-**Position:** M9 is complete. The Astro landing, product-specific visual narrative, standalone dependency boundary, and deterministic landing build gate are implemented and verified.
+**Position:** M10 — Workspace Triage & Retrieval is complete and ready to integrate.
 
-**Delta:** Added a public static Astro surface that communicates current Notes, Graph, manual Markdown Sync, local-first ownership, provider boundaries, development status, and source-install flow while leaving extension behavior unchanged.
+**Delta:** Added schema-v2 archive lifecycle with automatic v1 migration, deterministic retrieval primitives, atomic bulk artifact transitions, compact Explorer filters/selection actions, archived retrieval, and universal Quick Open. Archived artifacts are excluded from normal Home/Quick Open/Graph projections until restored.
 
-**Next Move:** Bound the next milestone only from an explicit product/engineering outcome; do not create a black-box/live-browser milestone.
+**Next Move:** Execute the already-approved M11 — Linked Notes & Backlinks milestone: `[[Title]]` Markdown links remain canonical; backlinks and Graph note-link relations are derived, with unresolved/ambiguous titles surfaced rather than guessed.
 
 ## Scope
 
 ### In
 
-- Astro static site under `landing/`;
-- compact, clean, minimalist, restrained steel-blue visual language aligned with root `DESIGN.md`;
-- product-specific hero showing Chatspace Side Panel beside native ChatGPT rather than generic decorative artwork;
-- truthful Notes, Graph, Markdown Sync, local-first, provider-boundary, privacy/security, status, and install-from-source communication;
-- responsive narrow/mobile behavior, keyboard focus, reduced-motion support, semantic structure, and light/dark themes;
-- direct links to repository, privacy policy, and security policy;
-- standalone landing dependency lock and deterministic landing build in CI;
-- explicit pnpm dependency-build allowlist limited to Astro's required `esbuild` install script;
-- no claim of a specific OSS license while the repository has no `LICENSE` file.
+- `WorkspaceSnapshot` v2 with `archivedAt: number | null` on notes and saved chat references;
+- deterministic v1 → v2 migration during storage load and JSON import;
+- mixed note/chat multi-select and atomic bulk move/archive/restore/delete;
+- bulk pin/unpin for selected saved chat references;
+- Explorer filters for All, Notes, Chats, Pinned, Unfiled, and Archived;
+- local note title/tag/Markdown search, saved-chat label search, and folder-name search;
+- `Ctrl/⌘ K` Quick Open over active local artifacts plus explicit commands;
+- archived-artifact exclusion from normal Home and Graph projections.
 
 ### Out
 
-- no extension feature or behavior change;
-- no `WorkspaceSnapshot`, provider, storage, permission, filesystem, Graph mechanics, or Markdown Sync contract change;
-- no analytics, telemetry, cookies, forms, newsletter, accounts, CMS, or external font dependency;
-- no fabricated user counts, testimonials, stars, benchmarks, or release claims;
-- no Chrome Web Store CTA before a public/store-ready release exists;
-- no new license selection; licensing remains a separate explicit product/legal decision;
-- no broad root visual-system rewrite and no black-box milestone.
+- no folder bulk selection or recursive folder lifecycle redesign;
+- no trash/recycle-bin subsystem, undo framework, activity history, smart folders, or saved queries;
+- no AI/embedding/semantic search;
+- no provider conversation full-text search or provider DOM/content access;
+- no black-box/live-browser milestone.
 
 ## Slices
 
-- [x] **Slice 1 — Product narrative and Astro scaffold:** bound public messaging to current repository truth and established the standalone Astro site.
-- [x] **Slice 2 — Landing experience:** implemented hero/product visualization, Notes/Graph/Sync showcases, trust boundaries, install path, responsive behavior, and light/dark theming.
-- [x] **Slice 3 — Reproducible build:** committed a standalone landing lockfile, explicitly allowed only the required `esbuild` dependency build, and added frozen install + Astro build to CI.
-- [x] **Slice 4 — Cleanup and milestone gate:** removed the temporary lockfile-generation workflow, inspected the final diff, and passed the combined extension + landing repository gate.
+- [x] **Slice 1 — Triage mode:** mixed note/chat multi-selection plus atomic bulk organize/pin/archive/delete actions.
+- [x] **Slice 2 — Archive & retrieval:** reversible archive lifecycle, migration, compact filters, content/tag retrieval, and active-surface exclusion.
+- [x] **Slice 3 — Universal Quick Open:** local notes/chats/folders and existing commands share deterministic keyboard retrieval.
 
 ## Current Decisions
 
-- Landing page is a presentation surface, not a second application runtime.
-- Astro is used without React/Tailwind/component-library integrations because the static page does not need client framework state and minimum dependency surface is preferred.
-- The landing reuses Chatspace's neutral + desaturated steel-blue direction but owns its CSS locally; extension `cs-*` runtime tokens are not coupled across package boundaries.
-- Product visuals are HTML/CSS/SVG representations of real Chatspace concepts rather than stock screenshots or unrelated decorative imagery.
-- Public copy distinguishes repository/source availability from an OSS license until a `LICENSE` file exists.
-- Root `DESIGN.md` remains the durable visual/product-experience authority. Root `SECURITY.md` and `PRIVACY.md` remain public-facing repository policies, not `.agents` authority files.
-- pnpm dependency lifecycle execution for the landing is allowlisted narrowly (`esbuild: true`); broad build-script approval is intentionally not used.
+- `WorkspaceSnapshot` schema is v2; valid v1 state migrates by adding `archivedAt: null` without changing local artifact identity.
+- Archive is reversible and non-destructive; delete remains the explicit destructive action.
+- The existing storage key remains unchanged so stored v1 workspaces can be read and migrated rather than orphaned.
+- Archived artifacts keep folder ownership/content/metadata/relationships but are absent from normal active projections until restored.
+- Folders are deliberately excluded from bulk selection because nested delete/move semantics have a different blast radius.
+- Local retrieval never reads native ChatGPT conversation content.
 
 ## Verification / Evidence
 
-- Astro pinned to `7.2.0`; Node boundary matches repo requirement (`>=22.12.0`).
-- Landing has its own pnpm workspace manifest and lockfile; dependency lifecycle permission is limited to `esbuild`.
-- No landing React integration, analytics SDK, external font, CMS, or client framework dependency added.
-- Product copy is grounded in current repository behavior and explicitly retains development/daily-driver status.
-- Temporary lockfile-generation workflow was removed before final integration.
-- PR CI #219 passed the combined gate: root frozen install, lint, strict typecheck, 61 deterministic tests, WXT ZIP packaging, landing frozen install, and Astro static build.
-- No extension runtime, persisted state, provider, permission, Graph mechanics, or filesystem contract changed.
+- Deterministic migration tests cover valid v1 → v2 and malformed legacy payloads.
+- Deterministic domain tests cover mixed bulk move, archive/restore preservation, and atomic delete cleanup.
+- Retrieval tests cover archived filtering, unfiled retrieval, note title/tag/content search, and Quick Open ranking.
+- Command-palette tests cover commands and artifact Quick Open through the same local search surface.
+- Existing workspace, Graph, persistence, provider-adapter, settings, and local-vault test suites remain part of the repository gate.
+- PR gate requires frozen install, lint, strict typecheck, deterministic tests, WXT ZIP packaging, landing frozen install, and Astro build.
 
 ## Blockers / Risks
 
-- No known repository/CI blocker.
-- Repository currently has no `LICENSE`; landing deliberately avoids claiming a specific open-source license until that decision is explicit.
-- Keep future landing additions evidence-based; do not add fake social proof, unnecessary client runtime, or generic marketing sections merely to fill space.
+- No known product blocker.
+- Schema v2 is intentionally narrow; do not turn the migration into a generic migration framework unless a future schema change requires it.
 
 ## Next Action
 
-Wait for an explicit next milestone outcome.
+Integrate M10 after the final deterministic repository gate is green, then execute M11 from fresh `master`.
