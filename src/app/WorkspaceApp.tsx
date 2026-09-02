@@ -15,9 +15,14 @@ import {
   type WorkspaceFolder,
   type WorkspaceTab,
 } from '../domain/workspace/model';
+import type { WorkspaceArtifactRef } from '../domain/workspace/retrieval';
 import { workspaceReducer } from '../domain/workspace/workspaceReducer';
 import { ChatDetails } from '../features/chat-details/ChatDetails';
-import { CommandPalette, type WorkspaceCommand } from '../features/command-palette/CommandPalette';
+import {
+  CommandPalette,
+  type WorkspaceCommand,
+  type WorkspaceQuickOpenItem,
+} from '../features/command-palette/CommandPalette';
 import { GraphNavigator } from '../features/graph/GraphNavigator';
 import { DailyHome } from '../features/home/DailyHome';
 import { LocalNoteEditor } from '../features/local-notes/LocalNoteEditor';
@@ -53,6 +58,7 @@ type PendingDelete =
   | { kind: 'folder'; folder: WorkspaceFolder }
   | { kind: 'chat'; chat: ChatReference }
   | { kind: 'note'; note: LocalNote }
+  | { kind: 'bulk'; refs: WorkspaceArtifactRef[] }
   | null;
 type PendingRename =
   | { kind: 'folder'; folder: WorkspaceFolder }
@@ -69,7 +75,6 @@ function defaultDownloadText(filename: string, content: string): void {
   anchor.click();
   URL.revokeObjectURL(url);
 }
-
 
 export function WorkspaceApp({
   repository: workspaceRepository,
@@ -89,38 +94,40 @@ export function WorkspaceApp({
   const [pendingRename, setPendingRename] = useState<PendingRename>(null);
   const [noteContextExpanded, setNoteContextExpanded] = useState(true);
 
-const graph = useMemo(() => projectWorkspaceGraph(workspace), [workspace]);
-const exportJson = useMemo(() => exportWorkspaceJson(workspace), [workspace]);
-const { persistenceError, recoveryJson, importBackup, resetLocalData } = useWorkspacePersistence({
-  repository: workspaceRepository,
-  workspace,
-  dispatch,
-  onResetSelection: () => setSelectedFolderId(null),
-  onStatus: setStatus,
-});
-const {
-  state: vaultState,
-  connection: vaultConnection,
-  message: vaultMessage,
-  busy: vaultBusy,
-  connect: connectVault,
-  reconnect: reconnectVault,
-  disconnect: disconnectVault,
-  syncNote: syncNoteToVault,
-} = useLocalVaultController({ localVault, onStatus: setStatus });
+  const activeChatRefs = useMemo(() => workspace.chatRefs.filter((chat) => chat.archivedAt === null), [workspace.chatRefs]);
+  const activeNotes = useMemo(() => workspace.notes.filter((note) => note.archivedAt === null), [workspace.notes]);
+  const graph = useMemo(() => projectWorkspaceGraph(workspace), [workspace]);
+  const exportJson = useMemo(() => exportWorkspaceJson(workspace), [workspace]);
+  const { persistenceError, recoveryJson, importBackup, resetLocalData } = useWorkspacePersistence({
+    repository: workspaceRepository,
+    workspace,
+    dispatch,
+    onResetSelection: () => setSelectedFolderId(null),
+    onStatus: setStatus,
+  });
+  const {
+    state: vaultState,
+    connection: vaultConnection,
+    message: vaultMessage,
+    busy: vaultBusy,
+    connect: connectVault,
+    reconnect: reconnectVault,
+    disconnect: disconnectVault,
+    syncNote: syncNoteToVault,
+  } = useLocalVaultController({ localVault, onStatus: setStatus });
 
-useEffect(() => {
-  const onKeyDown = (event: KeyboardEvent) => {
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-      event.preventDefault();
-      setPaletteOpen((current) => !current);
-    }
-  };
-  window.addEventListener('keydown', onKeyDown);
-  return () => window.removeEventListener('keydown', onKeyDown);
-}, []);
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setPaletteOpen((current) => !current);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
 
-function chatTab(chat: ChatReference): WorkspaceTab {
+  function chatTab(chat: ChatReference): WorkspaceTab {
     return { id: `tab-chat-${chat.id}`, kind: 'chat', entityId: chat.id, title: chat.label, pinned: false };
   }
 
@@ -176,9 +183,7 @@ function chatTab(chat: ChatReference): WorkspaceTab {
     dispatch({ type: 'note/update', note, now });
     const tab = workspace.tabs.find((item) => item.kind === 'note' && item.entityId === note.id);
     const title = note.title.trim() || 'Untitled note';
-    if (tab !== undefined && tab.title !== title) {
-      dispatch({ type: 'tab/open', tab: { ...tab, title }, now });
-    }
+    if (tab !== undefined && tab.title !== title) dispatch({ type: 'tab/open', tab: { ...tab, title }, now });
   }
 
   function renameNote(note: LocalNote): void {
@@ -202,8 +207,11 @@ function chatTab(chat: ChatReference): WorkspaceTab {
     }
     const existing = workspace.chatRefs.find((chat) => chat.target === capability.currentTarget);
     if (existing !== undefined) {
+      if (existing.archivedAt !== null) {
+        dispatch({ type: 'artifact/bulk-archive', refs: [{ kind: 'chat', id: existing.id }], archivedAt: null, now: Date.now() });
+      }
       openSavedChat(existing);
-      setStatus('Conversation reference is already saved.');
+      setStatus(existing.archivedAt === null ? 'Conversation reference is already saved.' : 'Conversation reference restored from archive.');
       return;
     }
     setSaveDialogTarget(capability.currentTarget);
@@ -214,8 +222,11 @@ function chatTab(chat: ChatReference): WorkspaceTab {
     const existing = workspace.chatRefs.find((chat) => chat.target === saveDialogTarget);
     if (existing !== undefined) {
       setSaveDialogTarget(null);
+      if (existing.archivedAt !== null) {
+        dispatch({ type: 'artifact/bulk-archive', refs: [{ kind: 'chat', id: existing.id }], archivedAt: null, now: Date.now() });
+      }
       openSavedChat(existing);
-      setStatus('Conversation reference is already saved.');
+      setStatus(existing.archivedAt === null ? 'Conversation reference is already saved.' : 'Conversation reference restored from archive.');
       return;
     }
     const now = Date.now();
@@ -251,6 +262,23 @@ function chatTab(chat: ChatReference): WorkspaceTab {
 
   function deleteChat(chat: ChatReference): void {
     setPendingDelete({ kind: 'chat', chat });
+  }
+
+  function bulkMove(refs: WorkspaceArtifactRef[], folderId: string | null): void {
+    dispatch({ type: 'artifact/bulk-move', refs, folderId, now: Date.now() });
+    setStatus(`Moved ${refs.length} local item${refs.length === 1 ? '' : 's'}.`);
+  }
+
+  function bulkPin(refs: WorkspaceArtifactRef[], pinned: boolean): void {
+    dispatch({ type: 'artifact/bulk-pin', refs, pinned, now: Date.now() });
+    const count = refs.filter((ref) => ref.kind === 'chat').length;
+    setStatus(`${pinned ? 'Pinned' : 'Unpinned'} ${count} saved chat${count === 1 ? '' : 's'}.`);
+  }
+
+  function bulkArchive(refs: WorkspaceArtifactRef[], archived: boolean): void {
+    const now = Date.now();
+    dispatch({ type: 'artifact/bulk-archive', refs, archivedAt: archived ? now : null, now });
+    setStatus(`${archived ? 'Archived' : 'Restored'} ${refs.length} local item${refs.length === 1 ? '' : 's'}.`);
   }
 
   function confirmRename(value: string): void {
@@ -293,10 +321,13 @@ function chatTab(chat: ChatReference): WorkspaceTab {
       const chat = pendingDelete.chat;
       dispatch({ type: 'chat/delete', chatId: chat.id, now });
       setStatus(`Deleted local reference “${chat.label}”.`);
-    } else {
+    } else if (pendingDelete.kind === 'note') {
       const note = pendingDelete.note;
       dispatch({ type: 'note/delete', noteId: note.id, now });
       setStatus(`Deleted note “${note.title}”.`);
+    } else {
+      dispatch({ type: 'artifact/bulk-delete', refs: pendingDelete.refs, now });
+      setStatus(`Deleted ${pendingDelete.refs.length} local item${pendingDelete.refs.length === 1 ? '' : 's'}.`);
     }
 
     setPendingDelete(null);
@@ -359,13 +390,7 @@ function chatTab(chat: ChatReference): WorkspaceTab {
     const now = Date.now();
     dispatch({
       type: 'edge/create',
-      edge: {
-        id: createEntityId('edge'),
-        sourceEntityId,
-        targetEntityId,
-        kind: 'related-manually',
-        createdAt: now,
-      },
+      edge: { id: createEntityId('edge'), sourceEntityId, targetEntityId, kind: 'related-manually', createdAt: now },
       now,
     });
   }
@@ -391,17 +416,39 @@ function chatTab(chat: ChatReference): WorkspaceTab {
       ? 'ChatGPT detected'
       : 'Open ChatGPT';
   const commands: WorkspaceCommand[] = [
-    {
-      id: 'explorer-toggle',
-      label: workspace.layout.treeCollapsed ? 'Show explorer' : 'Hide explorer',
-      run: () => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed }),
-    },
+    { id: 'explorer-toggle', label: workspace.layout.treeCollapsed ? 'Show explorer' : 'Hide explorer', run: () => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed }) },
     { id: 'folder-create', label: 'Create folder at root', run: () => addFolder(null) },
     { id: 'note-create', label: 'Create note', run: () => addNote() },
     { id: 'chat-save', label: 'Save current chat', run: saveCurrentChat },
     { id: 'graph-open', label: 'Open graph', run: openGraph },
     { id: 'settings-open', label: 'Open settings', run: openSettings },
     { id: 'home-open', label: 'Open home', run: openHome },
+  ];
+  const quickOpenItems: WorkspaceQuickOpenItem[] = [
+    ...workspace.folders.map((folder) => ({
+      id: folder.id,
+      kind: 'folder' as const,
+      label: folder.name,
+      searchText: folder.name,
+      run: () => {
+        setSelectedFolderId(folder.id);
+        openHome();
+      },
+    })),
+    ...activeChatRefs.map((chat) => ({
+      id: chat.id,
+      kind: 'chat' as const,
+      label: chat.label,
+      searchText: chat.label,
+      run: () => openSavedChat(chat),
+    })),
+    ...activeNotes.map((note) => ({
+      id: note.id,
+      kind: 'note' as const,
+      label: note.title,
+      searchText: `${note.title}\n${note.tags.join(' ')}\n${note.content}`,
+      run: () => openNote(note),
+    })),
   ];
 
   let surfaceContent: ReactNode;
@@ -422,12 +469,7 @@ function chatTab(chat: ChatReference): WorkspaceTab {
     );
   } else if (activeTab?.kind === 'graph') {
     surfaceContent = (
-      <GraphNavigator
-        graph={graph}
-        onOpenNode={openGraphNode}
-        onCreateManualEdge={createManualEdge}
-        onDeleteManualEdge={deleteManualEdge}
-      />
+      <GraphNavigator graph={graph} onOpenNode={openGraphNode} onCreateManualEdge={createManualEdge} onDeleteManualEdge={deleteManualEdge} />
     );
   } else if (activeNote !== undefined) {
     surfaceContent = (
@@ -450,25 +492,10 @@ function chatTab(chat: ChatReference): WorkspaceTab {
   } else if (activeChat !== undefined) {
     const folder = workspace.folders.find((item) => item.id === activeChat.folderId);
     surfaceContent = (
-      <ChatDetails
-        chat={activeChat}
-        folder={folder}
-        folders={workspace.folders}
-        onRename={() => renameChat(activeChat)}
-        onTogglePin={() => togglePinChat(activeChat)}
-        onMove={(folderId) => moveChat(activeChat, folderId)}
-      />
+      <ChatDetails chat={activeChat} folder={folder} folders={workspace.folders} onRename={() => renameChat(activeChat)} onTogglePin={() => togglePinChat(activeChat)} onMove={(folderId) => moveChat(activeChat, folderId)} />
     );
   } else {
-    surfaceContent = (
-      <DailyHome
-        chats={workspace.chatRefs}
-        notes={workspace.notes}
-        status={status}
-        onOpenChat={openSavedChat}
-        onOpenNote={openNote}
-      />
-    );
+    surfaceContent = <DailyHome chats={activeChatRefs} notes={activeNotes} status={status} onOpenChat={openSavedChat} onOpenNote={openNote} />;
   }
 
   const surface = (
@@ -528,6 +555,10 @@ function chatTab(chat: ChatReference): WorkspaceTab {
         onDeleteNote={deleteNote}
         onMoveChat={moveChat}
         onMoveNote={moveNote}
+        onBulkMove={bulkMove}
+        onBulkPin={bulkPin}
+        onBulkArchive={bulkArchive}
+        onBulkDelete={(refs) => setPendingDelete({ kind: 'bulk', refs })}
       />
     </div>
   );
@@ -548,12 +579,16 @@ function chatTab(chat: ChatReference): WorkspaceTab {
       ? `Delete the local reference “${pendingDelete.chat.label}”? The ChatGPT conversation itself will not be deleted.`
       : pendingDelete?.kind === 'note'
         ? `Delete the local note “${pendingDelete.note.title}”? This removes the note and its local graph relationships.`
-        : '';
+        : pendingDelete?.kind === 'bulk'
+          ? `Delete ${pendingDelete.refs.length} selected local item${pendingDelete.refs.length === 1 ? '' : 's'}? Saved ChatGPT conversations themselves will not be deleted.`
+          : '';
   const deleteTitle = pendingDelete?.kind === 'folder'
     ? 'Delete folder?'
     : pendingDelete?.kind === 'chat'
       ? 'Delete conversation reference?'
-      : 'Delete note?';
+      : pendingDelete?.kind === 'bulk'
+        ? `Delete ${pendingDelete.refs.length} items?`
+        : 'Delete note?';
   const renameTitle = pendingRename?.kind === 'folder'
     ? 'Rename folder'
     : pendingRename?.kind === 'chat'
@@ -591,7 +626,9 @@ function chatTab(chat: ChatReference): WorkspaceTab {
           }}
         />
       ) : workspaceSurface}
-      {view === 'workspace' && paletteOpen && <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />}
+      {view === 'workspace' && paletteOpen && (
+        <CommandPalette commands={commands} items={quickOpenItems} onClose={() => setPaletteOpen(false)} />
+      )}
       <SaveConversationDialog
         open={saveDialogTarget !== null}
         target={saveDialogTarget}
