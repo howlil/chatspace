@@ -5,34 +5,16 @@ const repoUrl = 'https://github.com/howlil/chatspace';
 const privacyUrl = `${repoUrl}/blob/master/PRIVACY.md`;
 const securityUrl = `${repoUrl}/blob/master/SECURITY.md`;
 
-const principles = [
-  {
-    eyebrow: 'Local-first',
-    title: 'Your workspace stays in your browser.',
-    copy: 'Folders, saved conversation references, notes, tabs, graph relations, and workspace state are owned by Chatspace locally—not by a new cloud account.',
-  },
-  {
-    eyebrow: 'Provider boundary',
-    title: 'ChatGPT stays the conversation runtime.',
-    copy: 'Chatspace lives beside native ChatGPT in the Chromium Side Panel. Navigation is URL/tab based; the workspace does not need provider DOM scraping or private APIs.',
-  },
-  {
-    eyebrow: 'Explicit sync',
-    title: 'Markdown leaves only when you ask.',
-    copy: 'Connect a local folder and manually write notes into a Chatspace directory. No localhost bridge, bearer token, background sync, or bidirectional magic.',
-  },
-];
-
 const steps = [
-  ['01', 'Save the useful thread', 'Keep a local reference to a supported ChatGPT conversation instead of turning the provider into a second file system.'],
-  ['02', 'Curate what matters', 'Organize references and Markdown notes in a compact local hierarchy with tabs, tags, links, and keyboard navigation.'],
-  ['03', 'See the relationships', 'Use the graph as a spatial navigation surface over your own workspace state, with explicit provenance for manual relations.'],
+  ['01', 'Save a ChatGPT conversation reference', 'Keep a local reference to a supported conversation you want to return to.'],
+  ['02', 'Write or link a Markdown note', 'Add your own notes, tags, and links beside the saved conversation.'],
+  ['03', 'Return through Explorer or Graph', 'Navigate the local workspace without replacing the native ChatGPT conversation surface.'],
 ];
 ---
 
 <BaseLayout
-  title="Chatspace — a local workspace beside ChatGPT"
-  description="Organize saved ChatGPT conversation references, Markdown notes, tabs, and local graph relationships in a compact Chromium Side Panel workspace."
+  title="Chatspace — organize ChatGPT work without replacing ChatGPT"
+  description="A local-first Chromium Side Panel for saved ChatGPT conversation references, Markdown notes, workspace navigation, and graph relationships."
 >
   <div class="site-shell">
     <header class="site-header">
@@ -46,8 +28,8 @@ const steps = [
       </a>
 
       <nav class="site-nav" aria-label="Primary navigation">
-        <a href="#product">Product</a>
-        <a href="#principles">Principles</a>
+        <a href="#features">Features</a>
+        <a href="#boundaries">Boundaries</a>
         <a href="#install">Install</a>
       </nav>
 
@@ -71,28 +53,22 @@ const steps = [
     <main id="main">
       <section class="hero" id="top" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <div class="eyebrow"><span class="eyebrow-dot"></span> Local-first Chromium workspace</div>
-          <h1 id="hero-title">A workspace for the conversations worth keeping.</h1>
+          <div class="eyebrow"><span class="eyebrow-dot"></span> Chromium Side Panel · local-first</div>
+          <h1 id="hero-title">Organize ChatGPT work without replacing ChatGPT.</h1>
           <p class="hero-lede">
-            Chatspace sits beside native ChatGPT and gives your work a durable local structure: saved conversation references, Markdown notes, tabs, and a graph—without turning the provider page into another dashboard.
+            Chatspace keeps saved conversation references, Markdown notes, workspace navigation, and graph relationships in a local Side Panel. ChatGPT stays native.
           </p>
           <div class="hero-actions">
-            <a class="button button-primary" href={repoUrl} target="_blank" rel="noreferrer">
+            <a class="button button-primary" href="#install">Install from source</a>
+            <a class="button button-secondary" href={repoUrl} target="_blank" rel="noreferrer">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.36 6.84 9.72.5.1.68-.22.68-.49 0-.24-.01-1.05-.01-1.9-2.78.62-3.37-1.2-3.37-1.2-.45-1.18-1.11-1.5-1.11-1.5-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.56 2.35 1.11 2.92.85.09-.66.35-1.11.64-1.37-2.22-.26-4.56-1.14-4.56-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.72 0 0 .84-.27 2.75 1.05A9.3 9.3 0 0 1 12 6.94a9.3 9.3 0 0 1 2.5.35c1.91-1.32 2.75-1.05 2.75-1.05.55 1.42.2 2.46.1 2.72.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.8-4.57 5.05.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.8 0 .27.18.59.69.49A10.24 10.24 0 0 0 22 12.23C22 6.58 17.52 2 12 2Z" /></svg>
-              View source
-            </a>
-            <a class="button button-secondary" href="#product">
-              See the workspace
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+              GitHub
             </a>
           </div>
-          <div class="hero-status" aria-label="Project status">
-            <span class="status-label">Current status</span>
-            <span class="status-value"><span class="status-pulse"></span> Development / daily-driver candidate</span>
-          </div>
+          <p class="hero-status">Early development · install from source</p>
         </div>
 
-        <div class="hero-product" aria-label="Illustration of Chatspace beside native ChatGPT">
+        <div class="hero-product" aria-label="Product model showing Chatspace beside native ChatGPT">
           <div class="browser-frame">
             <div class="browser-chrome">
               <div class="window-dots" aria-hidden="true"><span></span><span></span><span></span></div>
@@ -154,34 +130,27 @@ const steps = [
           </div>
           <div class="product-caption">
             <span><i class="caption-dot accent"></i> Chatspace Side Panel</span>
-            <span><i class="caption-dot neutral"></i> Provider-owned conversation surface</span>
+            <span><i class="caption-dot neutral"></i> Native ChatGPT</span>
           </div>
         </div>
       </section>
 
-      <section class="signal-strip" aria-label="Core product boundaries">
-        <div><span>01</span> Browser-local workspace state</div>
-        <div><span>02</span> URL-only provider navigation</div>
-        <div><span>03</span> No provider DOM scraping</div>
-        <div><span>04</span> Manual Markdown sync</div>
-      </section>
-
-      <section class="product-section section" id="product" aria-labelledby="product-title">
+      <section class="product-section section" id="features" aria-labelledby="features-title">
         <div class="section-heading narrow-heading">
-          <div class="eyebrow"><span class="eyebrow-dot"></span> Product model</div>
-          <h2 id="product-title">Keep the provider simple. Put structure around your work.</h2>
-          <p>Chatspace does not replace the place where you talk to the model. It owns the local layer around those conversations: navigation, notes, context, and relationships.</p>
+          <span class="section-kicker">Features</span>
+          <h2 id="features-title">What Chatspace adds beside ChatGPT</h2>
+          <p>Local structure for conversations you already use: notes, navigation, and explicit relationships.</p>
         </div>
 
         <div class="feature-stage feature-stage-notes">
           <div class="feature-copy">
-            <span class="feature-index">01 / NOTES</span>
-            <h3>Turn useful threads into durable knowledge.</h3>
-            <p>Write Markdown beside the conversation, add local tags, link back to saved chats, and keep the result understandable without depending on provider content extraction.</p>
+            <span class="feature-index">Notes</span>
+            <h3>Write Markdown notes beside saved conversations.</h3>
+            <p>Add tags, link a note to saved chats, and return to related local context without importing ChatGPT conversation content.</p>
             <ul class="feature-list">
               <li>Markdown Edit / Preview</li>
               <li>Tags and linked chat references</li>
-              <li>Related-local navigation from your own data</li>
+              <li>Related-local navigation</li>
             </ul>
           </div>
           <div class="note-demo" aria-hidden="true">
@@ -190,8 +159,8 @@ const steps = [
               <span class="demo-overline">ARCHITECTURE NOTE</span>
               <h4>Local-first design</h4>
               <div class="demo-tags"><span>architecture</span><span>privacy</span><span>workspace</span></div>
-              <p>Keep canonical workspace state independent from provider content and make every integration boundary explicit.</p>
-              <div class="demo-quote"><span>Provider boundary</span><strong>Validated URL / tab navigation only</strong></div>
+              <p>Keep notes, links, and relationships in the workspace while ChatGPT remains the conversation surface.</p>
+              <div class="demo-quote"><span>ChatGPT link</span><strong>Validated conversation URL</strong></div>
               <div class="demo-linked"><i>↗</i><span><small>LINKED CHAT</small>Architecture notes</span><b>Open</b></div>
             </div>
           </div>
@@ -213,26 +182,26 @@ const steps = [
             <div class="graph-legend"><span><i class="legend-reference"></i> Reference</span><span><i class="legend-manual"></i> Manual relation</span></div>
           </div>
           <div class="feature-copy">
-            <span class="feature-index">02 / GRAPH</span>
-            <h3>See relationships without pretending the model invented them.</h3>
-            <p>The graph is a projection over canonical local workspace state. Manual relations stay explicit, derived layout stays derived, and relationship provenance remains visible.</p>
+            <span class="feature-index">Graph</span>
+            <h3>Navigate explicit relationships between notes and saved chats.</h3>
+            <p>Graph is built from local workspace state. Manual relationships stay explicit and layout remains derived.</p>
             <ul class="feature-list">
               <li>Pan, zoom, fit, search, and focus</li>
-              <li>Manual relations with provenance</li>
-              <li>No opaque AI-generated graph edges</li>
+              <li>Manual relationships stay explicit</li>
+              <li>No AI-generated graph edges</li>
             </ul>
           </div>
         </div>
 
         <div class="feature-stage feature-stage-sync">
           <div class="feature-copy">
-            <span class="feature-index">03 / MARKDOWN SYNC</span>
+            <span class="feature-index">Markdown Sync</span>
             <h3>Your notes can become ordinary files.</h3>
-            <p>Select a local folder and explicitly sync the active note beneath <code>Chatspace/</code>. The connection is local, manual, one-way, and does not require a companion server.</p>
+            <p>Choose a local folder and write the active note beneath <code>Chatspace/</code> when you want to. Sync is manual and one-way.</p>
             <ul class="feature-list">
               <li>Direct selected-folder access</li>
-              <li>No localhost bridge or bearer token</li>
-              <li>Workspace export remains separate from the folder handle</li>
+              <li>Manual one-way write</li>
+              <li>No companion server</li>
             </ul>
           </div>
           <div class="sync-demo" aria-hidden="true">
@@ -246,34 +215,10 @@ const steps = [
         </div>
       </section>
 
-      <section class="principles-section section" id="principles" aria-labelledby="principles-title">
-        <div class="section-heading split-heading">
-          <div>
-            <div class="eyebrow"><span class="eyebrow-dot"></span> Product boundaries</div>
-            <h2 id="principles-title">Local-first is a boundary, not a badge.</h2>
-          </div>
-          <p>The product is intentionally narrower than an all-in-one AI client. That constraint keeps ownership clear and lets the native provider experience remain untouched.</p>
-        </div>
-
-        <div class="principles-list">
-          {principles.map((principle, index) => (
-            <article class="principle-row">
-              <span class="principle-number">0{index + 1}</span>
-              <div class="principle-body">
-                <span class="principle-eyebrow">{principle.eyebrow}</span>
-                <h3>{principle.title}</h3>
-                <p>{principle.copy}</p>
-              </div>
-              <span class="principle-mark" aria-hidden="true">↗</span>
-            </article>
-          ))}
-        </div>
-      </section>
-
       <section class="workflow-section section" aria-labelledby="workflow-title">
         <div class="section-heading narrow-heading">
-          <div class="eyebrow"><span class="eyebrow-dot"></span> Daily flow</div>
-          <h2 id="workflow-title">From conversation to something you can return to.</h2>
+          <h2 id="workflow-title">A simple daily workflow</h2>
+          <p>Save a conversation reference, add your own context, then return through the workspace when you need it.</p>
         </div>
         <ol class="workflow-list">
           {steps.map(([number, title, copy]) => (
@@ -285,23 +230,22 @@ const steps = [
         </ol>
       </section>
 
-      <section class="trust-section section" aria-labelledby="trust-title">
+      <section class="trust-section section" id="boundaries" aria-labelledby="trust-title">
         <div class="trust-panel">
           <div class="trust-copy">
-            <div class="eyebrow"><span class="eyebrow-dot"></span> Trust model</div>
-            <h2 id="trust-title">The useful thing about the boundary is that you can explain it.</h2>
-            <p>Chatspace keeps provider integration deliberately small. Your local workspace can keep working even when the provider is unavailable, because the provider does not own the workspace.</p>
+            <h2 id="trust-title">What stays local, and what stays with ChatGPT</h2>
+            <p>Local-first is a boundary, not a badge. Chatspace keeps workspace ownership explicit and limits ChatGPT integration to supported URL and tab navigation.</p>
             <div class="trust-links">
-              <a href={privacyUrl} target="_blank" rel="noreferrer">Read privacy model <span>↗</span></a>
-              <a href={securityUrl} target="_blank" rel="noreferrer">Read security policy <span>↗</span></a>
+              <a href={privacyUrl} target="_blank" rel="noreferrer">Privacy <span>↗</span></a>
+              <a href={securityUrl} target="_blank" rel="noreferrer">Security <span>↗</span></a>
             </div>
           </div>
-          <div class="boundary-table" role="table" aria-label="Chatspace trust boundaries">
+          <div class="boundary-table" role="table" aria-label="Chatspace data and access boundaries">
             <div class="boundary-row boundary-head" role="row"><span role="columnheader">Boundary</span><span role="columnheader">Current behavior</span></div>
-            <div class="boundary-row" role="row"><span role="cell">Conversation content</span><strong role="cell">Provider-owned</strong></div>
-            <div class="boundary-row" role="row"><span role="cell">Workspace state</span><strong role="cell">Extension-local</strong></div>
-            <div class="boundary-row" role="row"><span role="cell">Provider navigation</span><strong role="cell">Validated URL / tab</strong></div>
-            <div class="boundary-row" role="row"><span role="cell">Provider DOM scraping</span><strong role="cell">Not used</strong></div>
+            <div class="boundary-row" role="row"><span role="cell">Conversation content</span><strong role="cell">ChatGPT</strong></div>
+            <div class="boundary-row" role="row"><span role="cell">Workspace state</span><strong role="cell">Browser-local</strong></div>
+            <div class="boundary-row" role="row"><span role="cell">ChatGPT navigation</span><strong role="cell">Validated URL / tab</strong></div>
+            <div class="boundary-row" role="row"><span role="cell">ChatGPT page scraping</span><strong role="cell">Not used</strong></div>
             <div class="boundary-row" role="row"><span role="cell">Markdown sync</span><strong role="cell">Manual / one-way</strong></div>
             <div class="boundary-row" role="row"><span role="cell">Cloud account</span><strong role="cell">Not required</strong></div>
           </div>
@@ -311,11 +255,10 @@ const steps = [
       <section class="install-section section" id="install" aria-labelledby="install-title">
         <div class="install-grid">
           <div class="install-copy">
-            <div class="eyebrow"><span class="eyebrow-dot"></span> Built in public</div>
-            <h2 id="install-title">Run it from source.</h2>
-            <p>Chatspace is currently a development / daily-driver candidate, not a store-ready release. Clone the repository, build the Chromium extension, and load the generated output locally.</p>
-            <a class="button button-primary" href={repoUrl} target="_blank" rel="noreferrer">Explore the repository <span>↗</span></a>
-            <p class="license-note">Source is publicly available on GitHub. The repository does not currently declare an OSS license, so this page intentionally does not claim a specific open-source license.</p>
+            <h2 id="install-title">Install from source</h2>
+            <p>Chatspace is in early development and is not a store-ready release. Clone the repository, build the Chromium extension, and load the generated output locally.</p>
+            <a class="button button-primary" href={repoUrl} target="_blank" rel="noreferrer">Open GitHub <span>↗</span></a>
+            <p class="license-note">Source available on GitHub. No open-source license has been declared yet.</p>
           </div>
           <div class="code-window">
             <div class="code-titlebar"><span>Install from source</span><div><i></i><i></i><i></i></div></div>
@@ -330,22 +273,11 @@ const steps = [
           </div>
         </div>
       </section>
-
-      <section class="closing-section" aria-labelledby="closing-title">
-        <div class="closing-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M5 7.5A3.5 3.5 0 0 1 8.5 4h7A3.5 3.5 0 0 1 19 7.5v5a3.5 3.5 0 0 1-3.5 3.5H12l-4.5 4v-4A3.5 3.5 0 0 1 5 12.5v-5Z" /></svg>
-        </div>
-        <h2 id="closing-title">Keep the conversation native.<br />Make the workspace yours.</h2>
-        <div class="closing-actions">
-          <a class="button button-primary" href={repoUrl} target="_blank" rel="noreferrer">View Chatspace on GitHub <span>↗</span></a>
-          <a class="text-link" href="#top">Back to top <span>↑</span></a>
-        </div>
-      </section>
     </main>
 
     <footer class="site-footer">
       <div class="footer-brand"><span class="brand-mark mini" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7.5A3.5 3.5 0 0 1 8.5 4h7A3.5 3.5 0 0 1 19 7.5v5a3.5 3.5 0 0 1-3.5 3.5H12l-4.5 4v-4A3.5 3.5 0 0 1 5 12.5v-5Z" /></svg></span><span>Chatspace</span></div>
-      <p>Local-first workspace beside native ChatGPT.</p>
+      <p>Saved chats, Markdown notes, and graph navigation beside native ChatGPT.</p>
       <nav aria-label="Footer navigation">
         <a href={repoUrl} target="_blank" rel="noreferrer">GitHub</a>
         <a href={privacyUrl} target="_blank" rel="noreferrer">Privacy</a>

@@ -168,7 +168,6 @@ Support explicit light and dark modes. Persist explicit user preference. Use sys
 
 Light mode and dark mode are both designed surfaces; neither should be treated as a mechanical inversion of the other.
 
-
 ## Component Styling Principles
 
 - Radix UI Primitives is the default interaction foundation for reusable complex controls; Chatspace styling remains token-driven and product-specific;
@@ -180,6 +179,40 @@ Light mode and dark mode are both designed surfaces; neither should be treated a
 - controls with the same semantic action should share behavior and visual language;
 - avoid permanent action chrome on every row when contextual discovery is sufficient;
 - do not introduce one-off shadows, gradients, radii, or colors when semantic tokens can express the intent.
+
+## Public Surface Anti-AI-Slop Rule
+
+Chatspace public surfaces must prefer **product evidence over marketing decoration**.
+
+Every public section must earn its existence by explaining a real capability, workflow, boundary, project state, or user action. Do not add a section merely because SaaS or AI landing pages conventionally contain one.
+
+Public copy follows **literal first, personality second**:
+
+- prefer nouns and verbs tied to real Chatspace behavior over abstract benefit language;
+- explain what the product does before trying to sound memorable;
+- keep manifesto/tagline-style writing scarce; one distinctive line is stronger than repeated polished aphorisms;
+- avoid repeating the same local-first/provider claim across hero, features, trust, install, and closing surfaces;
+- use `ChatGPT` in public-facing narrative when that is the concrete concept; reserve internal terms such as provider adapter, canonical state, provenance, and integration ownership for documentation unless they materially establish trust;
+- do not use meta-writing that explains why the page itself chose certain wording;
+- avoid generic AI/SaaS vocabulary such as “supercharge”, “unlock”, “reimagine”, “revolutionary”, “next-generation”, “seamless”, or “your AI workspace” unless the literal product behavior requires the word.
+
+Public composition rules:
+
+- prefer actual, sanitized product UI as the primary proof when an appropriate capture exists;
+- a stylized product representation must map to real current behavior and must never imply unavailable capability;
+- do not substitute generated decorative product imagery for product evidence;
+- use numbering only for an actual sequence or ordered concept;
+- use arrows or external-link marks only when they communicate a real action or navigation;
+- avoid metric strips without meaningful metrics, fake testimonial/logo walls, repeated numbered grids, an eyebrow on every section, giant closing CTA blocks, ambient halos/orbs, decorative grids, excessive glass, and cards created only to occupy layout;
+- a floating/sticky shell may use restrained glass when translucency communicates layering; ordinary content surfaces should remain structurally simple;
+- as product clarity improves, the landing should become shorter rather than accumulating new marketing sections.
+
+For the public landing, default narrative priority is approximately:
+
+1. product/use case;
+2. concrete features and workflow;
+3. trust/data ownership boundaries;
+4. installation and repository status.
 
 ## Design Quality Rule
 
