@@ -1,4 +1,4 @@
-export const WORKSPACE_SCHEMA_VERSION = 1 as const;
+export const WORKSPACE_SCHEMA_VERSION = 2 as const;
 export const DEFAULT_WORKSPACE_ID = 'default';
 
 export type TabKind = 'home' | 'chat' | 'note' | 'graph' | 'settings';
@@ -19,6 +19,7 @@ export interface ChatReference {
   label: string;
   folderId: string | null;
   pinned: boolean;
+  archivedAt: number | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -30,6 +31,7 @@ export interface LocalNote {
   tags: string[];
   folderId: string | null;
   linkedChatIds: string[];
+  archivedAt: number | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -117,6 +119,7 @@ export function createChatReference(input: ChatReferenceInput): ChatReference {
     label: cleanLabel(input.label, 'Untitled conversation'),
     folderId: input.folderId,
     pinned: false,
+    archivedAt: null,
     createdAt: input.now,
     updatedAt: input.now,
   };
@@ -130,6 +133,7 @@ export function createLocalNote(input: LocalNoteInput): LocalNote {
     tags: [],
     folderId: input.folderId,
     linkedChatIds: [],
+    archivedAt: null,
     createdAt: input.now,
     updatedAt: input.now,
   };
