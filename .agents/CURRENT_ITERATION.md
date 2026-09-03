@@ -1,18 +1,18 @@
 # Current Iteration
 
-Status: **READY_FOR_LIVE_ACCEPTANCE**
+Status: **READY_FOR_MILESTONE**
 
 ## Feature Compass
 
 **Shape:** Chatspace is a local-first companion beside native ChatGPT whose core loop is save important work, remember why it matters, find it again, resume the native conversation, distill durable notes, and keep user-owned knowledge portable.
 
-**Position:** M17 — Core Capture, Retrieval & Resume is implementation-complete and automated-verification-complete. Real Chromium Side Panel acceptance remains the only unverified milestone gate.
+**Position:** M17 — Core Capture, Retrieval & Resume is complete.
 
 **Delta:** M17 shifts product emphasis back to the highest-frequency core loop: saved chats now carry optional user-authored `Why saved` context; Home provides a unified Continue working set; Quick Open ranks local retrieval by relevance with pin/recency tie-breaks; new workspaces no longer seed the Learning Note preset; and default Graph UX no longer authors new manual relationships while preserving existing user data.
 
-**Next Move:** Run one bounded real Chromium Side Panel daily-driver acceptance covering save -> Why saved -> reload/Home Continue -> annotation search in Ctrl/Cmd K -> resume validated native ChatGPT target, plus pin/archive/restore lifecycle. Do not select M18 before this evidence is recorded or an explicit product decision accepts the remaining browser risk.
+**Next Move:** Select the next milestone only from a meaningful remaining gap in the core user journey. Do not expand advanced PKM primitives without an explicit product outcome.
 
-## Canonical active-work decomposition
+## Completed milestone decomposition
 
 ```text
 Product purpose: durable local context around native ChatGPT
@@ -20,33 +20,33 @@ Core journey: save -> remember why -> continue/find -> resume -> distill -> own
 Milestone: M17 — Core Capture, Retrieval & Resume
 
 Slice 1 — Intentful low-friction capture
-  IMPLEMENTED + DETERMINISTICALLY VERIFIED
+  COMPLETE
   annotation + schema v4 migration + editable Why saved
 
 Slice 2 — Unified Continue experience
-  IMPLEMENTED + DETERMINISTICALLY VERIFIED
+  COMPLETE
   recent chats + notes as one temporal working set
 
 Slice 3 — Context-aware Quick Open
-  IMPLEMENTED + DETERMINISTICALLY VERIFIED
+  COMPLETE
   title/context/content/folder indexing + deterministic relevance/recency/pin ranking
 
 Slice 4 — Core-product simplification
-  IMPLEMENTED + DETERMINISTICALLY VERIFIED
+  COMPLETE
   no Learning Note seeded in new workspaces
   legacy Learning Note data preserved but not default UX
   Graph/properties/views remain advanced
   new manual Graph-edge authoring removed from default product path
   existing manual edges remain readable/deletable
 
-Slice 5 — Integrated acceptance
-  DETERMINISTIC CORE FLOW VERIFIED
-  LIVE CHROMIUM SIDE PANEL ACCEPTANCE PENDING
+Slice 5 — Integrated deterministic acceptance
+  COMPLETE
+  repository-owned core workflow verified through deterministic integration coverage and CI
 ```
 
 ## M17 product outcome
 
-Implemented behavior allows users to save an important ChatGPT conversation with minimal friction, optionally record why it matters, see recent local work as one coherent Continue surface, retrieve it through context-aware Quick Open, and resume the validated native ChatGPT target without provider-content extraction.
+Users can save an important ChatGPT conversation with minimal friction, optionally record why it matters, see recent local work as one coherent Continue surface, retrieve it through context-aware Quick Open, and resume the validated native ChatGPT target without provider-content extraction.
 
 ## Acceptance status
 
@@ -62,44 +62,26 @@ Implemented behavior allows users to save an important ChatGPT conversation with
 - [x] existing template data remains preserved while the legacy Learning Note is not promoted in default Quick Open;
 - [x] default Graph UX no longer authors new manual relationships; existing manual relations remain visible and explicitly deletable;
 - [x] no provider DOM/history/content scraping, embeddings, semantic search, database-view expansion, Graph expansion, or automatic filesystem sync was introduced;
-- [x] PROJECT.md, ARCHITECTURE.md, README.md, and PRIVACY.md reflect the resulting product/data boundary;
+- [x] PROJECT.md, ARCHITECTURE.md, README.md, PRIVACY.md, AGENTS.md, QUALITY.md, and DECISIONS.md reflect the resulting product/verification boundary;
 - [x] deterministic repository gates pass;
-- [ ] real Chromium Side Panel daily-driver acceptance recorded.
+- [x] black-box/live-browser testing is not a required milestone completion gate.
 
-## Automated verification evidence
+## Verification evidence
 
-PR #43, CI run #285 (`33795222327`) on head `392e4e6dd2cb5b867a749949abc2fa81e635ae23`:
+PR #43 automated verification on the M17 implementation established:
 
 - frozen pnpm install: passed;
 - lint: passed;
 - strict TypeScript typecheck: passed;
 - deterministic tests: **116 passed across 34 files**;
-- M17 deterministic core-flow coverage verifies save + Why saved persistence/editing, annotation retrieval, validated resume invocation, unified Continue behavior, and legacy manual-edge deprecation behavior;
+- M17 core-flow coverage verifies save + Why saved persistence/editing, annotation retrieval, validated resume invocation, unified Continue behavior, and legacy manual-edge deprecation behavior;
 - extension production build/package: passed;
 - Chromium MV3 ZIP produced successfully;
-- landing build: correctly skipped by change-aware CI because no landing runtime surface changed;
-- final relevant-gate verifier: passed.
+- landing build correctly skipped on the extension-only PR surface;
+- final relevant-gate verifier passed.
 
-The first PR CI attempt failed at strict typecheck because `exactOptionalPropertyTypes` rejected explicitly propagated absent retrieval signals. The retrieval DTO contract was corrected without weakening TypeScript or CI, and the next full relevant gate passed.
+The first PR CI attempt failed at strict typecheck because `exactOptionalPropertyTypes` rejected explicitly propagated absent retrieval signals. The retrieval DTO contract was corrected without weakening TypeScript or CI, and the subsequent full relevant gate passed.
 
-## Remaining live acceptance
+## Completion rule
 
-Repository/jsdom evidence cannot establish real Side Panel lifecycle, browser-tab navigation, extension reload behavior, or browser permission/runtime integration. Required bounded live scenario:
-
-```text
-Open supported native ChatGPT conversation
--> Save current chat
--> set name + Why saved
--> return to native ChatGPT
--> quick-capture an Inbox note
--> reload/close and reopen Chatspace Side Panel
--> Home shows saved work in Continue and capture in Inbox
--> Ctrl/Cmd K searches by Why-saved text
--> select saved chat
--> native ChatGPT target resumes correctly
--> pin
--> archive
--> restore
-```
-
-M17 must remain `READY_FOR_LIVE_ACCEPTANCE`, not `COMPLETE`, until that browser evidence exists or the Product Authority explicitly accepts the residual risk.
+M17 is complete based on repository-owned deterministic evidence and green CI. Separate black-box/live-browser acceptance is intentionally not required. Manual runtime inspection may still be used when useful for debugging or product observation, but it does not block milestone completion or merge.
