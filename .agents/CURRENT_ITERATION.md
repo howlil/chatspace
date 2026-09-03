@@ -2,51 +2,60 @@
 
 Status: **READY_FOR_MILESTONE**
 
-Goal: Make capture from an active ChatGPT work session nearly frictionless without expanding provider access.
+Goal: Let users safely bring existing Markdown knowledge into Chatspace and export it back without introducing live filesystem sync or a second source of truth.
 
 ## Feature Compass
 
-**Shape:** Chatspace now owns a reserved root `Inbox` folder backed by ordinary `LocalNote` entities. `Ctrl/⌘+Shift+N`, the explorer toolbar, or Quick Open can open a compact capture dialog; Enter saves locally, Shift+Enter adds a newline. If the current validated ChatGPT URL already has a saved local reference, the capture links to that reference without reading provider content. Home exposes actionable Inbox captures and existing M10 triage handles later organization.
+**Shape:** Settings now exposes one explicit Markdown round-trip surface. Import follows `Choose folder → read-only scan → review counts/conflicts → explicit resolution → one canonical workspace replacement`. Export continues to project Chatspace-owned knowledge into understandable Markdown through the existing portable export. Folder hierarchy, body Markdown, tags, wikilinks, and Chatspace note IDs are recognized.
 
-**Position:** M14 — Capture Inbox is complete and ready to integrate.
+**Position:** M15 — Markdown Import & Round-trip Knowledge is implementation-complete and awaiting the final repository gate.
 
-**Delta:** Added deterministic Inbox normalization for new/existing schema-v2 workspaces, domain guards that keep Inbox reserved at workspace root, zero-decision quick capture, optional saved-chat association, Home integration, and deterministic capture coverage. M13 broken-link recovery actions are also wired into the active note context.
+**Delta:** Added a deterministic Markdown scanner/parser, recursive read-only folder integration, preview metrics for notes/folders/resolved and unresolved links/conflicts, explicit ID/title conflict actions, stale-scan protection, and one coherent import transition. Existing notes are never silently overwritten or auto-merged.
 
-**Next Move:** Execute the already-approved M15 — Markdown Import & Round-trip milestone from fresh `master` after M14 integration.
+**Next Move:** Integrate M15 after the full deterministic gate is green, then execute the already-approved M16 — Structured Knowledge milestone from fresh `master`.
 
 ## Scope
 
 ### In
 
-- reserved root Inbox using the existing `LocalNote` model;
-- no new capture entity and no workspace schema-version change;
-- `Ctrl/⌘+Shift+N` quick capture;
-- Enter save / Shift+Enter newline / Escape close through Radix Dialog behavior;
-- first meaningful line as capture title;
-- association only to an already-saved local chat reference matching the current validated ChatGPT URL;
-- Home Inbox count/items;
-- existing bulk move/archive/delete/Quick Open triage reuse;
-- reserved Inbox rename/delete/nesting protection.
+- `Settings → Import Markdown folder → Choose folder → Scan → Review → Import`;
+- recursive `.md` folder scanning through File System Access in read-only mode;
+- scan and preview before any workspace mutation;
+- folder hierarchy mapping;
+- Markdown body preservation;
+- YAML frontmatter support for `title`, `tags`, `chatspace_id`, and exported `chatspace_type`;
+- wikilink parsing and resolved/unresolved preview counts;
+- prior Chatspace export note IDs recognized;
+- explicit conflict resolution:
+  - ID match: `Update existing / Keep existing / Duplicate`;
+  - title collision: `Keep existing / Import as duplicate / Rename incoming / Skip`;
+- stale scan rejection when workspace state changed after review;
+- one final canonical workspace replacement through the existing validated JSON import path;
+- existing portable Markdown export remains the explicit export half of the round-trip.
 
 ### Out
 
-- no provider DOM/content extraction;
-- no auto-created chat reference;
-- no tags/folder decision during capture;
-- no Daily Notes, reminders, task manager, AI classification, or separate capture database;
+- no continuous folder watching;
+- no automatic or bidirectional filesystem sync;
+- no silent overwrite or automatic Markdown merge;
+- no git, Dropbox, Drive, Notion API, HTML/PDF import, or full Obsidian compatibility;
+- no provider conversation import or provider DOM/content access;
+- no new workspace schema version;
 - no black-box/live-browser milestone.
 
 ## Verification / Evidence
 
-- WorkspaceApp capture test covers the shortcut, persisted Inbox note, title/content, and association to an already-saved current chat reference.
-- Workspace reducer tests cover Inbox invariants and existing folder semantics.
-- Existing note-link, Graph, persistence, retrieval, migration, portable export, settings, vault, provider adapter, WXT packaging, and landing build remain in the repository gate.
+- domain tests cover YAML/frontmatter parsing, folder hierarchy, tags, body, wikilinks, Chatspace IDs, exported path recognition, conflicts, explicit decisions, atomic application, inbound-link-safe ID updates, and stale-scan rejection;
+- browser integration tests cover recursive Markdown-only read scanning and picker cancellation;
+- Settings tests cover the read-only preview-before-mutation flow and canonical import handoff;
+- the existing persistence, migration, note-link, Graph, capture Inbox, retrieval, portable export, local-vault, provider adapter, extension package, and landing build remain in the full repository gate.
 
 ## Blockers / Risks
 
 - No known product blocker.
-- Inbox is normalized into existing valid schema-v2 workspaces without changing the schema number; it is a reserved product-owned folder contract.
+- Browser folder import depends on File System Access support; unsupported contexts disable the action and surface that limitation.
+- The YAML parser intentionally supports the small top-level metadata subset required by this milestone rather than full YAML/Obsidian semantics.
 
 ## Next Action
 
-Integrate M14 after the final repository gate is green, then execute M15.
+Run the full M15 repository gate, integrate when green, then execute M16.

@@ -1,6 +1,16 @@
 import { Database, Download, RotateCcw, Upload } from 'lucide-react';
 import { useState } from 'react';
 
+import { exportWorkspaceJson, importWorkspaceJson } from '../../domain/workspace/io';
+import {
+  applyMarkdownImport,
+  type MarkdownImportDecision,
+  type MarkdownImportScan,
+} from '../../domain/workspace/markdownImport';
+import {
+  scanMarkdownFolder,
+  isMarkdownFolderImportSupported,
+} from '../../integrations/markdown-import/BrowserMarkdownFolderImporter';
 import {
   exportPortableWorkspaceJson,
   isPortableWorkspaceExportSupported,
@@ -8,6 +18,7 @@ import {
 } from '../../integrations/portable-export/BrowserPortableWorkspaceExporter';
 import { Button, Panel, Textarea } from '../../ui/primitives';
 import { InlineFeedback, WorkspaceHeader } from '../../ui/workspace';
+import { MarkdownImportPreview } from './MarkdownImportPreview';
 
 interface SettingsPanelProps {
   exportJson: string;
@@ -18,6 +29,8 @@ interface SettingsPanelProps {
   onDownload: (filename: string, content: string) => void;
   onPortableExport?: (workspaceJson: string) => Promise<PortableWorkspaceExportResult | null>;
   portableExportSupported?: boolean;
+  onMarkdownScan?: (workspaceJson: string) => Promise<MarkdownImportScan | null>;
+  markdownImportSupported?: boolean;
 }
 
 function errorMessage(error: unknown): string {
@@ -58,10 +71,14 @@ export function SettingsPanel({
   onDownload,
   onPortableExport = exportPortableWorkspaceJson,
   portableExportSupported = isPortableWorkspaceExportSupported(),
+  onMarkdownScan = scanMarkdownFolder,
+  markdownImportSupported = isMarkdownFolderImportSupported(),
 }: SettingsPanelProps) {
   const [importText, setImportText] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const [portableMessage, setPortableMessage] = useState<string | null>(null);
+  const [markdownMessage, setMarkdownMessage] = useState<string | null>(null);
+  const [markdownScan, setMarkdownScan] = useState<MarkdownImportScan | null>(null);
   const [resetArmed, setResetArmed] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -87,6 +104,40 @@ export function SettingsPanel({
       if (result !== null) {
         setPortableMessage(`Exported ${result.filesWritten} files to ${result.rootDirectoryName}.`);
       }
+    } catch (error) {
+      setActionError(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function scanMarkdownKnowledge() {
+    setBusy(true);
+    setActionError(null);
+    setMarkdownMessage(null);
+    try {
+      const scan = await onMarkdownScan(exportJson);
+      if (scan !== null) setMarkdownScan(scan);
+    } catch (error) {
+      setActionError(errorMessage(error));
+      setMarkdownScan(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmMarkdownImport(decisions: MarkdownImportDecision[]) {
+    if (markdownScan === null) return;
+    setBusy(true);
+    setActionError(null);
+    setMarkdownMessage(null);
+    try {
+      const current = importWorkspaceJson(exportJson);
+      const result = applyMarkdownImport(current, markdownScan, decisions, Date.now());
+      await onImport(exportWorkspaceJson(result.snapshot));
+      const changed = result.imported + result.updated + result.duplicated;
+      setMarkdownMessage(`Imported ${changed} note${changed === 1 ? '' : 's'} · ${result.skipped} skipped.`);
+      setMarkdownScan(null);
     } catch (error) {
       setActionError(errorMessage(error));
     } finally {
@@ -139,26 +190,47 @@ export function SettingsPanel({
       </SettingsCard>
 
       <SettingsCard
-        title="Portable knowledge"
-        description="Write understandable Markdown, local chat-reference metadata, explicit relationships, a manifest, and the canonical JSON backup into a folder you choose."
+        title="Markdown round-trip"
+        description="Explicitly scan existing Markdown before import, or export understandable Markdown back to a folder. This is not live sync."
         action={(
-          <Button
-            disabled={busy || !portableExportSupported}
-            aria-label="Export portable knowledge"
-            onClick={() => void exportPortableKnowledge()}
-          >
-            <Download size={11} aria-hidden="true" /> Export folder
-          </Button>
+          <div className="flex shrink-0 gap-1.5">
+            <Button
+              variant="ghost"
+              disabled={busy || !markdownImportSupported}
+              aria-label="Import Markdown folder"
+              onClick={() => void scanMarkdownKnowledge()}
+            >
+              <Upload size={11} aria-hidden="true" /> Import folder
+            </Button>
+            <Button
+              disabled={busy || !portableExportSupported}
+              aria-label="Export portable knowledge"
+              onClick={() => void exportPortableKnowledge()}
+            >
+              <Download size={11} aria-hidden="true" /> Export folder
+            </Button>
+          </div>
         )}
       >
-        <div className="grid gap-2 text-[9px] leading-4 text-cs-muted">
+        <div className="grid gap-3 text-[9px] leading-4 text-cs-muted">
           <p className="m-0">
-            Notes keep their Markdown and folder hierarchy. Saved ChatGPT conversations export only Chatspace-owned reference metadata and validated URLs, never provider conversation content.
+            Markdown import is read-only until review and explicit confirmation. Folder hierarchy, body Markdown, tags, wikilinks, and Chatspace note IDs are recognized. Existing notes are never silently overwritten or auto-merged.
           </p>
-          {!portableExportSupported && (
-            <InlineFeedback>Direct folder export requires browser File System Access support.</InlineFeedback>
-          )}
+          <p className="m-0">
+            Export keeps note Markdown and local hierarchy. Saved ChatGPT conversations export only Chatspace-owned reference metadata and validated URLs, never provider conversation content.
+          </p>
+          {!markdownImportSupported && <InlineFeedback>Markdown folder import requires browser File System Access support.</InlineFeedback>}
+          {!portableExportSupported && <InlineFeedback>Direct folder export requires browser File System Access support.</InlineFeedback>}
           {portableMessage !== null && <InlineFeedback>{portableMessage}</InlineFeedback>}
+          {markdownMessage !== null && <InlineFeedback>{markdownMessage}</InlineFeedback>}
+          {markdownScan !== null && (
+            <MarkdownImportPreview
+              scan={markdownScan}
+              busy={busy}
+              onConfirm={(decisions) => void confirmMarkdownImport(decisions)}
+              onCancel={() => setMarkdownScan(null)}
+            />
+          )}
         </div>
       </SettingsCard>
 
@@ -181,7 +253,7 @@ export function SettingsPanel({
       )}
 
       <div className="grid gap-4 min-[760px]:grid-cols-2">
-        <SettingsCard title="Import" description="Restore a schema-valid Chatspace backup.">
+        <SettingsCard title="Restore JSON" description="Restore a schema-valid Chatspace backup.">
           <div className="grid gap-2">
             <Textarea
               className="h-24 w-full resize-none font-mono text-[9px] leading-4"
@@ -213,11 +285,9 @@ export function SettingsPanel({
         </SettingsCard>
       </div>
 
-      {actionError !== null && (
-        <InlineFeedback tone="danger">{actionError}</InlineFeedback>
-      )}
+      {actionError !== null && <InlineFeedback tone="danger">{actionError}</InlineFeedback>}
       <p className="m-0 px-1 text-[9px] leading-4 text-cs-subtle">
-        No provider cookies, auth tokens, private API responses, or automatically extracted ChatGPT output are stored or exported by Chatspace.
+        No provider cookies, auth tokens, private API responses, or automatically extracted ChatGPT output are stored, imported, or exported by Chatspace.
       </p>
     </section>
   );
