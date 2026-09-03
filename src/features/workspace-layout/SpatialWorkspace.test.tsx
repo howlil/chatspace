@@ -6,19 +6,19 @@ import { SpatialWorkspace } from './SpatialWorkspace';
 afterEach(() => cleanup());
 
 describe('SpatialWorkspace', () => {
-  it('exposes a real explorer/workbench split without a fake provider panel', () => {
+  it('exposes a real library/workspace split without a fake provider panel', () => {
     render(<SpatialWorkspace />);
 
-    expect(screen.getByRole('navigation', { name: 'Workspace explorer' })).toBeVisible();
-    expect(screen.getByRole('main', { name: 'Workspace workbench' })).toBeVisible();
+    expect(screen.getByRole('navigation', { name: 'Workspace library' })).toBeVisible();
+    expect(screen.getByRole('main', { name: 'Chatspace workspace' })).toBeVisible();
     expect(screen.queryByRole('region', { name: 'Provider surface' })).not.toBeInTheDocument();
   });
 
-  it('supports keyboard resizing of the explorer', () => {
+  it('supports keyboard resizing of the library', () => {
     const onTreeWidthChange = vi.fn();
     render(<SpatialWorkspace treeWidth={240} onTreeWidthChange={onTreeWidthChange} />);
 
-    fireEvent.keyDown(screen.getByRole('separator', { name: 'Resize explorer' }), { key: 'ArrowRight' });
+    fireEvent.keyDown(screen.getByRole('separator', { name: 'Resize library' }), { key: 'ArrowRight' });
     expect(onTreeWidthChange).toHaveBeenCalledWith(256);
   });
 });
