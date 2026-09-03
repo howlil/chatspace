@@ -1,4 +1,4 @@
-import { deriveOutgoingNoteIds, noteLinkPairKey } from '../notes/noteLinks';
+import { deriveOutgoingNoteIds } from '../notes/noteLinks';
 import type { WorkspaceSnapshot } from '../workspace/model';
 import { deriveLocalNoteRelations, localRelationPairKey } from './localRelations';
 
@@ -131,7 +131,7 @@ export function projectWorkspaceGraph(snapshot: WorkspaceSnapshot): WorkspaceGra
   const explicitLinkPairs = new Set<string>();
   for (const note of activeNotes) {
     for (const targetNoteId of deriveOutgoingNoteIds(note, activeNotes)) {
-      const pairKey = noteLinkPairKey(note.id, targetNoteId);
+      const pairKey = localRelationPairKey(note.id, targetNoteId);
       if (manualPairs.has(pairKey) || explicitLinkPairs.has(pairKey)) continue;
       explicitLinkPairs.add(pairKey);
       edges.push({
