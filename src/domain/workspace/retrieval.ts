@@ -6,7 +6,7 @@ export type WorkspaceFilter = 'all' | 'notes' | 'chats' | 'pinned' | 'unfiled' |
 
 export interface WorkspaceRetrievalItem {
   id: string;
-  kind: 'folder' | WorkspaceArtifactKind | 'command';
+  kind: 'folder' | WorkspaceArtifactKind | 'view' | 'command';
   label: string;
   searchText: string;
   run: () => void;
@@ -52,7 +52,8 @@ export function matchesWorkspaceQuery(
   if (normalized === '') return true;
   if (kind === 'chat') return (artifact as ChatReference).label.toLocaleLowerCase().includes(normalized);
   const note = artifact as LocalNote;
-  return `${note.title}\n${note.tags.join(' ')}\n${note.content}`.toLocaleLowerCase().includes(normalized);
+  const properties = Object.entries(note.properties).map(([key, value]) => `${key} ${JSON.stringify(value)}`).join(' ');
+  return `${note.title}\n${note.tags.join(' ')}\n${properties}\n${note.content}`.toLocaleLowerCase().includes(normalized);
 }
 
 export function folderMatchesQuery(folder: WorkspaceFolder, query: string): boolean {
