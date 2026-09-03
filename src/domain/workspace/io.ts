@@ -119,7 +119,7 @@ export function isWorkspaceSnapshot(value: unknown): value is WorkspaceSnapshot 
     Array.isArray(value.noteTemplates) &&
     value.noteTemplates.every(isNoteTemplate)
   );
-  return structurallyValid && hasValidWorkspaceSemantics(value as WorkspaceSnapshot);
+  return structurallyValid && hasValidWorkspaceSemantics(value as unknown as WorkspaceSnapshot);
 }
 
 function migrateLegacyWorkspace(value: Record<string, unknown>): WorkspaceSnapshot | null {
