@@ -6,13 +6,14 @@ Chatspace is a local-first Chromium Side Panel companion that lives **beside Cha
 
 ```text
 Work in native ChatGPT
--> save an important conversation reference
--> optionally add "Why saved"
+-> open Chatspace beside the current conversation
+-> see whether that conversation is already saved
+-> save the validated reference + optional "Why saved"
 -> continue later from Home or Ctrl/Cmd K
 -> find by local title/context/folder/note content
 -> resume the validated native ChatGPT conversation
--> organize or distill into Markdown when useful
--> explicitly export/import/sync user-owned local knowledge
+-> organize or distill from Library when useful
+-> manage portability/integrations explicitly from Settings
 ```
 
 Chatspace does not duplicate the ChatGPT conversation UI and does not extract provider conversation content for its core workflow.
@@ -22,27 +23,39 @@ Chatspace does not duplicate the ChatGPT conversation UI and does not extract pr
 ```text
 Browser window
 ├── Chatspace Side Panel
-│   ├── Home: Continue / Inbox / Pinned
-│   ├── Explorer: folders / saved chats / notes / archive
-│   ├── Ctrl/Cmd K: recent work + local retrieval + commands
-│   └── Workbench: notes / advanced views / graph / settings / Markdown Sync
+│   ├── Home
+│   │   ├── Current conversation
+│   │   ├── Continue
+│   │   ├── Inbox
+│   │   └── Pinned
+│   ├── Library: folders / saved chats / notes / archive
+│   ├── Ctrl/Cmd K: grouped local retrieval + actions
+│   ├── Settings: local data / import-export / Markdown vault
+│   └── More: advanced Graph access
 │
 └── Native ChatGPT page
     └── messages / composer / tools / provider runtime
 ```
 
+Properties, backlinks, related notes, saved views, Graph, and vault tooling remain available without defining the primary navigation hierarchy.
+
 ## Current capabilities
 
 ### Core
 
-- save validated URL-only ChatGPT conversation references
+- contextual current-conversation saved/unsaved state on Home
+- save validated URL-only ChatGPT conversation references directly from that context
+- safe browser-tab-title prefill for the editable local conversation name when available
 - optional user-authored **Why saved** context, editable after capture
-- unified Home **Continue** surface across recent saved chats and non-Inbox notes
-- Capture Inbox for low-friction local Markdown capture
-- deterministic `Ctrl/⌘ K` retrieval across local chat labels/context, folders, notes, and commands
+- unified Home **Continue** surface across recent unpinned saved chats and non-Inbox notes
+- distinct **Pinned** stable shortcuts without duplicating them in Continue
+- Capture Inbox for low-friction local Markdown capture; empty Inbox does not occupy a prominent Home section
+- deterministic `Ctrl/⌘ K` retrieval across local chat labels/context, folders, notes, saved views, and actions
+- empty Quick Open groups Continue / Pinned / Library / Actions; saved views appear only when explicitly searched
 - relevance-first ranking with pin/recency as tie-break signals
 - validated resume navigation back to native ChatGPT
-- nested folders, pins, archive/restore, multi-select and bulk triage
+- matching open ChatGPT conversation tabs are focused/reused before navigating or opening another tab
+- Library browsing for nested folders, pins, archive/restore, multi-select and bulk triage
 - Markdown notes with Edit/Preview and tags
 - schema-validated local recovery/import/export through `chrome.storage.local`
 
@@ -51,10 +64,10 @@ Browser window
 - linked ChatGPT references from notes
 - `[[Title]]` note links, backlinks, and deterministic related-local navigation
 - lightweight typed properties and AND-only saved views
-- spatial Graph projection with search/focus/provenance
+- spatial Graph projection with search/focus/provenance, reached through advanced More access
 - existing legacy manual Graph relationships remain visible/deletable, but default Graph UX no longer authors new ones
 - explicit/imported note-template records remain compatible, but new workspaces no longer seed the former built-in Learning Note
-- direct user-selected-folder Markdown Sync to `<vault>/Chatspace/`
+- direct user-selected-folder Markdown Sync to `<vault>/Chatspace/`, entered from Settings
 - explicit portable Markdown/folder export and supported Markdown import preview/round trip
 
 Advanced PKM features are intentionally secondary to the save → find → resume loop.
@@ -68,10 +81,13 @@ Advanced PKM features are intentionally secondary to the save → find → resum
 - v3 saved views, templates, notes, relationships, tabs, and layout are preserved
 - older migration does not invent the deprecated Learning Note preset
 - corrupted/unsupported state fails closed rather than silently replacing user data
+- M18 navigation changes do not change the persisted workspace schema
 
 ## Provider boundary
 
 Provider presence and navigation are handled through validated ChatGPT URLs and browser tab APIs.
+
+The Side Panel may use ordinary browser-tab metadata such as URL/title/window identity to show current context, prefill an editable local label, and focus an already-open matching conversation. This does not read ChatGPT messages or page DOM.
 
 The core workflow does **not** require a ChatGPT content script or provider DOM bridge.
 
@@ -85,7 +101,7 @@ Canonical workspace state remains extension-local JSON. Explicit portable export
 
 Saved-chat export may include the local label, Why-saved annotation, local metadata, and validated target URL. Native ChatGPT conversation content is never automatically included.
 
-Markdown Sync is manual and one-way and requires no terminal, bearer token, or localhost server. The selected vault directory handle is stored separately in IndexedDB rather than inside workspace JSON.
+Markdown Sync is manual and one-way and requires no terminal, bearer token, or localhost server. The selected vault directory handle is stored separately in IndexedDB rather than inside workspace JSON. Import, export, recovery, and vault controls live under Settings rather than daily navigation.
 
 ## Development
 
