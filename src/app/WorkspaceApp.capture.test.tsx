@@ -41,4 +41,26 @@ describe('WorkspaceApp quick capture', () => {
     });
     expect(screen.queryByRole('textbox', { name: 'Quick capture' })).not.toBeInTheDocument();
   });
+
+  it('does not create a conversation reference when the current ChatGPT URL is not already saved', async () => {
+    const repository = new MemoryWorkspaceRepository(createInitialWorkspace(1));
+    render(
+      <WorkspaceApp
+        repository={repository}
+        currentUrl={() => 'https://chatgpt.com/c/not-saved'}
+      />,
+    );
+
+    await screen.findByRole('button', { name: 'Quick capture' });
+    fireEvent.click(screen.getByRole('button', { name: 'Quick capture' }));
+    const capture = await screen.findByRole('textbox', { name: 'Quick capture' });
+    fireEvent.change(capture, { target: { value: 'Capture first' } });
+    fireEvent.keyDown(capture, { key: 'Enter' });
+
+    await waitFor(async () => {
+      const saved = await repository.load();
+      expect(saved?.chatRefs).toHaveLength(0);
+      expect(saved?.notes.find((note) => note.folderId === INBOX_FOLDER_ID)?.linkedChatIds).toEqual([]);
+    });
+  });
 });
