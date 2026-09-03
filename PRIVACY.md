@@ -6,16 +6,28 @@ Chatspace is local-first. Canonical workspace data is stored in Chromium extensi
 
 - folder hierarchy and labels
 - validated ChatGPT conversation URLs explicitly saved by the user
-- user-authored Markdown notes and note-to-chat links
-- workspace tabs, pins, and persisted local layout/theme state
-- user-created graph relationships
+- local labels and optional user-authored **Why saved** annotations for saved conversation references
+- user-authored Markdown notes, tags, local properties, and note-to-chat/note-to-note relationships
+- saved local views and compatible explicit template records
+- workspace tabs, pins, archive lifecycle, and persisted local layout/theme state
+- existing local manual graph relationships
 - the user-selected vault directory handle, stored separately in integration-owned IndexedDB rather than in workspace state/export
+
+`Why saved` is written by the user. Chatspace does not derive or populate it by reading ChatGPT messages.
+
+## Local retrieval
+
+Home, Explorer, and `Ctrl/⌘ K` retrieval operate on Chatspace-owned local data such as saved labels, Why-saved annotations, folders, note titles/tags/properties/content, pins, and timestamps.
+
+Provider conversation content is not an implicit search/indexing input.
 
 ## Optional local filesystem writes
 
 When the user explicitly connects a local vault and invokes Markdown Sync, Chatspace writes the selected local note beneath `<vault>/Chatspace/` using the browser File System Access API.
 
 Sync is manual and one-way. The selected filesystem handle is not included in `WorkspaceSnapshot` or workspace export/import. Chatspace does not require or expose a localhost vault server.
+
+Explicit portable export may write Chatspace-owned saved-chat metadata, including local labels, Why-saved annotations, and validated target URLs. It does not automatically export native ChatGPT conversation messages/output.
 
 ## Data Chatspace does not collect
 
@@ -27,7 +39,7 @@ Chatspace does not collect, store, transmit, or reuse:
 - provider browsing/conversation history
 - telemetry or analytics
 
-There is no Chatspace cloud backend. Workspace export/import is initiated explicitly by the user and operates on local Chatspace workspace JSON.
+There is no Chatspace cloud backend. Workspace import/export and filesystem operations are explicitly user initiated.
 
 ## Provider access
 
