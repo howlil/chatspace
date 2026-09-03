@@ -27,7 +27,7 @@ interface SettingsPanelProps {
   onImport: (json: string) => Promise<void>;
   onReset: () => Promise<void>;
   onDownload: (filename: string, content: string) => void;
-  onOpenMarkdownSync?: () => void;
+  onOpenMarkdownSync?: (() => void) | undefined;
   onPortableExport?: (workspaceJson: string) => Promise<PortableWorkspaceExportResult | null>;
   portableExportSupported?: boolean;
   onMarkdownScan?: (workspaceJson: string) => Promise<MarkdownImportScan | null>;
