@@ -4,11 +4,11 @@ This repository uses root `AGENTS.md` as the thin agent entrypoint and `.agents/
 
 ## Canonical Sources
 
-- `.agents/PROJECT.md` — WHY + WHAT: product intent, behavior, scope, contracts, ownership, constraints, non-goals, deferred/open decisions.
+- `.agents/PROJECT.md` — WHY + WHAT: product purpose, core user journey, capability map, committed behavior, scope, contracts, ownership, constraints, non-goals, deferred/open decisions.
 - `.agents/ARCHITECTURE.md` — WHERE + HOW boundaries interact: responsibility placement, module/data/trust/infrastructure boundaries, major flows, invariants.
-- `.agents/CURRENT_ITERATION.md` — NOW + NEXT: current milestone, active slice, completed work, evidence, blockers, next action.
+- `.agents/CURRENT_ITERATION.md` — NOW + NEXT: current milestone outcome, active slice/logical change when present, completed evidence, blockers, and next meaningful action.
 - `.agents/CODE_PATTERNS.md` — Chatspace-specific implementation conventions, ownership patterns, commands, and known traps.
-- `.agents/QUALITY.md` — Chatspace-specific verification strategy, required checks, CI gates, release confidence, and evidence requirements.
+- `.agents/QUALITY.md` — Chatspace-specific risk-based verification strategy, CI gates, release confidence, and evidence requirements.
 - `.agents/DECISIONS.md` — durable material decisions and rationale.
 
 `DESIGN.md` is the separate root-level durable product-experience and visual-design authority. Read it for UI/UX, interaction, responsive, accessibility, visual-language, token, component-styling, and theme work.
@@ -17,13 +17,47 @@ Read only the documents relevant to the requested change. Always inspect `.agent
 
 ## Operating Rule
 
-Follow the user's canonical global SWE rules. Do not duplicate the global lifecycle, Product Authority, Minimum Change, Design Decision Rule, Feature Compass, milestone delivery, retrospective method, generic testing rules, Git rules, dependency rules, or generic documentation rules inside this repository.
+Optimize for meaningful integrated product capability, correctness, maintainability, and short user-outcome lead time. Do not optimize for milestone count, PR count, tiny diffs, isolated layer completion, or verification ceremony.
 
-Repository documents define only how Chatspace itself works and any explicit project-specific override.
+Use this decomposition when planning or continuing product work:
+
+```text
+PRODUCT PURPOSE
+-> CORE USER JOURNEY
+-> CAPABILITY MAP
+-> MILESTONE
+-> SLICE
+-> LOGICAL CHANGE
+-> TASK
+```
+
+Definitions:
+
+- **Milestone** — the smallest coherent product scope that delivers one meaningful integrated user capability or workflow end-to-end.
+- **Slice** — the smallest demonstrable vertical behavior/scenario that materially advances the milestone outcome.
+- **Logical Change** — a coherent technical modification required to realize a slice.
+- **Task** — a concrete implementation action inside a logical change.
+- Engineering enablers, migrations, reliability work, infrastructure changes, and bug fixes stay classified as such unless they independently deliver a product capability.
+
+Before proposing a new milestone, reconstruct the relevant core user journey and capability gap from `.agents/PROJECT.md` plus current code/evidence. Prefer the highest-value missing core behavior; do not promote nice-to-have polish or isolated technical work into a product milestone.
+
+Follow the user's canonical global SWE rules for Product Authority, change ownership, implementation autonomy, evidence, retrospective, dependency/code quality, and stop conditions. Keep repository documents focused on Chatspace-specific state and constraints rather than duplicating long generic process manuals.
 
 Do not change product behavior, public/persisted contracts, architecture/data ownership, security/privacy/permission/trust boundaries, or other material decisions without explicit user approval.
 
-Prefer the smallest coherent change. Do not create persistent sprint/task plans, retrospective archives, status files, workflow-rule files, or additional `.agents/*.md` authorities.
+Prefer the smallest coherent vertical change that preserves the intended user outcome. Do not create persistent sprint/task plans, retrospective archives, status files, workflow-rule files, or additional `.agents/*.md` authorities.
+
+## Verification Rule
+
+Verification is proportional to changed risk.
+
+- use static checks for syntax/type/style risks;
+- use focused deterministic tests for owned logic and observable behavior;
+- use integration tests when behavior crosses real repository-owned boundaries that isolated tests cannot establish;
+- use live-browser/black-box evidence only for browser/runtime behavior that deterministic repository tests cannot honestly prove;
+- use the repository CI gate for integration confidence before merge/release-ready state.
+
+Do not add higher-cost verification layers merely because they exist. Do not weaken or skip a relevant existing gate to manufacture green status.
 
 ## Material Chatspace Boundaries
 
