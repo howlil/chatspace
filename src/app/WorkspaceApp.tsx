@@ -1,10 +1,12 @@
-import { AlertTriangle, BookmarkPlus, FilePlus2, FolderPlus } from 'lucide-react';
+import { AlertTriangle, BookmarkPlus, FilePlus2, FolderPlus, Inbox } from 'lucide-react';
 import { useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
 
 import { projectWorkspaceGraph, type GraphNode } from '../domain/graph/projectGraph';
+import { replaceNoteLinkToken, type NoteLinkToken } from '../domain/notes/noteLinks';
 import { canMoveFolder } from '../domain/workspace/integrity';
 import { exportWorkspaceJson } from '../domain/workspace/io';
 import {
+  INBOX_FOLDER_ID,
   createChatReference,
   createEntityId,
   createFolder,
@@ -18,6 +20,7 @@ import {
 import type { WorkspaceArtifactRef } from '../domain/workspace/retrieval';
 import { workspaceReducer } from '../domain/workspace/workspaceReducer';
 import { ChatDetails } from '../features/chat-details/ChatDetails';
+import { QuickCaptureDialog } from '../features/capture-inbox/QuickCaptureDialog';
 import {
   CommandPalette,
   type WorkspaceCommand,
@@ -76,6 +79,11 @@ function defaultDownloadText(filename: string, content: string): void {
   URL.revokeObjectURL(url);
 }
 
+function captureTitle(content: string): string {
+  const firstLine = content.split(/\r?\n/).map((line) => line.trim()).find((line) => line !== '') ?? 'Inbox capture';
+  return firstLine.replace(/^#+\s*/, '').slice(0, 96) || 'Inbox capture';
+}
+
 export function WorkspaceApp({
   repository: workspaceRepository,
   view = 'workspace',
@@ -89,6 +97,7 @@ export function WorkspaceApp({
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [status, setStatus] = useState('Local workspace ready.');
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [captureOpen, setCaptureOpen] = useState(false);
   const [saveDialogTarget, setSaveDialogTarget] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
   const [pendingRename, setPendingRename] = useState<PendingRename>(null);
@@ -118,6 +127,11 @@ export function WorkspaceApp({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'n') {
+        event.preventDefault();
+        setCaptureOpen(true);
+        return;
+      }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         setPaletteOpen((current) => !current);
@@ -144,6 +158,10 @@ export function WorkspaceApp({
   }
 
   function addFolder(parentId: string | null = null): void {
+    if (parentId === INBOX_FOLDER_ID) {
+      setStatus('Inbox is a reserved capture folder and cannot contain subfolders.');
+      return;
+    }
     const now = Date.now();
     const folder = createFolder({ id: createEntityId('folder'), name: 'New folder', parentId, now });
     dispatch({ type: 'folder/create', folder });
@@ -152,10 +170,18 @@ export function WorkspaceApp({
   }
 
   function renameFolder(folder: WorkspaceFolder): void {
+    if (folder.id === INBOX_FOLDER_ID) {
+      setStatus('Inbox is a reserved capture folder.');
+      return;
+    }
     setPendingRename({ kind: 'folder', folder });
   }
 
   function moveFolder(folder: WorkspaceFolder, parentId: string | null): void {
+    if (folder.id === INBOX_FOLDER_ID || parentId === INBOX_FOLDER_ID) {
+      setStatus('Inbox stays at workspace root and does not contain subfolders.');
+      return;
+    }
     if (!canMoveFolder(workspace.folders, folder.id, parentId)) {
       setStatus('A folder cannot be moved into itself or one of its descendants.');
       return;
@@ -166,6 +192,10 @@ export function WorkspaceApp({
   }
 
   function deleteFolder(folder: WorkspaceFolder): void {
+    if (folder.id === INBOX_FOLDER_ID) {
+      setStatus('Inbox is a reserved capture folder and cannot be deleted.');
+      return;
+    }
     setPendingDelete({ kind: 'folder', folder });
   }
 
@@ -231,13 +261,7 @@ export function WorkspaceApp({
     }
     const now = Date.now();
     const chat = {
-      ...createChatReference({
-        id: createEntityId('chat'),
-        label: input.label,
-        target: saveDialogTarget,
-        folderId: input.folderId,
-        now,
-      }),
+      ...createChatReference({ id: createEntityId('chat'), label: input.label, target: saveDialogTarget, folderId: input.folderId, now }),
       pinned: input.pinned,
     };
     dispatch({ type: 'chat/create', chat });
@@ -388,11 +412,7 @@ export function WorkspaceApp({
 
   function createManualEdge(sourceEntityId: string, targetEntityId: string): void {
     const now = Date.now();
-    dispatch({
-      type: 'edge/create',
-      edge: { id: createEntityId('edge'), sourceEntityId, targetEntityId, kind: 'related-manually', createdAt: now },
-      now,
-    });
+    dispatch({ type: 'edge/create', edge: { id: createEntityId('edge'), sourceEntityId, targetEntityId, kind: 'related-manually', createdAt: now }, now });
   }
 
   function deleteManualEdge(graphEdgeId: string): void {
@@ -402,20 +422,43 @@ export function WorkspaceApp({
     setStatus('Manual graph relation deleted.');
   }
 
+  function createMissingLinkedNote(title: string, source: LocalNote): void {
+    const now = Date.now();
+    const note = createLocalNote({ id: createEntityId('note'), title, folderId: source.folderId, now });
+    dispatch({ type: 'note/create', note });
+    openTab(noteTab(note));
+    setStatus(`Created “${note.title}” from unresolved link.`);
+  }
+
+  function replaceBrokenLink(source: LocalNote, token: NoteLinkToken, target: LocalNote): void {
+    updateNote({ ...source, content: replaceNoteLinkToken(source.content, token, target.title) });
+    setStatus(`Linked to “${target.title}”.`);
+  }
+
+  function captureToInbox(content: string): void {
+    const now = Date.now();
+    const capability = getChatGptCapability(currentUrl());
+    const linkedChat = capability.currentTarget === null
+      ? undefined
+      : activeChatRefs.find((chat) => chat.target === capability.currentTarget);
+    const note = {
+      ...createLocalNote({ id: createEntityId('note'), title: captureTitle(content), folderId: INBOX_FOLDER_ID, now }),
+      content,
+      linkedChatIds: linkedChat === undefined ? [] : [linkedChat.id],
+    };
+    dispatch({ type: 'note/create', note });
+    setCaptureOpen(false);
+    setStatus(linkedChat === undefined ? 'Captured to Inbox.' : `Captured to Inbox · linked to “${linkedChat.label}”.`);
+  }
+
   const activeTab = workspace.tabs.find((tab) => tab.id === workspace.activeTabId) ?? workspace.tabs[0];
-  const activeChat = activeTab?.kind === 'chat'
-    ? workspace.chatRefs.find((chat) => chat.id === activeTab.entityId)
-    : undefined;
-  const activeNote = activeTab?.kind === 'note'
-    ? workspace.notes.find((note) => note.id === activeTab.entityId)
-    : undefined;
+  const activeChat = activeTab?.kind === 'chat' ? workspace.chatRefs.find((chat) => chat.id === activeTab.entityId) : undefined;
+  const activeNote = activeTab?.kind === 'note' ? workspace.notes.find((note) => note.id === activeTab.entityId) : undefined;
   const capability = getChatGptCapability(currentUrl());
-  const compatibilityLabel = capability.canCaptureCurrentReference
-    ? 'Conversation detected'
-    : capability.supportedOrigin
-      ? 'ChatGPT detected'
-      : 'Open ChatGPT';
+  const currentLinkedChat = capability.currentTarget === null ? undefined : activeChatRefs.find((chat) => chat.target === capability.currentTarget);
+  const compatibilityLabel = capability.canCaptureCurrentReference ? 'Conversation detected' : capability.supportedOrigin ? 'ChatGPT detected' : 'Open ChatGPT';
   const commands: WorkspaceCommand[] = [
+    { id: 'capture-quick', label: 'Quick capture to Inbox', run: () => setCaptureOpen(true) },
     { id: 'explorer-toggle', label: workspace.layout.treeCollapsed ? 'Show explorer' : 'Hide explorer', run: () => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed }) },
     { id: 'folder-create', label: 'Create folder at root', run: () => addFolder(null) },
     { id: 'note-create', label: 'Create note', run: () => addNote() },
@@ -425,30 +468,9 @@ export function WorkspaceApp({
     { id: 'home-open', label: 'Open home', run: openHome },
   ];
   const quickOpenItems: WorkspaceQuickOpenItem[] = [
-    ...workspace.folders.map((folder) => ({
-      id: folder.id,
-      kind: 'folder' as const,
-      label: folder.name,
-      searchText: folder.name,
-      run: () => {
-        setSelectedFolderId(folder.id);
-        openHome();
-      },
-    })),
-    ...activeChatRefs.map((chat) => ({
-      id: chat.id,
-      kind: 'chat' as const,
-      label: chat.label,
-      searchText: chat.label,
-      run: () => openSavedChat(chat),
-    })),
-    ...activeNotes.map((note) => ({
-      id: note.id,
-      kind: 'note' as const,
-      label: note.title,
-      searchText: `${note.title}\n${note.tags.join(' ')}\n${note.content}`,
-      run: () => openNote(note),
-    })),
+    ...workspace.folders.map((folder) => ({ id: folder.id, kind: 'folder' as const, label: folder.name, searchText: folder.name, run: () => { setSelectedFolderId(folder.id); openHome(); } })),
+    ...activeChatRefs.map((chat) => ({ id: chat.id, kind: 'chat' as const, label: chat.label, searchText: chat.label, run: () => openSavedChat(chat) })),
+    ...activeNotes.map((note) => ({ id: note.id, kind: 'note' as const, label: note.title, searchText: `${note.title}\n${note.tags.join(' ')}\n${note.content}`, run: () => openNote(note) })),
   ];
 
   let surfaceContent: ReactNode;
@@ -456,62 +478,37 @@ export function WorkspaceApp({
     surfaceContent = (
       <div className="h-full min-h-0 overflow-y-auto">
         <div className="mx-auto grid w-full max-w-3xl gap-5 px-4 py-5 sm:px-5">
-          <SettingsPanel
-            exportJson={exportJson}
-            recoveryJson={recoveryJson}
-            persistenceError={persistenceError}
-            onImport={importBackup}
-            onReset={resetLocalData}
-            onDownload={downloadText}
-          />
+          <SettingsPanel exportJson={exportJson} recoveryJson={recoveryJson} persistenceError={persistenceError} onImport={importBackup} onReset={resetLocalData} onDownload={downloadText} />
         </div>
       </div>
     );
   } else if (activeTab?.kind === 'graph') {
-    surfaceContent = (
-      <GraphNavigator graph={graph} onOpenNode={openGraphNode} onCreateManualEdge={createManualEdge} onDeleteManualEdge={deleteManualEdge} />
-    );
+    surfaceContent = <GraphNavigator graph={graph} onOpenNode={openGraphNode} onCreateManualEdge={createManualEdge} onDeleteManualEdge={deleteManualEdge} />;
   } else if (activeNote !== undefined) {
     surfaceContent = (
-      <div
-        className={noteContextExpanded
-          ? 'grid h-full min-h-0 min-[880px]:grid-cols-[minmax(0,1fr)_260px] max-[879px]:grid-rows-[minmax(0,1fr)_auto]'
-          : 'h-full min-h-0'}
-      >
-        <LocalNoteEditor
-          note={activeNote}
-          notes={activeNotes}
-          chats={activeChatRefs}
-          contextExpanded={noteContextExpanded}
-          onChange={updateNote}
-          onLinkChat={(chatId) => dispatch({ type: 'note/link-chat', noteId: activeNote.id, chatId, now: Date.now() })}
-          onOpenNote={openNote}
-          onToggleContext={() => setNoteContextExpanded((current) => !current)}
-        />
-        {noteContextExpanded && <NoteContextRail note={activeNote} notes={activeNotes} onOpenNote={openNote} />}
+      <div className={noteContextExpanded ? 'grid h-full min-h-0 min-[880px]:grid-cols-[minmax(0,1fr)_260px] max-[879px]:grid-rows-[minmax(0,1fr)_auto]' : 'h-full min-h-0'}>
+        <LocalNoteEditor note={activeNote} notes={activeNotes} chats={activeChatRefs} contextExpanded={noteContextExpanded} onChange={updateNote} onLinkChat={(chatId) => dispatch({ type: 'note/link-chat', noteId: activeNote.id, chatId, now: Date.now() })} onOpenNote={openNote} onToggleContext={() => setNoteContextExpanded((current) => !current)} />
+        {noteContextExpanded && (
+          <NoteContextRail
+            note={activeNote}
+            notes={activeNotes}
+            onOpenNote={openNote}
+            onCreateMissingLink={(title) => createMissingLinkedNote(title, activeNote)}
+            onReplaceBrokenLink={(token, target) => replaceBrokenLink(activeNote, token, target)}
+          />
+        )}
       </div>
     );
   } else if (activeChat !== undefined) {
     const folder = workspace.folders.find((item) => item.id === activeChat.folderId);
-    surfaceContent = (
-      <ChatDetails chat={activeChat} folder={folder} folders={workspace.folders} onRename={() => renameChat(activeChat)} onTogglePin={() => togglePinChat(activeChat)} onMove={(folderId) => moveChat(activeChat, folderId)} />
-    );
+    surfaceContent = <ChatDetails chat={activeChat} folder={folder} folders={workspace.folders} onRename={() => renameChat(activeChat)} onTogglePin={() => togglePinChat(activeChat)} onMove={(folderId) => moveChat(activeChat, folderId)} />;
   } else {
     surfaceContent = <DailyHome chats={activeChatRefs} notes={activeNotes} status={status} onOpenChat={openSavedChat} onOpenNote={openNote} />;
   }
 
   const surface = (
     <div className="grid h-full min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden">
-      <WorkbenchChrome
-        tabs={workspace.tabs}
-        activeTabId={workspace.activeTabId}
-        explorerCollapsed={workspace.layout.treeCollapsed}
-        providerSupported={capability.supportedOrigin}
-        providerLabel={compatibilityLabel}
-        onToggleExplorer={() => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed })}
-        onActivateTab={activateTab}
-        onCloseTab={(tabId) => dispatch({ type: 'tab/close', tabId, now: Date.now() })}
-      />
+      <WorkbenchChrome tabs={workspace.tabs} activeTabId={workspace.activeTabId} explorerCollapsed={workspace.layout.treeCollapsed} providerSupported={capability.supportedOrigin} providerLabel={compatibilityLabel} onToggleExplorer={() => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed })} onActivateTab={activateTab} onCloseTab={(tabId) => dispatch({ type: 'tab/close', tabId, now: Date.now() })} />
       {persistenceError !== null && (
         <div className="flex min-w-0 items-center gap-2 border-b border-red-300/10 bg-red-300/[0.045] px-2.5 py-1.5 text-[9px] text-red-100" role="alert">
           <AlertTriangle size={11} className="shrink-0" aria-hidden="true" />
@@ -526,15 +523,10 @@ export function WorkspaceApp({
   const tree = (
     <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
       <div className="flex h-9 items-center justify-start gap-0.5 border-b border-cs-border px-2 py-1">
-        <IconButton className="size-6 rounded-md text-cs-subtle" aria-label="Create folder" title="Create folder" onClick={() => addFolder(null)}>
-          <FolderPlus size={11} aria-hidden="true" />
-        </IconButton>
-        <IconButton className="size-6 rounded-md text-cs-subtle" aria-label="Create note" title="Create note" onClick={() => addNote()}>
-          <FilePlus2 size={11} aria-hidden="true" />
-        </IconButton>
-        <IconButton className="size-6 rounded-md bg-cs-control text-cs-text" aria-label="Save current chat" title="Save current chat" onClick={saveCurrentChat}>
-          <BookmarkPlus size={11} aria-hidden="true" />
-        </IconButton>
+        <IconButton className="size-6 rounded-md text-cs-subtle" aria-label="Create folder" title="Create folder" onClick={() => addFolder(null)}><FolderPlus size={11} aria-hidden="true" /></IconButton>
+        <IconButton className="size-6 rounded-md text-cs-subtle" aria-label="Create note" title="Create note" onClick={() => addNote()}><FilePlus2 size={11} aria-hidden="true" /></IconButton>
+        <IconButton className="size-6 rounded-md text-cs-subtle" aria-label="Quick capture" title="Quick capture · Ctrl/Cmd+Shift+N" onClick={() => setCaptureOpen(true)}><Inbox size={11} aria-hidden="true" /></IconButton>
+        <IconButton className="size-6 rounded-md bg-cs-control text-cs-text" aria-label="Save current chat" title="Save current chat" onClick={saveCurrentChat}><BookmarkPlus size={11} aria-hidden="true" /></IconButton>
       </div>
       <WorkspaceTree
         folders={workspace.folders}
@@ -565,15 +557,7 @@ export function WorkspaceApp({
     </div>
   );
 
-  const workspaceSurface = (
-    <SpatialWorkspace
-      tree={tree}
-      surface={surface}
-      treeCollapsed={workspace.layout.treeCollapsed}
-      treeWidth={workspace.layout.treeWidth}
-      onTreeWidthChange={(treeWidth) => updateLayout({ treeWidth })}
-    />
-  );
+  const workspaceSurface = <SpatialWorkspace tree={tree} surface={surface} treeCollapsed={workspace.layout.treeCollapsed} treeWidth={workspace.layout.treeWidth} onTreeWidthChange={(treeWidth) => updateLayout({ treeWidth })} />;
 
   const deleteDescription = pendingDelete?.kind === 'folder'
     ? `Delete “${pendingDelete.folder.name}”? Child items will move to ${pendingDelete.folder.parentId === null ? 'Workspace root' : 'the parent folder'}.`
@@ -584,30 +568,10 @@ export function WorkspaceApp({
         : pendingDelete?.kind === 'bulk'
           ? `Delete ${pendingDelete.refs.length} selected local item${pendingDelete.refs.length === 1 ? '' : 's'}? Saved ChatGPT conversations themselves will not be deleted.`
           : '';
-  const deleteTitle = pendingDelete?.kind === 'folder'
-    ? 'Delete folder?'
-    : pendingDelete?.kind === 'chat'
-      ? 'Delete conversation reference?'
-      : pendingDelete?.kind === 'bulk'
-        ? `Delete ${pendingDelete.refs.length} items?`
-        : 'Delete note?';
-  const renameTitle = pendingRename?.kind === 'folder'
-    ? 'Rename folder'
-    : pendingRename?.kind === 'chat'
-      ? 'Rename conversation'
-      : 'Rename note';
-  const renameLabel = pendingRename?.kind === 'folder'
-    ? 'Folder name'
-    : pendingRename?.kind === 'chat'
-      ? 'Conversation name'
-      : 'Note title';
-  const renameInitialValue = pendingRename?.kind === 'folder'
-    ? pendingRename.folder.name
-    : pendingRename?.kind === 'chat'
-      ? pendingRename.chat.label
-      : pendingRename?.kind === 'note'
-        ? pendingRename.note.title
-        : '';
+  const deleteTitle = pendingDelete?.kind === 'folder' ? 'Delete folder?' : pendingDelete?.kind === 'chat' ? 'Delete conversation reference?' : pendingDelete?.kind === 'bulk' ? `Delete ${pendingDelete.refs.length} items?` : 'Delete note?';
+  const renameTitle = pendingRename?.kind === 'folder' ? 'Rename folder' : pendingRename?.kind === 'chat' ? 'Rename conversation' : 'Rename note';
+  const renameLabel = pendingRename?.kind === 'folder' ? 'Folder name' : pendingRename?.kind === 'chat' ? 'Conversation name' : 'Note title';
+  const renameInitialValue = pendingRename?.kind === 'folder' ? pendingRename.folder.name : pendingRename?.kind === 'chat' ? pendingRename.chat.label : pendingRename?.kind === 'note' ? pendingRename.note.title : '';
 
   return (
     <>
@@ -623,32 +587,15 @@ export function WorkspaceApp({
           onReconnect={reconnectVault}
           onChangeVault={connectVault}
           onDisconnect={disconnectVault}
-          onSyncActiveNote={async () => {
-            if (activeNote !== undefined) await syncNoteToVault(activeNote);
-          }}
+          onSyncActiveNote={async () => { if (activeNote !== undefined) await syncNoteToVault(activeNote); }}
         />
       ) : workspaceSurface}
-      {view === 'workspace' && paletteOpen && (
-        <CommandPalette commands={commands} items={quickOpenItems} onClose={() => setPaletteOpen(false)} />
+      {view === 'workspace' && paletteOpen && <CommandPalette commands={commands} items={quickOpenItems} onClose={() => setPaletteOpen(false)} />}
+      {view === 'workspace' && (
+        <QuickCaptureDialog open={captureOpen} linkedChatLabel={currentLinkedChat?.label ?? null} onSave={captureToInbox} onClose={() => setCaptureOpen(false)} />
       )}
-      <SaveConversationDialog
-        open={saveDialogTarget !== null}
-        target={saveDialogTarget}
-        folders={workspace.folders}
-        defaultFolderId={selectedFolderId}
-        defaultLabel={`Conversation ${workspace.chatRefs.length + 1}`}
-        onCancel={() => setSaveDialogTarget(null)}
-        onSave={confirmSaveCurrentChat}
-      />
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        title={deleteTitle}
-        description={deleteDescription}
-        confirmLabel="Delete"
-        danger
-        onConfirm={confirmDelete}
-        onCancel={() => setPendingDelete(null)}
-      />
+      <SaveConversationDialog open={saveDialogTarget !== null} target={saveDialogTarget} folders={workspace.folders} defaultFolderId={selectedFolderId} defaultLabel={`Conversation ${workspace.chatRefs.length + 1}`} onCancel={() => setSaveDialogTarget(null)} onSave={confirmSaveCurrentChat} />
+      <ConfirmDialog open={pendingDelete !== null} title={deleteTitle} description={deleteDescription} confirmLabel="Delete" danger onConfirm={confirmDelete} onCancel={() => setPendingDelete(null)} />
       <TextInputDialog
         open={pendingRename !== null}
         title={renameTitle}

@@ -1,5 +1,6 @@
 export const WORKSPACE_SCHEMA_VERSION = 2 as const;
 export const DEFAULT_WORKSPACE_ID = 'default';
+export const INBOX_FOLDER_ID = 'system-inbox';
 
 export type TabKind = 'home' | 'chat' | 'note' | 'graph' | 'settings';
 
@@ -111,6 +112,15 @@ export function createFolder(input: FolderInput): WorkspaceFolder {
   };
 }
 
+export function createInboxFolder(now: number): WorkspaceFolder {
+  return createFolder({ id: INBOX_FOLDER_ID, name: 'Inbox', parentId: null, now });
+}
+
+export function ensureInboxFolder(snapshot: WorkspaceSnapshot): WorkspaceSnapshot {
+  if (snapshot.folders.some((folder) => folder.id === INBOX_FOLDER_ID)) return snapshot;
+  return { ...snapshot, folders: [createInboxFolder(snapshot.updatedAt), ...snapshot.folders] };
+}
+
 export function createChatReference(input: ChatReferenceInput): ChatReference {
   return {
     id: input.id,
@@ -152,7 +162,7 @@ export function createInitialWorkspace(now = Date.now()): WorkspaceSnapshot {
     schemaVersion: WORKSPACE_SCHEMA_VERSION,
     id: DEFAULT_WORKSPACE_ID,
     name: 'Chatspace',
-    folders: [],
+    folders: [createInboxFolder(now)],
     chatRefs: [],
     notes: [],
     manualEdges: [],
