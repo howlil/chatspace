@@ -13,9 +13,10 @@ interface DailyHomeProps {
   onOpenNote: (note: LocalNote) => void;
 }
 
-type ContinueItem =
+type ContinueItem = (
   | { kind: 'chat'; item: ChatReference }
-  | { kind: 'note'; item: LocalNote };
+  | { kind: 'note'; item: LocalNote }
+) & { updatedAt: number };
 
 function newest<T extends { updatedAt: number }>(items: T[], limit: number): T[] {
   return [...items].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, limit);
@@ -87,7 +88,7 @@ export function DailyHome({ chats, notes, status, onOpenChat, onOpenNote }: Dail
     ...notes
       .filter((note) => note.folderId !== INBOX_FOLDER_ID)
       .map((note) => ({ kind: 'note' as const, item: note, updatedAt: note.updatedAt })),
-  ] as Array<ContinueItem & { updatedAt: number }>, 8);
+  ], 8);
   const pinnedChats = newest(chats.filter((chat) => chat.pinned), 5);
   const empty = chats.length === 0 && notes.length === 0;
 
