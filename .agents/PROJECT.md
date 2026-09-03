@@ -16,8 +16,9 @@ The main browser page remains native ChatGPT. Chatspace lives beside it in the S
 - Explorer for local hierarchy, search, filters, pins, archive/retrieval, saved chat references, and notes;
 - Workbench tabs for Home, notes, Graph, settings, and local utilities;
 - a universal `Ctrl/⌘ K` local Quick Open surface for notes, saved chats, folders, and commands;
-- Markdown notes with local metadata and explicit links;
-- a spatial Graph over canonical local workspace state;
+- Markdown notes with local metadata, explicit chat references, and `[[Title]]` note links;
+- outgoing note links and backlinks derived from Markdown rather than persisted separately;
+- a spatial Graph over canonical local workspace state plus explicit/derived local relationships;
 - validated navigation back to supported ChatGPT conversation URLs;
 - optional manual Markdown sync to a user-selected local vault.
 
@@ -33,13 +34,13 @@ Local metadata required to return to a supported provider conversation target. C
 Nested local organization independent from provider projects.
 
 ### Note
-User-owned Markdown with title, tags, linked chat references, and local relationships.
+User-owned Markdown with title, tags, explicit linked chat references, and explicit note links expressed as human-readable `[[Title]]` Markdown. Outgoing note links and backlinks are derived from note content and are not separate persisted state.
 
 ### Tab
 Restorable workbench context for local artifacts/views.
 
 ### Graph
-Spatial projection over canonical workspace state. Manual relations may be canonical; projected/derived layout is not another source of truth.
+Spatial projection over canonical workspace state. Manual relations may be canonical; `[[Title]]` note links and related-local similarity are derived projections. Renderer/layout state is not another source of truth.
 
 ### Vault connection
 Optional local integration used to manually write Chatspace notes beneath a user-selected vault directory.
@@ -50,12 +51,15 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - Supported ChatGPT navigation is URL/tab based and validates targets before navigation.
 - Explorer supports local title/content/tag search, compact filters, nested folders, explicit root/subfolder creation semantics, move operations, pins, saved chat references, and archived retrieval.
 - Notes and saved chat references may be multi-selected for atomic bulk move, pin/unpin where applicable, archive/restore, and delete operations; folders are not part of bulk selection.
-- Archive is non-destructive: archived notes/chat references retain content, metadata, folder ownership, and explicit relationships while remaining outside normal Explorer, Home, Quick Open, and Graph surfaces until restored.
+- Archive is non-destructive: archived notes/chat references retain content, metadata, folder ownership, and explicit relationships while remaining outside normal Explorer, Home, Quick Open, active note linking, and Graph surfaces until restored.
 - `Ctrl/⌘ K` searches active local notes, saved chat references, folders, and explicit workspace commands without reading provider conversation content.
 - Existing schema-v1 workspaces migrate deterministically to `WorkspaceSnapshot` schema v2 with `archivedAt: null`; malformed/unsupported state still fails closed.
 - Invalid folder cycles and references to missing folders are rejected.
-- Notes support editable titles, Markdown Edit/Preview, tags, linked chats, and related-local navigation.
+- Notes support editable titles, Markdown Edit/Preview, tags, linked chats, `[[Title]]` links, outgoing-link navigation, backlinks, and related-local navigation.
+- A `[[Title]]` link resolves only when exactly one active local note matches the normalized title. Missing titles stay unresolved; duplicate-title matches stay ambiguous and are never guessed.
+- Fenced code blocks are excluded from note-link parsing.
 - Graph is a spatial navigation surface with explicit relationship provenance and excludes archived local artifacts from the active projection.
+- Graph relationship precedence for the same note pair is manual relation > explicit Markdown note link > related-local similarity.
 - Canonical workspace state is local and recoverable; corrupted or unsupported persisted state fails closed instead of silently replacing user data.
 - Explicit light/dark preference is persisted.
 - Destructive local mutations require explicit Chatspace confirmation.
@@ -71,8 +75,8 @@ Optional local integration used to manually write Chatspace notes beneath a user
 4. Organize references and notes in the workspace hierarchy.
 5. Use Explorer filters, multi-select/bulk triage, archive/restore, or `Ctrl/⌘ K` Quick Open to keep a larger workspace manageable.
 6. Resume saved conversations through validated native ChatGPT navigation.
-7. Curate durable knowledge into Markdown notes.
-8. Navigate local relationships through Graph.
+7. Curate durable knowledge into Markdown notes and connect notes directly with `[[Title]]` while writing.
+8. Follow outgoing links/backlinks in note context or navigate the same explicit relationships through Graph.
 9. Optionally sync the active note to a selected local vault.
 
 ## Scope boundaries
@@ -80,10 +84,10 @@ Optional local integration used to manually write Chatspace notes beneath a user
 ### In scope
 
 - local workspace organization, filtering, triage, archive/retrieval, and Quick Open;
-- local notes and metadata;
+- local notes, metadata, `[[Title]]` links, and derived backlinks;
 - explicit saved ChatGPT conversation references;
 - URL-only provider presence/navigation;
-- spatial local Graph navigation;
+- spatial local Graph navigation with manual, explicit-note-link, and related-local provenance;
 - local recovery/import/export/reset;
 - explicit manual local-vault note sync.
 
@@ -96,7 +100,7 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - automated extraction of ChatGPT output;
 - network interception/replay;
 - replacing native ChatGPT with a custom client;
-- opaque AI-generated graph edges;
+- opaque AI-generated graph edges or automatic note-link creation;
 - cross-device sync;
 - bidirectional or automatic vault sync;
 - localhost/server-based vault sync in the current product;
@@ -107,6 +111,7 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - Chatspace owns local workspace entities and metadata.
 - Native ChatGPT owns provider conversation content/runtime.
 - `WorkspaceSnapshot` schema v2 is the canonical persisted workspace contract; archive lifecycle for notes/chat references is represented by `archivedAt: number | null`.
+- `[[Title]]` note-link relationships and backlinks are derived from note Markdown and do not add fields to `WorkspaceSnapshot`.
 - The selected filesystem directory handle is stored separately from `WorkspaceSnapshot`.
 - Provider targets are supported only through validated ChatGPT URL shapes owned by the provider adapter.
 
@@ -117,6 +122,7 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - Graph renderer/layout state must not silently become canonical persisted state.
 - Provider content must not become an implicit input to Chatspace local knowledge or retrieval.
 - Archive must remain reversible and non-destructive; delete remains the explicit destructive lifecycle action.
+- Title-based note links must fail visibly on missing/ambiguous targets instead of silently selecting a note.
 - User-created local data must remain understandable, exportable, and explicitly deletable.
 
 ## Deferred / requires explicit product decision
@@ -125,4 +131,5 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - additional provider integrations;
 - automatic/bidirectional vault synchronization;
 - remote analytics/telemetry;
-- future material workspace-schema changes.
+- future material workspace-schema changes;
+- automatic rewrite of existing `[[Title]]` links when a target note is renamed.

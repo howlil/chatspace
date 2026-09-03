@@ -480,13 +480,15 @@ export function WorkspaceApp({
       >
         <LocalNoteEditor
           note={activeNote}
-          chats={workspace.chatRefs}
+          notes={activeNotes}
+          chats={activeChatRefs}
           contextExpanded={noteContextExpanded}
           onChange={updateNote}
           onLinkChat={(chatId) => dispatch({ type: 'note/link-chat', noteId: activeNote.id, chatId, now: Date.now() })}
+          onOpenNote={openNote}
           onToggleContext={() => setNoteContextExpanded((current) => !current)}
         />
-        {noteContextExpanded && <NoteContextRail note={activeNote} notes={workspace.notes} onOpenNote={openNote} />}
+        {noteContextExpanded && <NoteContextRail note={activeNote} notes={activeNotes} onOpenNote={openNote} />}
       </div>
     );
   } else if (activeChat !== undefined) {

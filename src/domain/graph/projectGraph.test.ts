@@ -39,6 +39,45 @@ describe('projectWorkspaceGraph', () => {
     );
   });
 
+  it('projects explicit Markdown note links with derived-link provenance', () => {
+    const snapshot = createInitialWorkspace(1);
+    const source = createLocalNote({ id: 'note-a', title: 'Architecture', folderId: null, now: 2 });
+    source.content = 'See [[Storage recovery]].';
+    const target = createLocalNote({ id: 'note-b', title: 'Storage recovery', folderId: null, now: 3 });
+    snapshot.notes = [source, target];
+
+    const graph = projectWorkspaceGraph(snapshot);
+
+    expect(graph.edges).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        sourceId: 'note:note-a',
+        targetId: 'note:note-b',
+        kind: 'note-link',
+        provenance: 'derived-link',
+      }),
+    ]));
+  });
+
+  it('lets manual relations take precedence over note links and note links over local similarity', () => {
+    const snapshot = createInitialWorkspace(1);
+    const first = createLocalNote({ id: 'note-a', title: 'Postgres MVCC', folderId: null, now: 2 });
+    first.content = 'transactions isolation locking production [[MVCC isolation]]';
+    const second = createLocalNote({ id: 'note-b', title: 'MVCC isolation', folderId: null, now: 3 });
+    second.content = 'postgres transactions locking behavior';
+    snapshot.notes = [first, second];
+
+    const linked = projectWorkspaceGraph(snapshot);
+    expect(linked.edges.filter((edge) => edge.sourceId.includes('note-') && edge.targetId.includes('note-'))).toEqual([
+      expect.objectContaining({ kind: 'note-link', provenance: 'derived-link' }),
+    ]);
+
+    snapshot.manualEdges = [{ id: 'edge-1', sourceEntityId: first.id, targetEntityId: second.id, kind: 'related-manually', createdAt: 4 }];
+    const manual = projectWorkspaceGraph(snapshot);
+    expect(manual.edges.filter((edge) => edge.sourceId.includes('note-') && edge.targetId.includes('note-'))).toEqual([
+      expect.objectContaining({ kind: 'related-manually', provenance: 'manual' }),
+    ]);
+  });
+
   it('projects deterministic local relations with derived-local provenance', () => {
     const snapshot = createInitialWorkspace(1);
     const first = createLocalNote({ id: 'note-a', title: 'Postgres MVCC', folderId: null, now: 2 });

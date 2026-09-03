@@ -1,9 +1,10 @@
-import { deriveLocalNoteRelations, localRelationPairKey } from './localRelations';
+import { deriveOutgoingNoteIds } from '../notes/noteLinks';
 import type { WorkspaceSnapshot } from '../workspace/model';
+import { deriveLocalNoteRelations, localRelationPairKey } from './localRelations';
 
 export type GraphNodeKind = 'workspace' | 'folder' | 'chat' | 'note';
-export type GraphEdgeKind = 'contains' | 'references' | 'related-manually' | 'related-local';
-export type GraphProvenance = 'canonical' | 'manual' | 'derived-local';
+export type GraphEdgeKind = 'contains' | 'references' | 'note-link' | 'related-manually' | 'related-local';
+export type GraphProvenance = 'canonical' | 'manual' | 'derived-link' | 'derived-local';
 
 export interface GraphNode {
   id: string;
@@ -127,8 +128,25 @@ export function projectWorkspaceGraph(snapshot: WorkspaceSnapshot): WorkspaceGra
     }
   }
 
+  const explicitLinkPairs = new Set<string>();
+  for (const note of activeNotes) {
+    for (const targetNoteId of deriveOutgoingNoteIds(note, activeNotes)) {
+      const pairKey = localRelationPairKey(note.id, targetNoteId);
+      if (manualPairs.has(pairKey) || explicitLinkPairs.has(pairKey)) continue;
+      explicitLinkPairs.add(pairKey);
+      edges.push({
+        id: `note-link:${note.id}:${targetNoteId}`,
+        sourceId: nodeId('note', note.id),
+        targetId: nodeId('note', targetNoteId),
+        kind: 'note-link',
+        provenance: 'derived-link',
+      });
+    }
+  }
+
   for (const relation of deriveLocalNoteRelations(activeNotes)) {
-    if (manualPairs.has(localRelationPairKey(relation.sourceNoteId, relation.targetNoteId))) continue;
+    const pairKey = localRelationPairKey(relation.sourceNoteId, relation.targetNoteId);
+    if (manualPairs.has(pairKey) || explicitLinkPairs.has(pairKey)) continue;
     edges.push({
       id: `local:${relation.sourceNoteId}:${relation.targetNoteId}`,
       sourceId: nodeId('note', relation.sourceNoteId),

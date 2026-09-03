@@ -2,70 +2,73 @@
 
 Status: **READY_FOR_MILESTONE**
 
-Goal: Make a larger local Chatspace workspace fast to triage and retrieve without adding provider-content access or AI search.
+Goal: Make note-to-note knowledge navigation a natural part of writing without introducing another persisted relationship source of truth.
 
-Why: The existing workspace was effective at capture and organization but required mostly one-item-at-a-time operations. M10 adds one coherent large-workspace use case: find → select → organize → archive → retrieve.
+Why: Chatspace already had Markdown notes, manual Graph relations, and locally derived similarity. M11 adds one coherent writing-to-navigation use case: write `[[Title]]` → resolve locally → follow outgoing links/backlinks → see the same explicit relation in Graph.
 
 ## Feature Compass
 
-**Shape:** Explorer is now a local triage surface as well as a hierarchy. Notes and saved chat references can be filtered, searched, multi-selected, moved, pinned where applicable, archived/restored, or deleted in bulk. `Ctrl/⌘ K` is a universal local Quick Open for active notes, saved chats, folders, and commands.
+**Shape:** Local notes use `[[Title]]` as the canonical explicit note-link syntax. The editor offers local title completion, Preview opens uniquely resolved links, the note context exposes outgoing links and backlinks, and Graph projects those links with `derived-link` provenance. Missing or duplicate titles are surfaced as unresolved/ambiguous instead of guessed.
 
-**Position:** M10 — Workspace Triage & Retrieval is complete and ready to integrate.
+**Position:** M11 — Linked Notes & Backlinks is complete and ready to integrate.
 
-**Delta:** Added schema-v2 archive lifecycle with automatic v1 migration, deterministic retrieval primitives, atomic bulk artifact transitions, compact Explorer filters/selection actions, archived retrieval, and universal Quick Open. Archived artifacts are excluded from normal Home/Quick Open/Graph projections until restored.
+**Delta:** Added deterministic wikilink parsing/resolution, backlinks, editor completion, safe Preview navigation, link-aware note context, and Graph note-link projection. Explicit links take precedence over generic related-local similarity, while manual graph relations retain highest precedence for the same pair.
 
-**Next Move:** Execute the already-approved M11 — Linked Notes & Backlinks milestone: `[[Title]]` Markdown links remain canonical; backlinks and Graph note-link relations are derived, with unresolved/ambiguous titles surfaced rather than guessed.
+**Next Move:** Execute the already-approved M12 — Portable Knowledge milestone: export the user-owned local workspace as understandable Markdown hierarchy + metadata + manifest + workspace backup through direct File System Access, without exporting native ChatGPT conversation content.
 
 ## Scope
 
 ### In
 
-- `WorkspaceSnapshot` v2 with `archivedAt: number | null` on notes and saved chat references;
-- deterministic v1 → v2 migration during storage load and JSON import;
-- mixed note/chat multi-select and atomic bulk move/archive/restore/delete;
-- bulk pin/unpin for selected saved chat references;
-- Explorer filters for All, Notes, Chats, Pinned, Unfiled, and Archived;
-- local note title/tag/Markdown search, saved-chat label search, and folder-name search;
-- `Ctrl/⌘ K` Quick Open over active local artifacts plus explicit commands;
-- archived-artifact exclusion from normal Home and Graph projections.
+- canonical `[[Title]]` note links stored directly in Markdown content;
+- deterministic parsing that ignores fenced code blocks;
+- exact normalized-title resolution;
+- fail-closed ambiguous and unresolved link states;
+- editor title completion while writing a wikilink;
+- clickable uniquely resolved links in safe Markdown Preview;
+- outgoing links and backlinks derived from active local notes;
+- Graph `note-link` edges with `derived-link` provenance;
+- precedence: manual relation > explicit note link > locally derived similarity for the same note pair.
 
 ### Out
 
-- no folder bulk selection or recursive folder lifecycle redesign;
-- no trash/recycle-bin subsystem, undo framework, activity history, smart folders, or saved queries;
-- no AI/embedding/semantic search;
-- no provider conversation full-text search or provider DOM/content access;
+- no persisted backlink array or second relationship database;
+- no ID-based hidden wikilink syntax;
+- no automatic link creation, AI linking, semantic indexing, or provider-content extraction;
+- no title-rename rewrite framework in this milestone;
+- no archived-note linking surface;
 - no black-box/live-browser milestone.
 
 ## Slices
 
-- [x] **Slice 1 — Triage mode:** mixed note/chat multi-selection plus atomic bulk organize/pin/archive/delete actions.
-- [x] **Slice 2 — Archive & retrieval:** reversible archive lifecycle, migration, compact filters, content/tag retrieval, and active-surface exclusion.
-- [x] **Slice 3 — Universal Quick Open:** local notes/chats/folders and existing commands share deterministic keyboard retrieval.
+- [x] **Slice 1 — Link model:** parse `[[Title]]`, resolve unique titles, and derive outgoing/backlink relationships deterministically.
+- [x] **Slice 2 — Writing flow:** add note-title completion and safe Preview navigation while keeping Markdown canonical.
+- [x] **Slice 3 — Knowledge navigation:** expose links/backlinks in note context and project explicit note links into Graph with provenance/precedence.
+- [x] **Slice 4 — Milestone gate:** wire active-note catalogs through WorkspaceApp and pass the full deterministic repository gate.
 
 ## Current Decisions
 
-- `WorkspaceSnapshot` schema is v2; valid v1 state migrates by adding `archivedAt: null` without changing local artifact identity.
-- Archive is reversible and non-destructive; delete remains the explicit destructive action.
-- The existing storage key remains unchanged so stored v1 workspaces can be read and migrated rather than orphaned.
-- Archived artifacts keep folder ownership/content/metadata/relationships but are absent from normal active projections until restored.
-- Folders are deliberately excluded from bulk selection because nested delete/move semantics have a different blast radius.
-- Local retrieval never reads native ChatGPT conversation content.
+- `[[Title]]` is the only canonical note-link syntax introduced by M11; links remain user-readable Markdown.
+- A normalized title resolves only when exactly one active note matches. Zero matches are unresolved; multiple matches are ambiguous.
+- Link relationships and backlinks are projections of Markdown, not persisted workspace fields, so M11 does not change `WorkspaceSnapshot` schema v2.
+- Archived notes are excluded from active link resolution/navigation and Graph projection until restored.
+- For a note pair, manual Graph relation wins over explicit Markdown link; explicit Markdown link wins over related-local similarity.
+- Safe Preview still renders React content rather than raw HTML injection.
 
 ## Verification / Evidence
 
-- Deterministic migration tests cover valid v1 → v2 and malformed legacy payloads.
-- Deterministic domain tests cover mixed bulk move, archive/restore preservation, and atomic delete cleanup.
-- Retrieval tests cover archived filtering, unfiled retrieval, note title/tag/content search, and Quick Open ranking.
-- Command-palette tests cover commands and artifact Quick Open through the same local search surface.
-- Existing workspace, Graph, persistence, provider-adapter, settings, and local-vault test suites remain part of the repository gate.
-- PR gate requires frozen install, lint, strict typecheck, deterministic tests, WXT ZIP packaging, landing frozen install, and Astro build.
+- Deterministic note-link tests cover parsing, fenced-code exclusion, unique/missing/ambiguous resolution, outgoing links, backlinks, and active wikilink queries.
+- LocalNoteEditor tests cover safe Markdown rendering and navigation through a uniquely resolved `[[Title]]` link.
+- Graph tests cover explicit note-link projection and relationship precedence.
+- Existing workspace, migration, bulk triage, retrieval, Graph, persistence, provider-adapter, settings, command-palette, and local-vault suites remain part of the gate.
+- PR CI #241 passed frozen install, lint, strict typecheck, deterministic tests, WXT ZIP packaging, landing frozen install, and Astro static build.
 
 ## Blockers / Risks
 
-- No known product blocker.
-- Schema v2 is intentionally narrow; do not turn the migration into a generic migration framework unless a future schema change requires it.
+- No known repository or product blocker.
+- Title-based links intentionally expose ambiguity when duplicate note titles exist; do not silently select one target.
+- Renaming a target note can make existing title-based links unresolved; automatic rewrite remains out of scope unless explicitly requested.
 
 ## Next Action
 
-Integrate M10 after the final deterministic repository gate is green, then execute M11 from fresh `master`.
+Integrate M11 after this documentation-only closure commit passes CI, then execute M12 from fresh `master`.

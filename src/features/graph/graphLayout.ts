@@ -104,7 +104,7 @@ export function directNeighborhood(graph: WorkspaceGraph, nodeId: string): Set<s
 
 export function edgeVisualWeight(edge: GraphEdge): 'canonical' | 'reference' | 'manual' | 'derived' {
   if (edge.kind === 'contains') return 'canonical';
-  if (edge.kind === 'references') return 'reference';
+  if (edge.kind === 'references' || edge.kind === 'note-link') return 'reference';
   if (edge.provenance === 'manual') return 'manual';
   return 'derived';
 }
