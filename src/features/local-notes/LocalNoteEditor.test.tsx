@@ -16,10 +16,12 @@ describe('LocalNoteEditor', () => {
     render(
       <LocalNoteEditor
         note={note}
+        notes={[note]}
         chats={[chat]}
         contextExpanded
         onChange={onChange}
         onLinkChat={onLinkChat}
+        onOpenNote={vi.fn()}
         onToggleContext={vi.fn()}
       />,
     );
@@ -39,10 +41,12 @@ describe('LocalNoteEditor', () => {
     render(
       <LocalNoteEditor
         note={note}
+        notes={[note]}
         chats={[]}
         contextExpanded
         onChange={vi.fn()}
         onLinkChat={vi.fn()}
+        onOpenNote={vi.fn()}
         onToggleContext={vi.fn()}
       />,
     );
@@ -54,6 +58,32 @@ describe('LocalNoteEditor', () => {
     expect(document.querySelector('script')).toBeNull();
   });
 
+  it('opens a uniquely resolved local note link from Markdown preview', () => {
+    const note = {
+      ...createLocalNote({ id: 'note-1', title: 'TCP', folderId: null, now: 1 }),
+      content: 'Compare with [[UDP]].',
+    };
+    const udp = createLocalNote({ id: 'note-2', title: 'UDP', folderId: null, now: 1 });
+    const onOpenNote = vi.fn();
+
+    render(
+      <LocalNoteEditor
+        note={note}
+        notes={[note, udp]}
+        chats={[]}
+        contextExpanded
+        onChange={vi.fn()}
+        onLinkChat={vi.fn()}
+        onOpenNote={onOpenNote}
+        onToggleContext={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('radio', { name: 'Preview note' }));
+    fireEvent.click(screen.getByRole('button', { name: '[[UDP]]' }));
+
+    expect(onOpenNote).toHaveBeenCalledWith(udp);
+  });
+
   it('adds local note tags as explicit metadata', () => {
     const note = createLocalNote({ id: 'note-1', title: 'TCP', folderId: null, now: 1 });
     const onChange = vi.fn();
@@ -61,10 +91,12 @@ describe('LocalNoteEditor', () => {
     render(
       <LocalNoteEditor
         note={note}
+        notes={[note]}
         chats={[]}
         contextExpanded
         onChange={onChange}
         onLinkChat={vi.fn()}
+        onOpenNote={vi.fn()}
         onToggleContext={vi.fn()}
       />,
     );
@@ -87,10 +119,12 @@ describe('LocalNoteEditor', () => {
     render(
       <LocalNoteEditor
         note={note}
+        notes={[note]}
         chats={[chat]}
         contextExpanded={false}
         onChange={vi.fn()}
         onLinkChat={vi.fn()}
+        onOpenNote={vi.fn()}
         onToggleContext={onToggleContext}
       />,
     );
