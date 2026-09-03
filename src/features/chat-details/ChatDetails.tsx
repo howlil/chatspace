@@ -1,18 +1,19 @@
 import { FolderInput, MessageSquareText, Pencil, Pin, PinOff } from 'lucide-react';
 
 import type { ChatReference, WorkspaceFolder } from '../../domain/workspace/model';
-import { Button, Panel, Select } from '../../ui/primitives';
+import { Button, Panel, Select, Textarea } from '../../ui/primitives';
 
 interface ChatDetailsProps {
   chat: ChatReference;
   folder: WorkspaceFolder | undefined;
   folders: WorkspaceFolder[];
   onRename: () => void;
+  onAnnotationChange: (annotation: string) => void;
   onTogglePin: () => void;
   onMove: (folderId: string | null) => void;
 }
 
-export function ChatDetails({ chat, folder, folders, onRename, onTogglePin, onMove }: ChatDetailsProps) {
+export function ChatDetails({ chat, folder, folders, onRename, onAnnotationChange, onTogglePin, onMove }: ChatDetailsProps) {
   return (
     <section className="h-full min-h-0 overflow-y-auto">
       <div className="mx-auto grid w-full max-w-xl gap-4 px-4 py-5 sm:px-5">
@@ -27,6 +28,24 @@ export function ChatDetails({ chat, folder, folders, onRename, onTogglePin, onMo
             </p>
           </div>
         </div>
+
+        <Panel className="grid gap-2 p-3">
+          <label className="grid gap-1.5">
+            <span className="flex items-center justify-between gap-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-cs-subtle">
+              <span>Why saved</span>
+              <span className="normal-case tracking-normal font-normal">Local context</span>
+            </span>
+            <Textarea
+              aria-label="Why saved"
+              className="min-h-20 resize-none text-[11px] leading-5"
+              value={chat.annotation}
+              onChange={(event) => onAnnotationChange(event.target.value)}
+              placeholder="Add a short reason so this conversation is recognizable later."
+              maxLength={500}
+            />
+          </label>
+          <p className="m-0 text-[9px] leading-4 text-cs-subtle">This is user-authored local metadata. Chatspace does not copy ChatGPT conversation content.</p>
+        </Panel>
 
         <Panel className="grid gap-3 p-3">
           <div className="grid gap-1">
@@ -47,15 +66,15 @@ export function ChatDetails({ chat, folder, folders, onRename, onTogglePin, onMo
             <span className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-cs-subtle">
               <FolderInput size={10} aria-hidden="true" /> Location
             </span>
-<Select
-  aria-label={`Move ${chat.label}`}
-  value={chat.folderId ?? ''}
-  options={[
-    { value: '', label: 'Workspace root' },
-    ...folders.map((item) => ({ value: item.id, label: item.name })),
-  ]}
-  onValueChange={(value) => onMove(value === '' ? null : value)}
-/>
+            <Select
+              aria-label={`Move ${chat.label}`}
+              value={chat.folderId ?? ''}
+              options={[
+                { value: '', label: 'Workspace root' },
+                ...folders.map((item) => ({ value: item.id, label: item.name })),
+              ]}
+              onValueChange={(value) => onMove(value === '' ? null : value)}
+            />
           </label>
         </Panel>
       </div>
