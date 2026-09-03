@@ -1,7 +1,6 @@
 import { hasValidWorkspaceSemantics } from './integrity';
 import {
   WORKSPACE_SCHEMA_VERSION,
-  createDefaultNoteTemplates,
   ensureInboxFolder,
   type ChatReference,
   type KnowledgeFilter,
@@ -74,8 +73,12 @@ function isChatReferenceBase(value: unknown): boolean {
   return isRecord(value) && isString(value.id) && value.provider === 'chatgpt' && isString(value.target) && isString(value.label) && isNullableString(value.folderId) && typeof value.pinned === 'boolean' && isNumber(value.createdAt) && isNumber(value.updatedAt);
 }
 
-function isChatReference(value: unknown): value is ChatReference {
+function isV3ChatReference(value: unknown): boolean {
   return isChatReferenceBase(value) && isRecord(value) && isNullableNumber(value.archivedAt);
+}
+
+function isChatReference(value: unknown): value is ChatReference {
+  return isV3ChatReference(value) && isRecord(value) && isString(value.annotation);
 }
 
 function isLegacyLocalNoteBase(value: unknown): boolean {
@@ -122,6 +125,43 @@ export function isWorkspaceSnapshot(value: unknown): value is WorkspaceSnapshot 
   return structurallyValid && hasValidWorkspaceSemantics(value as unknown as WorkspaceSnapshot);
 }
 
+function migrateV3Workspace(value: Record<string, unknown>): WorkspaceSnapshot | null {
+  if (value.schemaVersion !== 3 || !hasWorkspaceEnvelope(value, true)) return null;
+  if (!Array.isArray(value.chatRefs) || !value.chatRefs.every(isV3ChatReference)) return null;
+  if (!Array.isArray(value.notes) || !value.notes.every(isLocalNote)) return null;
+  if (!Array.isArray(value.savedViews) || !value.savedViews.every(isSavedView)) return null;
+  if (!Array.isArray(value.noteTemplates) || !value.noteTemplates.every(isNoteTemplate)) return null;
+
+  const migrated: WorkspaceSnapshot = {
+    schemaVersion: WORKSPACE_SCHEMA_VERSION,
+    id: value.id as string,
+    name: value.name as string,
+    folders: value.folders as WorkspaceFolder[],
+    chatRefs: (value.chatRefs as Record<string, unknown>[]).map((chat) => ({
+      id: chat.id as string,
+      provider: 'chatgpt',
+      target: chat.target as string,
+      label: chat.label as string,
+      annotation: '',
+      folderId: chat.folderId as string | null,
+      pinned: chat.pinned as boolean,
+      archivedAt: chat.archivedAt as number | null,
+      createdAt: chat.createdAt as number,
+      updatedAt: chat.updatedAt as number,
+    })),
+    notes: value.notes as LocalNote[],
+    savedViews: value.savedViews as SavedKnowledgeView[],
+    noteTemplates: value.noteTemplates as NoteTemplate[],
+    manualEdges: value.manualEdges as ManualGraphEdge[],
+    tabs: value.tabs as WorkspaceTab[],
+    activeTabId: value.activeTabId as string,
+    layout: value.layout as PanelLayout,
+    updatedAt: value.updatedAt as number,
+  };
+
+  return hasValidWorkspaceSemantics(migrated) ? ensureInboxFolder(migrated) : null;
+}
+
 function migrateLegacyWorkspace(value: Record<string, unknown>): WorkspaceSnapshot | null {
   const version = value.schemaVersion;
   if ((version !== 1 && version !== 2) || !hasWorkspaceEnvelope(value, false)) return null;
@@ -143,6 +183,7 @@ function migrateLegacyWorkspace(value: Record<string, unknown>): WorkspaceSnapsh
       provider: 'chatgpt',
       target: chat.target as string,
       label: chat.label as string,
+      annotation: '',
       folderId: chat.folderId as string | null,
       pinned: chat.pinned as boolean,
       archivedAt: version === 2 ? chat.archivedAt as number | null : null,
@@ -162,7 +203,7 @@ function migrateLegacyWorkspace(value: Record<string, unknown>): WorkspaceSnapsh
       updatedAt: note.updatedAt as number,
     })),
     savedViews: [],
-    noteTemplates: createDefaultNoteTemplates(updatedAt),
+    noteTemplates: [],
     manualEdges: value.manualEdges as ManualGraphEdge[],
     tabs: value.tabs as WorkspaceTab[],
     activeTabId: value.activeTabId as string,
@@ -175,7 +216,8 @@ function migrateLegacyWorkspace(value: Record<string, unknown>): WorkspaceSnapsh
 
 export function migrateWorkspaceSnapshot(value: unknown): WorkspaceSnapshot | null {
   if (isWorkspaceSnapshot(value)) return ensureInboxFolder(value);
-  return isRecord(value) ? migrateLegacyWorkspace(value) : null;
+  if (!isRecord(value)) return null;
+  return migrateV3Workspace(value) ?? migrateLegacyWorkspace(value);
 }
 
 export function exportWorkspaceJson(snapshot: WorkspaceSnapshot): string { return JSON.stringify(snapshot, null, 2); }
@@ -188,7 +230,7 @@ export function importWorkspaceJson(json: string): WorkspaceSnapshot {
   if (migrated !== null) return migrated;
 
   if (isRecord(parsed) && parsed.schemaVersion !== undefined) {
-    if (parsed.schemaVersion === 1 || parsed.schemaVersion === 2 || parsed.schemaVersion === WORKSPACE_SCHEMA_VERSION) {
+    if (parsed.schemaVersion === 1 || parsed.schemaVersion === 2 || parsed.schemaVersion === 3 || parsed.schemaVersion === WORKSPACE_SCHEMA_VERSION) {
       throw new Error('Invalid workspace payload.');
     }
     throw new Error(`Unsupported workspace schema version: ${String(parsed.schemaVersion)}.`);
