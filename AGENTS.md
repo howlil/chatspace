@@ -65,15 +65,16 @@ Stop and surface the decision instead of guessing when the requested work requir
 
 ## Verification Rule
 
-Verification is proportional to changed risk.
+Verification is proportional to changed risk and remains repository-owned.
 
 - use static checks for syntax/type/style risks;
 - use focused deterministic tests for owned logic and observable behavior;
 - use integration tests when behavior crosses real repository-owned boundaries that isolated tests cannot establish;
-- use live-browser/black-box evidence only for browser/runtime behavior that deterministic repository tests cannot honestly prove;
 - use the repository CI gate for integration confidence before merge/release-ready state.
 
-Do not add higher-cost verification layers merely because they exist. Do not weaken or skip a relevant existing gate to manufacture green status.
+Black-box/live-browser testing is not a required verification layer or milestone completion gate. Do not create synthetic browser suites merely to imitate Chromium runtime behavior.
+
+Do not add higher-cost verification layers merely because they exist. Do not weaken or skip a relevant existing deterministic gate to manufacture green status.
 
 ## Material Chatspace Boundaries
 
