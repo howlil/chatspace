@@ -4,84 +4,89 @@ Status: **READY_FOR_MILESTONE**
 
 ## Feature Compass
 
-**Shape:** Chatspace is a local-first companion beside native ChatGPT whose core loop is save important work, remember why it matters, find it again, resume the native conversation, distill durable notes, and keep user-owned knowledge portable.
+**Shape:** Chatspace is a local-first companion beside native ChatGPT whose daily loop is contextual save, remember why, continue/find, and resume; Library, durable notes, advanced knowledge navigation, and portability support that loop without competing with it.
 
-**Position:** M17 — Core Capture, Retrieval & Resume is complete.
+**Position:** M18 — Core Navigation & Daily-Use Flow Simplification is complete and deterministically verified.
 
-**Delta:** M17 shifts product emphasis back to the highest-frequency core loop: saved chats now carry optional user-authored `Why saved` context; Home provides a unified Continue working set; Quick Open ranks local retrieval by relevance with pin/recency tie-breaks; new workspaces no longer seed the Learning Note preset; and default Graph UX no longer authors new manual relationships while preserving existing user data.
+**Delta:** M18 translates the M17 product focus into information architecture and interaction flow: Home exposes current-conversation context and direct save; Continue no longer duplicates pinned shortcuts; empty Inbox is demoted; Quick Open groups daily retrieval before advanced objects; Home / Library / Settings are the primary user jobs; Graph is under More; vault/data maintenance is consolidated under Settings; and resume reuses/focuses matching ChatGPT tabs when possible.
 
-**Next Move:** Select the next milestone only from a meaningful remaining gap in the core user journey. Do not expand advanced PKM primitives without an explicit product outcome.
+**Next Move:** Merge PR #44. After integration to `master`, select the next milestone from the highest-value missing core user capability rather than continuing M18 polish by default.
 
 ## Completed milestone decomposition
 
 ```text
 Product purpose: durable local context around native ChatGPT
-Core journey: save -> remember why -> continue/find -> resume -> distill -> own
-Milestone: M17 — Core Capture, Retrieval & Resume
+Core journey: current context -> save -> remember -> continue/find -> resume -> organize/distill -> own
+Milestone: M18 — Core Navigation & Daily-Use Flow Simplification
 
-Slice 1 — Intentful low-friction capture
+Slice 1 — Contextual current-chat entry point
   COMPLETE
-  annotation + schema v4 migration + editable Why saved
+  Home current-conversation state + direct Save + safe browser-tab-title prefill
 
-Slice 2 — Unified Continue experience
+Slice 2 — Focused Home working set
   COMPLETE
-  recent chats + notes as one temporal working set
+  unpinned Continue + distinct Pinned shortcuts + non-empty-only Inbox prominence
 
-Slice 3 — Context-aware Quick Open
+Slice 3 — Retrieval-oriented Quick Open
   COMPLETE
-  title/context/content/folder indexing + deterministic relevance/recency/pin ranking
+  grouped empty/search states + advanced Saved View demotion without removing searchability
 
-Slice 4 — Core-product simplification
+Slice 4 — Simplified primary navigation
   COMPLETE
-  no Learning Note seeded in new workspaces
-  legacy Learning Note data preserved but not default UX
-  Graph/properties/views remain advanced
-  new manual Graph-edge authoring removed from default product path
-  existing manual edges remain readable/deletable
+  Home / Library / Settings + Graph behind More
+  Workbench retained only as an internal implementation concept
 
-Slice 5 — Integrated deterministic acceptance
+Slice 5 — Advanced knowledge progressive disclosure
   COMPLETE
-  repository-owned core workflow verified through deterministic integration coverage and CI
+  Graph advanced; Saved Views secondary; note properties/backlinks/related context remain note-scoped
+
+Slice 6 — Settings consolidation
+  COMPLETE
+  Markdown vault + backup/import/export/recovery under Settings
+
+Slice 7 — Seamless resume
+  COMPLETE
+  focus matching validated ChatGPT tab -> reuse active supported tab -> create validated target
+
+Slice 8 — Integrated deterministic verification
+  COMPLETE
+  focused M18 flow/provider/retrieval coverage + full relevant repository CI
 ```
 
-## M17 product outcome
+## M18 product outcome
 
-Users can save an important ChatGPT conversation with minimal friction, optionally record why it matters, see recent local work as one coherent Continue surface, retrieve it through context-aware Quick Open, and resume the validated native ChatGPT target without provider-content extraction.
+When the user opens Chatspace beside ChatGPT, the primary experience centers the current conversation and the next likely action instead of exposing the product as a list of PKM modules. Later retrieval starts from recent/pinned local work, and resume returns directly to the validated native ChatGPT target. Organization, Graph, saved views, metadata, portability, and vault integration remain available through deliberate secondary/contextual surfaces.
 
 ## Acceptance status
 
-- [x] save-current-chat keeps name required while folder/pin remain optional secondary decisions;
-- [x] optional `Why saved` context persists and remains editable;
-- [x] schema v1/v2/v3 migrates deterministically to v4 without destructive user-data loss;
-- [x] Home Continue combines active chats and non-Inbox notes by `updatedAt`;
-- [x] Quick Open finds chat labels, local annotations, folder names, note titles/tags/content, and existing local structured metadata;
-- [x] exact/prefix/title relevance remains stronger than context/content matches, with pinned/recent work used as deterministic tie-break signals;
-- [x] empty-query Quick Open favors recent/pinned work before commands and secondary containers;
-- [x] deterministic application coverage verifies Quick Open annotation retrieval and validated provider navigation invocation;
-- [x] new workspaces do not seed the built-in Learning Note;
-- [x] existing template data remains preserved while the legacy Learning Note is not promoted in default Quick Open;
-- [x] default Graph UX no longer authors new manual relationships; existing manual relations remain visible and explicitly deletable;
-- [x] no provider DOM/history/content scraping, embeddings, semantic search, database-view expansion, Graph expansion, or automatic filesystem sync was introduced;
-- [x] PROJECT.md, ARCHITECTURE.md, README.md, PRIVACY.md, AGENTS.md, QUALITY.md, and DECISIONS.md reflect the resulting product/verification boundary;
-- [x] deterministic repository gates pass;
-- [x] black-box/live-browser testing is not a required milestone completion gate.
+- [x] Home shows current supported ChatGPT conversation context and saved/unsaved state;
+- [x] current conversation can be saved directly from Home;
+- [x] safe browser-tab title metadata can prefill the editable local name without provider DOM/message access;
+- [x] name remains the only required capture field; Why saved/folder/pin remain optional;
+- [x] Continue excludes pinned chats while retaining recent unpinned chats + non-Inbox notes;
+- [x] Inbox is not rendered as a prominent Home section when empty;
+- [x] Quick Open empty state groups Continue / Pinned / Library / Actions;
+- [x] explicit search groups Chats / Notes / Folders / Actions / Saved views;
+- [x] advanced Saved Views stay searchable but do not occupy empty-state attention;
+- [x] primary user-facing jobs are Home / Library / Settings; Graph is under More;
+- [x] user-facing accessibility terminology uses Library rather than Explorer/Workbench;
+- [x] note properties/backlinks/related context remain note-scoped;
+- [x] Markdown vault and data maintenance entry points live under Settings;
+- [x] resume first focuses an already-open matching validated ChatGPT conversation target;
+- [x] fallback resume reuses the active supported ChatGPT tab or opens a validated target;
+- [x] no provider DOM/history/message scraping, AI semantic search, embeddings, Graph/property/view expansion, template expansion, background sync, new provider, or schema change was introduced;
+- [x] deterministic M18 integration/provider/retrieval coverage is present;
+- [x] CI #303 passed frozen install, lint, strict TypeScript, 121 deterministic tests across 35 files, extension production build/ZIP, and final `verify`.
 
 ## Verification evidence
 
-PR #43 automated verification on the M17 implementation established:
-
-- frozen pnpm install: passed;
-- lint: passed;
-- strict TypeScript typecheck: passed;
-- deterministic tests: **116 passed across 34 files**;
-- M17 core-flow coverage verifies save + Why saved persistence/editing, annotation retrieval, validated resume invocation, unified Continue behavior, and legacy manual-edge deprecation behavior;
-- extension production build/package: passed;
-- Chromium MV3 ZIP produced successfully;
-- landing build correctly skipped on the extension-only PR surface;
-- final relevant-gate verifier passed.
-
-The first PR CI attempt failed at strict typecheck because `exactOptionalPropertyTypes` rejected explicitly propagated absent retrieval signals. The retrieval DTO contract was corrected without weakening TypeScript or CI, and the subsequent full relevant gate passed.
+- CI #303 (`33800399837`) passed on implementation-complete head `f5ec753ef793c97562869c2ea917f4db718e9066`.
+- Test result: **35 test files passed / 121 tests passed**.
+- Production Chromium MV3 package built successfully as `.output/chatspace-0.0.0-chrome.zip`.
+- Initial M18 CI failed at strict TypeScript because `exactOptionalPropertyTypes` rejected an explicitly propagated absent optional Settings integration callback. The callback contract was corrected without weakening strict TypeScript or CI.
+- A later deterministic test run exposed three legacy UX expectations that contradicted the approved M18 IA: `Command palette` vs `Quick open`, `Explorer` vs `Library`, and empty-state Saved View visibility. Production behavior was retained and the tests were updated to assert the approved user contract, including explicit Saved View searchability.
+- M18-specific deterministic coverage verifies contextual current-conversation capture/name prefill, Continue/Pinned separation, primary navigation + Settings vault entry, Quick Open grouping, and provider matching-tab reuse.
 
 ## Completion rule
 
-M17 is complete based on repository-owned deterministic evidence and green CI. Separate black-box/live-browser acceptance is intentionally not required. Manual runtime inspection may still be used when useful for debugging or product observation, but it does not block milestone completion or merge.
+M18 is complete. Separate black-box/live-browser acceptance is not required. Do not extend M18 with nice-to-have polish by default; choose the next milestone from the highest-value missing core capability after PR #44 is integrated to `master`.

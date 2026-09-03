@@ -87,6 +87,8 @@ describe('WorkspaceApp structured knowledge', () => {
 
     await screen.findByText('Local workspace ready.');
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    const search = screen.getByRole('textbox', { name: 'Search notes, chats, folders, views, or commands' });
+    fireEvent.change(search, { target: { value: 'Backend research' } });
     fireEvent.click(screen.getByRole('button', { name: 'Backend research' }));
 
     const projection = await screen.findByLabelText('Saved view Backend research');

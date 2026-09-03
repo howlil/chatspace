@@ -176,7 +176,7 @@ describe('WorkspaceApp', () => {
     });
   });
 
-  it('opens the local command palette and graph tab', async () => {
+  it('opens Quick Open and the advanced graph tab', async () => {
     render(
       <WorkspaceApp
         repository={new MemoryWorkspaceRepository()}
@@ -186,7 +186,7 @@ describe('WorkspaceApp', () => {
 
     await screen.findByText('Local workspace ready.');
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
-    expect(screen.getByRole('dialog', { name: 'Command palette' })).toBeVisible();
+    expect(screen.getByRole('dialog', { name: 'Quick open' })).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Open graph' }));
     expect(screen.getByRole('tab', { name: 'Graph' })).toHaveAttribute('aria-selected', 'true');
   });
@@ -375,12 +375,12 @@ describe('WorkspaceApp', () => {
     expect(screen.getByRole('textbox', { name: 'Note title' })).toHaveValue('Runbook');
   });
 
-  it('persists explorer collapse and resize state as workspace layout', async () => {
+  it('persists library collapse and resize state as workspace layout', async () => {
     const repository = new MemoryWorkspaceRepository();
     render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
 
     await screen.findByText('Local workspace ready.');
-    const separator = screen.getByRole('separator', { name: 'Resize explorer' });
+    const separator = screen.getByRole('separator', { name: 'Resize library' });
     const initialWidth = Number(separator.getAttribute('aria-valuenow'));
     fireEvent.keyDown(separator, { key: 'ArrowRight' });
 
@@ -389,13 +389,13 @@ describe('WorkspaceApp', () => {
       expect(saved?.layout.treeWidth).toBe(initialWidth + 16);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Toggle explorer' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle library' }));
 
     await waitFor(async () => {
       const saved = await repository.load();
       expect(saved?.layout.treeCollapsed).toBe(true);
     });
-    expect(screen.queryByRole('navigation', { name: 'Workspace explorer' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Workspace library' })).not.toBeInTheDocument();
   });
 
   it('does not overwrite corrupted storage and exposes the raw recovery payload', async () => {

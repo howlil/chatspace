@@ -1,4 +1,4 @@
-import { Database, Download, RotateCcw, Upload } from 'lucide-react';
+import { Database, Download, HardDrive, RotateCcw, Upload } from 'lucide-react';
 import { useState } from 'react';
 
 import { exportWorkspaceJson, importWorkspaceJson } from '../../domain/workspace/io';
@@ -27,6 +27,7 @@ interface SettingsPanelProps {
   onImport: (json: string) => Promise<void>;
   onReset: () => Promise<void>;
   onDownload: (filename: string, content: string) => void;
+  onOpenMarkdownSync?: (() => void) | undefined;
   onPortableExport?: (workspaceJson: string) => Promise<PortableWorkspaceExportResult | null>;
   portableExportSupported?: boolean;
   onMarkdownScan?: (workspaceJson: string) => Promise<MarkdownImportScan | null>;
@@ -69,6 +70,7 @@ export function SettingsPanel({
   onImport,
   onReset,
   onDownload,
+  onOpenMarkdownSync,
   onPortableExport = exportPortableWorkspaceJson,
   portableExportSupported = isPortableWorkspaceExportSupported(),
   onMarkdownScan = scanMarkdownFolder,
@@ -162,13 +164,13 @@ export function SettingsPanel({
     <section className="grid gap-4" aria-label="Chatspace settings">
       <WorkspaceHeader
         icon={Database}
-        title="Local workspace"
-        description="Extension-owned storage and recovery."
+        title="Settings"
+        description="Local data, portability, and optional integrations."
       />
 
       <SettingsCard
         title="Local data"
-        description="Workspace metadata, notes, graph relationships, tabs, and validated ChatGPT conversation URLs stay in extension-local storage."
+        description="Workspace metadata, notes, relationships, tabs, and validated ChatGPT conversation URLs stay in extension-local storage."
       >
         {persistenceError !== null ? (
           <InlineFeedback tone="danger">{persistenceError}</InlineFeedback>
@@ -176,6 +178,20 @@ export function SettingsPanel({
           <p className="m-0 text-[9px] leading-4 text-cs-muted">Storage is healthy. Provider credentials and ChatGPT output are not stored.</p>
         )}
       </SettingsCard>
+
+      {onOpenMarkdownSync !== undefined && (
+        <SettingsCard
+          title="Markdown vault"
+          description="Optional manual one-way sync to a user-selected local folder."
+          action={(
+            <Button onClick={onOpenMarkdownSync}>
+              <HardDrive size={11} aria-hidden="true" /> Open integration
+            </Button>
+          )}
+        >
+          <p className="m-0 text-[9px] leading-4 text-cs-muted">Connect, change, disconnect, and sync the local Markdown vault only when you need the integration. It is not part of the daily save/find/resume path.</p>
+        </SettingsCard>
+      )}
 
       <SettingsCard
         title="Backup"

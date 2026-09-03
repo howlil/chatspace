@@ -8,10 +8,12 @@ The primary runtime path is:
 
 ```text
 native ChatGPT work
+-> Side Panel reads safe active-tab URL/title metadata
+-> Home exposes current-conversation state
 -> save validated URL-only reference + optional local Why saved
 -> chrome.storage.local workspace
--> Home / Explorer / Ctrl-Cmd K local retrieval
--> validated provider navigation
+-> Home / Library / Ctrl-Cmd K local retrieval
+-> validated provider navigation with matching-tab reuse when available
 ```
 
 Local Markdown notes, links, properties/views, Graph, portability, and vault integration support this path but do not change the provider ownership boundary.
@@ -33,12 +35,15 @@ Local Markdown notes, links, properties/views, Graph, portability, and vault int
 
 ```text
 Chromium
-├── Native ChatGPT tab
+├── Native ChatGPT tab(s)
 │   └── provider-owned conversation UI/content
 │
 └── Chatspace Side Panel
-    ├── Home / Explorer / Quick Open
-    ├── Notes / Saved Views / Graph / Settings
+    ├── Home: current conversation / Continue / Inbox / Pinned
+    ├── Library: folders / saved chats / notes / archive
+    ├── Quick Open: grouped local retrieval + actions
+    ├── Settings: recovery / portability / optional vault integration
+    ├── Advanced: Graph + note-scoped knowledge context
     ├── Workspace domain + application coordination
     ├── ProviderTabsPort -> browser.tabs
     ├── WorkspaceRepository -> chrome.storage.local
@@ -61,13 +66,23 @@ src/ui/            reusable UI primitives
 src/styles/        shared styling/tokens
 ```
 
-`WorkspaceApp` coordinates owned domain behavior and injected adapters rather than constructing browser/storage infrastructure itself.
+`WorkspaceApp` coordinates owned domain behavior and injected adapters rather than constructing browser/storage infrastructure itself. Internal component names such as Workbench do not define user-facing information architecture.
 
 ## Provider boundary
 
 Provider-specific logic lives under `src/providers/chatgpt/`.
 
-`ProviderTabsPort` is the browser boundary. It may read active-tab metadata, classify supported ChatGPT state, validate/normalize targets, navigate an existing supported tab, and open a validated target when needed.
+`ProviderTabsPort` is the browser boundary. It may:
+
+- read safe browser-tab metadata required for context (`id`, URL, title, window id);
+- classify supported ChatGPT state;
+- validate/normalize conversation targets;
+- locate an already-open matching validated target;
+- focus that tab/window;
+- navigate an existing supported ChatGPT tab;
+- open a validated target when needed.
+
+Browser-tab title may be used only as an editable local-name prefill. It is ephemeral metadata and does not authorize provider DOM/message access.
 
 The core path does not depend on:
 
@@ -77,7 +92,40 @@ The core path does not depend on:
 - network interception;
 - provider conversation/message extraction.
 
-Provider failure degrades only provider-dependent navigation; the local workspace remains usable.
+Provider failure degrades only provider-dependent context/navigation; the local workspace remains usable.
+
+## Application navigation boundary
+
+Primary user-facing jobs are:
+
+```text
+Home
+Library
+Settings
+More -> Graph
+```
+
+- Home owns current provider context and temporal continuation.
+- Library owns deliberate browsing/organization of local artifacts.
+- Settings owns recovery, import/export, and optional local-vault entry.
+- Graph stays advanced rather than competing with primary navigation.
+- Properties, backlinks, related notes, and other note knowledge context remain note-scoped.
+- Saved Views remain valid advanced retrieval objects but are not promoted in empty Quick Open.
+
+The persisted tab system may still host opened local artifacts internally; it does not require the user to understand a Workbench product concept.
+
+## Home working-set boundary
+
+Home projects canonical active local state into three distinct jobs:
+
+```text
+Current conversation -> contextual save/saved status
+Continue             -> active unpinned saved chats + non-Inbox notes by updatedAt
+Inbox                 -> local captures requiring triage, shown prominently only when non-empty
+Pinned                -> stable saved-chat shortcuts
+```
+
+Pinned chats are excluded from Continue to avoid duplicate representation on the same Home surface.
 
 ## Workspace domain
 
@@ -117,7 +165,7 @@ v3 -> v4
 - v1/v2 migration initializes structured-note state without inventing the deprecated Learning Note preset;
 - corrupted or unsupported state fails closed instead of silently replacing user data.
 
-Changing annotation semantics, note property representation, saved-view definitions, template persistence, manual-edge compatibility, schema version, or migration semantics is a persisted-contract change.
+M18 changes navigation/projection behavior only; it does not change `WorkspaceSnapshot` schema or persisted contract.
 
 ## Retrieval boundary
 
@@ -148,7 +196,11 @@ Ranking invariants:
 5. local note content;
 6. pin and `updatedAt` only break ties at the same relevance level.
 
-For an empty query, active chat/note work is ordered ahead of commands and secondary containers, with pinned/recent work favored deterministically.
+Presentation is job-oriented without changing ranking truth:
+
+- empty query: Continue -> Pinned -> Library -> Actions;
+- explicit query: Chats -> Notes -> Folders -> Actions -> Saved views;
+- Saved views remain searchable but do not occupy empty-state attention.
 
 ## Structured knowledge boundary
 
@@ -176,7 +228,7 @@ WorkspaceSnapshot
 -> spatial renderer + inspector
 ```
 
-Relationship provenance remains explicit. Existing manual relations may be canonical compatibility data. Default product behavior no longer authors new manual relations. Session-only dragged node coordinates remain ephemeral.
+Relationship provenance remains explicit. Existing manual relations may be canonical compatibility data. Default product behavior no longer authors new manual relations. Session-only dragged node coordinates remain ephemeral. M18 changes Graph discoverability, not Graph data semantics.
 
 ## Persistence
 
@@ -193,7 +245,7 @@ Persistence invariants:
 - physical storage writes are serialized;
 - clearing storage cancels pending buffered writes first.
 
-The persisted layout contract contains `shellCollapsed`, `treeCollapsed`, `shellWidth`, and `treeWidth`.
+The persisted layout contract contains `shellCollapsed`, `treeCollapsed`, `shellWidth`, and `treeWidth`. Internal `tree*` naming may remain for compatibility while the user-facing browsing concept is Library.
 
 ## Portability boundary
 
@@ -208,10 +260,13 @@ Saved-chat portable files may contain only Chatspace-owned metadata such as:
 
 They never contain automatically extracted native ChatGPT conversation content.
 
+Portability and recovery controls are consolidated under Settings so low-frequency maintenance does not compete with daily navigation.
+
 ## Local-vault integration
 
 Markdown Sync uses browser File System Access through `src/integrations/local-vault/`.
 
+- user explicitly enters the integration from Settings;
 - user explicitly selects a directory;
 - note Markdown is manually written beneath `<vault>/Chatspace/`;
 - directory handle is stored separately in IndexedDB;
@@ -226,7 +281,7 @@ Explicit Markdown folder scan/import is also user-initiated and does not establi
 Current trust boundaries are:
 
 1. validated Chatspace-owned local workspace data;
-2. browser tab metadata/navigation through the URL-only provider boundary;
+2. browser tab metadata/navigation through the URL/tab-only provider boundary;
 3. native ChatGPT as external provider-owned runtime/content;
 4. explicit user-selected filesystem access for local sync/import/export.
 
@@ -235,6 +290,7 @@ Project invariants:
 - extension permissions remain least-privilege and capability-driven;
 - unsupported provider targets fail closed;
 - no provider cookies/session tokens/private payloads are stored;
+- browser-tab title is contextual metadata only and does not become a content-extraction bridge;
 - user-authored/imported Markdown is rendered without executable raw HTML/script behavior;
 - MV3 CSP is respected: no `eval`, remote executable scripts, or fetched executable provider code;
 - filesystem writes remain beneath explicitly selected user-owned destinations;
@@ -245,6 +301,7 @@ New provider DOM/content access, privileged permissions, credentials, remote tel
 ## Failure isolation
 
 - provider unavailable -> local workspace remains usable;
+- matching provider tab not found -> validated navigation falls back to active supported tab or new tab;
 - corrupt workspace storage -> persistence fails closed and recovery is surfaced;
 - Side Panel crash -> native ChatGPT remains unaffected;
 - local-vault unavailable -> only vault-specific sync degrades;

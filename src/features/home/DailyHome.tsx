@@ -1,14 +1,22 @@
-import { FileText, Inbox, MessageSquareText, Pin, Sparkles } from 'lucide-react';
+import { BookmarkPlus, Check, FileText, Inbox, MessageSquareText, Pin, Sparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { INBOX_FOLDER_ID, type ChatReference, type LocalNote } from '../../domain/workspace/model';
-import { Panel } from '../../ui/primitives';
+import { Button, Panel } from '../../ui/primitives';
 import { WorkspaceHeader } from '../../ui/workspace';
+
+export interface CurrentConversationSummary {
+  supported: boolean;
+  label: string;
+  savedChat: ChatReference | null;
+}
 
 interface DailyHomeProps {
   chats: ChatReference[];
   notes: LocalNote[];
   status: string;
+  currentConversation: CurrentConversationSummary;
+  onSaveCurrentChat: () => void;
   onOpenChat: (chat: ChatReference) => void;
   onOpenNote: (note: LocalNote) => void;
 }
@@ -67,7 +75,7 @@ function NoteItem({ note, onOpen, inbox = false }: { note: LocalNote; onOpen: (n
 
 function ContinueRow({ item, onOpenChat, onOpenNote }: { item: ContinueItem; onOpenChat: (chat: ChatReference) => void; onOpenNote: (note: LocalNote) => void }) {
   return item.kind === 'chat'
-    ? <ChatItem chat={item.item} onOpen={onOpenChat} showPin />
+    ? <ChatItem chat={item.item} onOpen={onOpenChat} />
     : <NoteItem note={item.item} onOpen={onOpenNote} />;
 }
 
@@ -81,10 +89,62 @@ function HomeSection({ title, children }: { title: string; children: ReactNode }
   );
 }
 
-export function DailyHome({ chats, notes, status, onOpenChat, onOpenNote }: DailyHomeProps) {
-  const inboxNotes = newest(notes.filter((note) => note.folderId === INBOX_FOLDER_ID), 5);
+function CurrentConversationCard({
+  current,
+  onSave,
+  onOpen,
+}: {
+  current: CurrentConversationSummary;
+  onSave: () => void;
+  onOpen: (chat: ChatReference) => void;
+}) {
+  if (!current.supported) {
+    return (
+      <section aria-labelledby="current-conversation-title">
+        <h2 id="current-conversation-title" className="mb-1.5 px-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-cs-subtle">Current conversation</h2>
+        <Panel className="flex items-center gap-2.5 px-3 py-2.5 text-[10px] text-cs-muted">
+          <MessageSquareText size={13} className="shrink-0 text-cs-subtle" aria-hidden="true" />
+          <span>No supported ChatGPT conversation in the active tab.</span>
+        </Panel>
+      </section>
+    );
+  }
+
+  const saved = current.savedChat;
+  return (
+    <section aria-labelledby="current-conversation-title">
+      <h2 id="current-conversation-title" className="mb-1.5 px-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-cs-subtle">Current conversation</h2>
+      <Panel className="flex min-w-0 items-center gap-3 px-3 py-2.5">
+        <span className="grid size-8 shrink-0 place-items-center rounded-md border border-cs-border bg-cs-surface text-cs-muted">
+          <MessageSquareText size={14} strokeWidth={1.7} aria-hidden="true" />
+        </span>
+        <div className="grid min-w-0 flex-1 gap-0.5">
+          <strong className="truncate text-[11px] font-medium text-cs-text">{saved?.label ?? current.label}</strong>
+          <span className="truncate text-[9px] text-cs-subtle">
+            {saved === null ? 'Not saved yet' : saved.annotation || 'Saved locally'}
+          </span>
+        </div>
+        {saved === null ? (
+          <Button className="shrink-0" onClick={onSave}>
+            <BookmarkPlus size={11} aria-hidden="true" /> Save
+          </Button>
+        ) : (
+          <Button variant="ghost" className="shrink-0" onClick={() => onOpen(saved)}>
+            <Check size={11} aria-hidden="true" /> Saved
+          </Button>
+        )}
+      </Panel>
+    </section>
+  );
+}
+
+export function DailyHome({ chats, notes, status, currentConversation, onSaveCurrentChat, onOpenChat, onOpenNote }: DailyHomeProps) {
+  const allInboxNotes = notes.filter((note) => note.folderId === INBOX_FOLDER_ID);
+  const inboxNotes = newest(allInboxNotes, 5);
   const continueItems = newest<ContinueItem>([
-    ...chats.map((chat) => ({ kind: 'chat' as const, item: chat, updatedAt: chat.updatedAt })),
+    ...chats
+      .filter((chat) => !chat.pinned)
+      .map((chat) => ({ kind: 'chat' as const, item: chat, updatedAt: chat.updatedAt })),
     ...notes
       .filter((note) => note.folderId !== INBOX_FOLDER_ID)
       .map((note) => ({ kind: 'note' as const, item: note, updatedAt: note.updatedAt })),
@@ -95,14 +155,16 @@ export function DailyHome({ chats, notes, status, onOpenChat, onOpenNote }: Dail
   return (
     <section className="h-full min-h-0 overflow-y-auto" aria-label="Chatspace home">
       <div className="mx-auto grid w-full max-w-3xl gap-5 px-4 py-5 sm:px-5">
-        <WorkspaceHeader title="Workspace" description={status} />
+        <WorkspaceHeader title="Home" description={status} />
 
-        {empty ? (
-          <Panel className="grid min-h-44 place-items-center px-6 py-8 text-center">
+        <CurrentConversationCard current={currentConversation} onSave={onSaveCurrentChat} onOpen={onOpenChat} />
+
+        {empty && !currentConversation.supported ? (
+          <Panel className="grid min-h-36 place-items-center px-6 py-8 text-center">
             <div className="grid max-w-sm justify-items-center gap-2">
               <span className="grid size-9 place-items-center rounded-lg border border-cs-border bg-cs-surface text-cs-muted"><Sparkles size={15} strokeWidth={1.6} aria-hidden="true" /></span>
               <strong className="text-xs font-medium">Build your working set</strong>
-              <p className="m-0 text-[10px] leading-5 text-cs-muted">Save a useful ChatGPT conversation, quick capture a thought, or create a local note.</p>
+              <p className="m-0 text-[10px] leading-5 text-cs-muted">Open a ChatGPT conversation to save it, or quick capture a local thought.</p>
             </div>
           </Panel>
         ) : (
@@ -121,7 +183,7 @@ export function DailyHome({ chats, notes, status, onOpenChat, onOpenNote }: Dail
             )}
 
             {inboxNotes.length > 0 && (
-              <HomeSection title={`Inbox · ${notes.filter((note) => note.folderId === INBOX_FOLDER_ID).length}`}>
+              <HomeSection title={`Inbox · ${allInboxNotes.length}`}>
                 {inboxNotes.map((note) => <NoteItem key={note.id} note={note} inbox onOpen={onOpenNote} />)}
               </HomeSection>
             )}

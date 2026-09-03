@@ -1,4 +1,4 @@
-import { HardDrive, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
@@ -8,6 +8,7 @@ import { ChatspaceShell } from '../../src/app/shell/ChatspaceShell';
 import { WorkspaceErrorBoundary } from '../../src/app/shell/WorkspaceErrorBoundary';
 import { BrowserLocalVault } from '../../src/integrations/local-vault/BrowserLocalVault';
 import { createDefaultWorkspaceRepository } from '../../src/persistence/chromeStorageWorkspaceRepository';
+import { normalizeChatGptTarget } from '../../src/providers/chatgpt/adapter';
 import {
   navigateActiveProvider,
   readActiveProviderState,
@@ -15,7 +16,7 @@ import {
   type ProviderTabState,
 } from '../../src/providers/chatgpt/browserTabProvider';
 import '../../src/styles/tailwind.css';
-import { Button, IconButton } from '../../src/ui/primitives';
+import { Button } from '../../src/ui/primitives';
 
 const workspaceRepository = createDefaultWorkspaceRepository();
 const localVault = new BrowserLocalVault();
@@ -25,7 +26,17 @@ const providerTabsPort: ProviderTabsPort = {
     const tabs = await browser.tabs.query({ active: true, currentWindow: true });
     const tab = tabs[0];
     if (tab === undefined) return undefined;
-    return { id: tab.id, url: tab.url };
+    return { id: tab.id, url: tab.url, title: tab.title, windowId: tab.windowId };
+  },
+  async findByTarget(target) {
+    const tabs = await browser.tabs.query({});
+    const match = tabs.find((tab) => tab.url !== undefined && normalizeChatGptTarget(tab.url) === target);
+    if (match === undefined) return undefined;
+    return { id: match.id, url: match.url, title: match.title, windowId: match.windowId };
+  },
+  async focus(tab) {
+    if (tab.id !== undefined) await browser.tabs.update(tab.id, { active: true });
+    if (tab.windowId !== undefined) await browser.windows.update(tab.windowId, { focused: true });
   },
   async update(tabId, url) {
     await browser.tabs.update(tabId, { url });
@@ -42,13 +53,16 @@ function stateUrl(state: ProviderTabState): string {
 function SidepanelWorkspace({
   view,
   onBackToWorkspace,
+  onOpenMarkdownSync,
 }: {
   view: WorkspaceView;
   onBackToWorkspace: () => void;
+  onOpenMarkdownSync: () => void;
 }) {
   const [providerState, setProviderState] = useState<ProviderTabState>({
     kind: 'unavailable',
     url: null,
+    title: null,
   });
   const [refreshing, setRefreshing] = useState(false);
 
@@ -57,7 +71,7 @@ function SidepanelWorkspace({
     try {
       setProviderState(await readActiveProviderState(providerTabsPort));
     } catch {
-      setProviderState({ kind: 'unavailable', url: null });
+      setProviderState({ kind: 'unavailable', url: null, title: null });
     } finally {
       setRefreshing(false);
     }
@@ -105,9 +119,11 @@ function SidepanelWorkspace({
       <WorkspaceApp
         view={view}
         onBackToWorkspace={onBackToWorkspace}
+        onOpenMarkdownSync={onOpenMarkdownSync}
         repository={workspaceRepository}
         localVault={localVault}
         currentUrl={() => providerUrl}
+        currentTitle={() => providerState.title}
         navigate={(target) => {
           void navigateActiveProvider(providerTabsPort, target)
             .then(() => refreshProvider())
@@ -120,23 +136,14 @@ function SidepanelWorkspace({
 
 function SidepanelApp() {
   const [view, setView] = useState<WorkspaceView>('workspace');
-  const syncActive = view === 'markdown-sync';
 
   return (
-    <ChatspaceShell
-      headerActions={(
-        <IconButton
-          className={syncActive ? 'size-7 bg-cs-hover text-cs-text' : 'size-7 text-cs-subtle'}
-          aria-label="Markdown sync"
-          title="Markdown sync"
-          aria-pressed={syncActive}
-          onClick={() => setView(syncActive ? 'workspace' : 'markdown-sync')}
-        >
-          <HardDrive size={12} aria-hidden="true" />
-        </IconButton>
-      )}
-    >
-      <SidepanelWorkspace view={view} onBackToWorkspace={() => setView('workspace')} />
+    <ChatspaceShell>
+      <SidepanelWorkspace
+        view={view}
+        onBackToWorkspace={() => setView('workspace')}
+        onOpenMarkdownSync={() => setView('markdown-sync')}
+      />
     </ChatspaceShell>
   );
 }
