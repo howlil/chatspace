@@ -380,7 +380,7 @@ describe('WorkspaceApp', () => {
     render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
 
     await screen.findByText('Local workspace ready.');
-    const separator = screen.getByRole('separator', { name: 'Resize explorer' });
+    const separator = screen.getByRole('separator', { name: 'Resize library' });
     const initialWidth = Number(separator.getAttribute('aria-valuenow'));
     fireEvent.keyDown(separator, { key: 'ArrowRight' });
 
@@ -395,7 +395,7 @@ describe('WorkspaceApp', () => {
       const saved = await repository.load();
       expect(saved?.layout.treeCollapsed).toBe(true);
     });
-    expect(screen.queryByRole('navigation', { name: 'Workspace explorer' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Workspace library' })).not.toBeInTheDocument();
   });
 
   it('does not overwrite corrupted storage and exposes the raw recovery payload', async () => {
