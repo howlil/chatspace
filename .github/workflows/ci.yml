@@ -13,7 +13,72 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
+  detect:
+    name: Detect changed surface
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      extension: ${{ steps.scope.outputs.extension }}
+      landing: ${{ steps.scope.outputs.landing }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed files
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            echo "extension=true" >> "$GITHUB_OUTPUT"
+            echo "landing=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          extension=false
+          landing=false
+          changed_files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+
+          echo "Changed files:"
+          printf '%s\n' "$changed_files"
+
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+
+            case "$file" in
+              .github/workflows/ci.yml)
+                extension=true
+                landing=true
+                ;;
+              landing/*.md)
+                ;;
+              landing/*)
+                landing=true
+                ;;
+              *.md|.agents/*)
+                ;;
+              *)
+                # Fail safe: any non-documentation path not explicitly owned by
+                # the landing site is treated as extension/runtime-affecting.
+                extension=true
+                ;;
+            esac
+          done <<< "$changed_files"
+
+          echo "extension=$extension" >> "$GITHUB_OUTPUT"
+          echo "landing=$landing" >> "$GITHUB_OUTPUT"
+
+  extension:
+    name: Extension quality
+    needs: detect
+    if: needs.detect.outputs.extension == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -26,10 +91,12 @@ jobs:
           version: 11.23.0
           run_install: false
 
-      - name: Setup Node
+      - name: Setup Node with pnpm cache
         uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install frozen dependencies
         run: pnpm install --frozen-lockfile
@@ -40,14 +107,75 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Test
+      - name: Deterministic tests
         run: pnpm test
 
       - name: Build and package extension ZIP
         run: pnpm zip
 
-      - name: Install landing dependencies
-        run: pnpm --dir landing install --frozen-lockfile
+  landing:
+    name: Landing build
+    needs: detect
+    if: needs.detect.outputs.landing == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: landing
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.23.0
+          run_install: false
+
+      - name: Setup Node with pnpm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: landing/pnpm-lock.yaml
+
+      - name: Install frozen dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Build Astro landing
-        run: pnpm --dir landing build
+        run: pnpm build
+
+  verify:
+    name: verify
+    needs: [detect, extension, landing]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    steps:
+      - name: Enforce required relevant gates
+        env:
+          DETECT_RESULT: ${{ needs.detect.result }}
+          EXTENSION_NEEDED: ${{ needs.detect.outputs.extension }}
+          EXTENSION_RESULT: ${{ needs.extension.result }}
+          LANDING_NEEDED: ${{ needs.detect.outputs.landing }}
+          LANDING_RESULT: ${{ needs.landing.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$DETECT_RESULT" != "success" ]]; then
+            echo "Change detection failed: $DETECT_RESULT"
+            exit 1
+          fi
+
+          if [[ "$EXTENSION_NEEDED" == "true" && "$EXTENSION_RESULT" != "success" ]]; then
+            echo "Extension gate failed: $EXTENSION_RESULT"
+            exit 1
+          fi
+
+          if [[ "$LANDING_NEEDED" == "true" && "$LANDING_RESULT" != "success" ]]; then
+            echo "Landing gate failed: $LANDING_RESULT"
+            exit 1
+          fi
+
+          echo "All relevant CI gates passed."
