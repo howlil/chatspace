@@ -21,14 +21,15 @@ Core job:
 
 ```text
 Work in native ChatGPT
--> save an important conversation reference + optional Why saved
+-> open Chatspace beside the current conversation
+-> see current-conversation saved/unsaved state
+-> save the validated conversation reference + optional Why saved
    OR quick-capture a local thought to Inbox
--> return later to Chatspace Home / Ctrl-Cmd K
+-> return later to Home / Ctrl-Cmd K
 -> continue recent work or search local context
 -> resume the validated native ChatGPT target
--> organize/distill into folders and Markdown notes as needed
--> optionally connect notes using explicit Markdown links
--> export/import/sync user-owned local knowledge explicitly
+-> organize/distill from Library and note context as needed
+-> manage portability/integrations explicitly from Settings
 ```
 
 The product should optimize this hierarchy:
@@ -50,29 +51,48 @@ Advanced PKM capabilities must not compete visually or behaviorally with the pri
 
 ### Capture and remember
 
+- Home surfaces the current supported ChatGPT conversation as first-class context with saved/unsaved state.
 - Save the current supported ChatGPT conversation as URL-only local metadata.
+- Browser tab title metadata may safely prefill the local label when available; the label remains editable and no provider DOM/message extraction is introduced.
 - A saved chat has a required local label and optional user-authored `annotation` exposed as **Why saved**.
+- Folder and pin remain optional organization decisions rather than required capture gates.
 - Capture Inbox creates local Markdown notes without forcing immediate organization.
-- No provider message/content extraction is required.
 
 ### Continue and retrieve
 
-- Home `Continue` is a unified temporal working set across active saved chats and non-Inbox notes, ordered by local `updatedAt`.
-- Pinned chats remain an explicit stable shortcut; Inbox remains a distinct triage surface.
+- Home `Continue` is a unified temporal working set across active unpinned saved chats and non-Inbox notes, ordered by local `updatedAt`.
+- Pinned chats are a distinct stable-shortcut surface and are not duplicated in `Continue`.
+- Inbox is a distinct triage surface and is visually prominent only when it contains captures.
 - `Ctrl/⌘ K` Quick Open searches local chat labels, Why-saved annotations, folder context, note titles/tags/content, existing local properties, saved views, folders, and commands.
+- Empty-query Quick Open groups daily work as Continue, Pinned, Library, then Actions; advanced saved views are not promoted in the empty state.
+- With a query, results are grouped as Chats, Notes, Folders, Actions, and Saved views.
 - Retrieval ranking is deterministic: exact/prefix/label relevance beats context/content; pin and recency are tie-break signals rather than substitutes for relevance.
-- Empty-query Quick Open favors recent/pinned work before commands and secondary containers.
 
 ### Resume native ChatGPT
 
 - Saved provider targets are validated/normalized ChatGPT URLs.
-- Opening a saved chat resumes through the provider URL/tab boundary and records local activity.
+- Opening a saved chat first focuses an already-open matching ChatGPT conversation tab when one exists.
+- Otherwise Chatspace reuses the active supported ChatGPT tab or opens a validated target when needed.
+- Resume records local activity and does not introduce an intermediate Chatspace confirmation surface.
 - Unsupported provider targets fail closed.
 
-### Organize and lifecycle
+### Navigation and organization
 
-- nested local folders with explicit root/subfolder semantics;
-- local search/filters, pins, archive/restore, multi-select and bulk triage;
+Primary user-facing navigation expresses jobs rather than implementation modules:
+
+```text
+Home
+Library
+Settings
+More -> Graph
+```
+
+- Home owns current context and daily continuation.
+- Library is the deliberate browsing surface for nested folders, saved chats, notes, and archive lifecycle.
+- Settings owns data recovery/portability and optional integrations.
+- Workbench remains an internal implementation concept, not required user terminology.
+- nested local folders retain explicit root/subfolder semantics;
+- local search/filters, pins, archive/restore, multi-select and bulk triage remain available;
 - archive is non-destructive; delete is explicit and destructive only for Chatspace-owned local data.
 
 ### Distill durable knowledge
@@ -84,11 +104,12 @@ Advanced PKM capabilities must not compete visually or behaviorally with the pri
 - lightweight typed note properties: text, number, boolean, tags, and date;
 - named saved views using AND-only equality filters over canonical notes.
 
-Properties and saved views are advanced local organization tools, not the primary Chatspace product thesis. Do not expand them into a database/workflow suite without an explicit product outcome.
+Properties, backlinks, related notes, and saved views remain contextual/advanced note-organization tools rather than primary global navigation. Do not expand them into a database/workflow suite without an explicit product outcome.
 
 ### Advanced Graph projection
 
 - Graph is an advanced spatial projection over canonical local workspace state.
+- Graph is reached through advanced/More navigation rather than competing with Home/Library/Settings.
 - explicit Markdown links, note-to-chat references, containment, and related-local similarity can be projected with provenance;
 - existing legacy manual graph relationships remain readable and explicitly deletable;
 - default product UX no longer authors new manual graph relationships;
@@ -108,7 +129,8 @@ Properties and saved views are advanced local organization tools, not the primar
 - portable knowledge bundle export;
 - chat-reference portable Markdown includes Chatspace-owned label, Why-saved annotation, and validated target URL only;
 - supported note properties round-trip through Markdown frontmatter;
-- optional manual one-way local-vault Markdown sync.
+- optional manual one-way local-vault Markdown sync;
+- import/export/recovery/vault entry points live under Settings rather than competing with the daily navigation loop.
 
 ## Core entities
 
@@ -136,11 +158,11 @@ User-owned Markdown with title, tags, lightweight typed properties, explicit lin
 
 ### Folder
 
-Nested local organization independent from provider projects.
+Nested local organization independent from provider projects and surfaced through Library.
 
 ### Saved knowledge view
 
-A named AND-only equality-filter projection over canonical notes. It stores filter definitions, not copied note data.
+A named AND-only equality-filter projection over canonical notes. It stores filter definitions, not copied note data, and remains an advanced retrieval object rather than an empty-state Quick Open default.
 
 ### Graph
 
@@ -148,25 +170,28 @@ An advanced projection over canonical/derived local relationships. Existing manu
 
 ### Vault connection
 
-Optional local integration used to manually write Chatspace notes beneath a user-selected filesystem directory. The directory handle is stored separately from canonical workspace state.
+Optional local integration used to manually write Chatspace notes beneath a user-selected filesystem directory. The directory handle is stored separately from canonical workspace state and the integration is entered from Settings.
 
 ## Committed behavior
 
 - Chatspace uses the Chromium Side Panel and does not recreate/cover native ChatGPT.
 - Provider integration remains URL/tab based; no provider conversation crawling, DOM scraping, message extraction, cookies/session handling, private APIs, or network interception.
+- Home exposes supported current-conversation state and direct save without requiring the user to navigate to another feature surface.
+- Browser tab title metadata may prefill a local conversation name without becoming provider conversation content.
 - Saving a chat requires only a local name; Why saved, folder, and pin are optional local decisions.
 - Why-saved annotation is user-authored local metadata, editable after save, searchable, exportable, and never inferred from provider content.
-- Home Continue combines active saved chats and non-Inbox notes by local activity; Inbox and Pinned remain explicit separate surfaces.
-- Quick Open uses deterministic relevance and local context, with pin/recency used as tie-break signals.
-- opening a supported saved chat resumes the native ChatGPT target through validated navigation.
+- Home Continue combines active unpinned saved chats and non-Inbox notes by local activity; Inbox and Pinned remain explicit separate surfaces.
+- Pinned chat shortcuts are not duplicated in Continue.
+- Quick Open uses deterministic relevance and local context; empty state prioritizes daily work and explicit searching exposes advanced saved views.
+- opening a supported saved chat resumes the native ChatGPT target through validated navigation and reuses/focuses an already-open matching target when available.
+- primary navigation is Home / Library / Settings with Graph kept under advanced More access.
 - archive remains reversible and non-destructive; archived artifacts stay outside active retrieval/projection surfaces until restored.
 - title-based note links fail visibly on missing/ambiguous targets instead of guessing.
 - saved views remain projections over canonical notes; deleting a view never deletes notes.
 - new workspaces do not seed a built-in Learning Note; existing template records survive supported migration/import.
 - Graph remains available as advanced navigation; default Graph UX does not create new manual relations, while existing manual relations can be inspected/deleted.
-- explicit light/dark preference and local layout persist.
 - destructive local mutations require explicit confirmation.
-- Markdown Sync is manual and one-way.
+- Markdown Sync is manual and one-way and is managed from Settings.
 - portable export/import is explicit and never implies ownership of native ChatGPT conversation content.
 
 ## Data and contract ownership
@@ -178,6 +203,7 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - v4 adds `ChatReference.annotation: string`; legacy chat references migrate with `annotation: ""`.
 - v3 saved views, templates, manual relations, notes, tabs, layout, and lifecycle state are preserved during migration.
 - v1/v2 migration does not invent the deprecated Learning Note preset.
+- browser tab title/window metadata is ephemeral provider-boundary state and is not a new persisted provider-content contract.
 - `[[Title]]` relationships/backlinks and related-local similarity are derived, not separately persisted writable truth.
 - portable bundle versioning remains separate from workspace-schema versioning.
 - filesystem directory handles remain outside `WorkspaceSnapshot`.
@@ -187,6 +213,7 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - Provider failure must not break local workspace use.
 - User-created local data must remain understandable, exportable, recoverable, and explicitly deletable.
 - No retrieval feature may silently begin reading provider conversation content.
+- Browser-tab metadata usage must stay inside the existing URL/tab trust boundary.
 - Recency must not outrank a more relevant textual match.
 - Lightweight properties/views must not silently evolve into a database/workflow engine.
 - Graph renderer/session state must not become another persisted source of truth.
