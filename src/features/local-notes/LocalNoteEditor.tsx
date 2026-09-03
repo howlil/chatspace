@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronUp, Code2, Dot, Eye, FileText, Link2, Pencil, Tag, X } from 'lucide-react';
 import { ToggleGroup } from 'radix-ui';
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import {
   findActiveWikilinkQuery,
@@ -16,6 +16,7 @@ interface LocalNoteEditorProps {
   chats: ChatReference[];
   contextExpanded: boolean;
   onChange: (note: LocalNote) => void;
+  onRenameTitle?: (title: string) => void;
   onLinkChat: (chatId: string) => void;
   onOpenNote: (note: LocalNote) => void;
   onToggleContext: () => void;
@@ -23,13 +24,21 @@ interface LocalNoteEditorProps {
 
 type NoteMode = 'edit' | 'preview';
 
+function linkParts(body: string): { title: string; alias: string | null } {
+  const separator = body.indexOf('|');
+  const title = (separator < 0 ? body : body.slice(0, separator)).trim();
+  const alias = separator < 0 ? '' : body.slice(separator + 1).trim();
+  return { title, alias: alias === '' ? null : alias };
+}
+
 function renderInlineNoteLinks(text: string, notes: LocalNote[], onOpenNote: (note: LocalNote) => void): ReactNode[] {
   const parts = text.split(/(\[\[[^\]\n]+\]\])/g);
   return parts.map((part, index) => {
     const match = /^\[\[([^\]\n]+)\]\]$/.exec(part);
     if (match === null) return part;
-    const title = (match[1] ?? '').trim();
+    const { title, alias } = linkParts(match[1] ?? '');
     const resolution = resolveNoteLinkTitle(title, notes);
+    const label = alias ?? part;
     if (resolution.status === 'resolved' && resolution.targetNoteId !== null) {
       const target = notes.find((note) => note.id === resolution.targetNoteId);
       if (target !== undefined) {
@@ -40,7 +49,7 @@ function renderInlineNoteLinks(text: string, notes: LocalNote[], onOpenNote: (no
             className="inline rounded-sm bg-cs-active px-0.5 text-cs-focus underline decoration-cs-focus/40 underline-offset-2 outline-none hover:text-cs-text focus-visible:ring-1 focus-visible:ring-cs-focus/50"
             onClick={() => onOpenNote(target)}
           >
-            {part}
+            {label}
           </button>
         );
       }
@@ -51,7 +60,7 @@ function renderInlineNoteLinks(text: string, notes: LocalNote[], onOpenNote: (no
         className="rounded-sm border-b border-dashed border-cs-subtle text-cs-subtle"
         title={resolution.status === 'ambiguous' ? 'Ambiguous note link: multiple notes have this title.' : 'Unresolved note link.'}
       >
-        {part}
+        {label}
       </span>
     );
   });
@@ -64,80 +73,42 @@ function renderSafeMarkdown(markdown: string, notes: LocalNote[], onOpenNote: (n
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index] ?? '';
-
     if (line.trim().startsWith('```')) {
-      if (codeLines === null) {
-        codeLines = [];
-      } else {
-        blocks.push(
-          <pre key={`code-${index}`} className="my-3 overflow-auto rounded-lg border border-cs-border bg-cs-panel p-3 font-mono text-[11px] leading-5 text-cs-muted">
-            <code>{codeLines.join('\n')}</code>
-          </pre>,
-        );
+      if (codeLines === null) codeLines = [];
+      else {
+        blocks.push(<pre key={`code-${index}`} className="my-3 overflow-auto rounded-lg border border-cs-border bg-cs-panel p-3 font-mono text-[11px] leading-5 text-cs-muted"><code>{codeLines.join('\n')}</code></pre>);
         codeLines = null;
       }
       continue;
     }
-
     if (codeLines !== null) {
       codeLines.push(line);
       continue;
     }
-
-    if (line.startsWith('### ')) {
-      blocks.push(<h3 className="mb-1.5 mt-5 text-[13px] font-semibold" key={index}>{renderInlineNoteLinks(line.slice(4), notes, onOpenNote)}</h3>);
-    } else if (line.startsWith('## ')) {
-      blocks.push(<h2 className="mb-2 mt-6 text-[15px] font-semibold tracking-[-0.015em]" key={index}>{renderInlineNoteLinks(line.slice(3), notes, onOpenNote)}</h2>);
-    } else if (line.startsWith('# ')) {
-      blocks.push(<h1 className="mb-2 mt-7 text-[18px] font-semibold tracking-[-0.025em]" key={index}>{renderInlineNoteLinks(line.slice(2), notes, onOpenNote)}</h1>);
-    } else if (/^[-*] /.test(line)) {
-      blocks.push(
-        <div className="my-1 flex gap-1 pl-1 text-[12px] leading-5" key={index}>
-          <Dot className="mt-[3px] shrink-0 text-cs-subtle" size={14} strokeWidth={2.2} aria-hidden="true" />
-          <span>{renderInlineNoteLinks(line.slice(2), notes, onOpenNote)}</span>
-        </div>,
-      );
-    } else if (line.startsWith('> ')) {
-      blocks.push(
-        <blockquote className="my-3 border-l-2 border-cs-border pl-3 text-[12px] leading-5 text-cs-muted" key={index}>
-          {renderInlineNoteLinks(line.slice(2), notes, onOpenNote)}
-        </blockquote>,
-      );
-    } else if (line.trim() === '') {
-      blocks.push(<div className="h-2" aria-hidden="true" key={index} />);
-    } else {
-      blocks.push(<p className="my-1 text-[12px] leading-6 text-cs-text/90" key={index}>{renderInlineNoteLinks(line, notes, onOpenNote)}</p>);
-    }
+    if (line.startsWith('### ')) blocks.push(<h3 className="mb-1.5 mt-5 text-[13px] font-semibold" key={index}>{renderInlineNoteLinks(line.slice(4), notes, onOpenNote)}</h3>);
+    else if (line.startsWith('## ')) blocks.push(<h2 className="mb-2 mt-6 text-[15px] font-semibold tracking-[-0.015em]" key={index}>{renderInlineNoteLinks(line.slice(3), notes, onOpenNote)}</h2>);
+    else if (line.startsWith('# ')) blocks.push(<h1 className="mb-2 mt-7 text-[18px] font-semibold tracking-[-0.025em]" key={index}>{renderInlineNoteLinks(line.slice(2), notes, onOpenNote)}</h1>);
+    else if (/^[-*] /.test(line)) blocks.push(<div className="my-1 flex gap-1 pl-1 text-[12px] leading-5" key={index}><Dot className="mt-[3px] shrink-0 text-cs-subtle" size={14} strokeWidth={2.2} aria-hidden="true" /><span>{renderInlineNoteLinks(line.slice(2), notes, onOpenNote)}</span></div>);
+    else if (line.startsWith('> ')) blocks.push(<blockquote className="my-3 border-l-2 border-cs-border pl-3 text-[12px] leading-5 text-cs-muted" key={index}>{renderInlineNoteLinks(line.slice(2), notes, onOpenNote)}</blockquote>);
+    else if (line.trim() === '') blocks.push(<div className="h-2" aria-hidden="true" key={index} />);
+    else blocks.push(<p className="my-1 text-[12px] leading-6 text-cs-text/90" key={index}>{renderInlineNoteLinks(line, notes, onOpenNote)}</p>);
   }
 
-  if (codeLines !== null) {
-    blocks.push(
-      <pre key="code-unclosed" className="my-3 overflow-auto rounded-lg border border-cs-border bg-cs-panel p-3 font-mono text-[11px] leading-5 text-cs-muted">
-        <code>{codeLines.join('\n')}</code>
-      </pre>,
-    );
-  }
-
+  if (codeLines !== null) blocks.push(<pre key="code-unclosed" className="my-3 overflow-auto rounded-lg border border-cs-border bg-cs-panel p-3 font-mono text-[11px] leading-5 text-cs-muted"><code>{codeLines.join('\n')}</code></pre>);
   return blocks;
 }
 
-export function LocalNoteEditor({
-  note,
-  notes,
-  chats,
-  contextExpanded,
-  onChange,
-  onLinkChat,
-  onOpenNote,
-  onToggleContext,
-}: LocalNoteEditorProps) {
+export function LocalNoteEditor({ note, notes, chats, contextExpanded, onChange, onRenameTitle, onLinkChat, onOpenNote, onToggleContext }: LocalNoteEditorProps) {
   const availableChats = chats.filter((chat) => !note.linkedChatIds.includes(chat.id));
   const [selectedChatId, setSelectedChatId] = useState(availableChats[0]?.id ?? '');
   const [mode, setMode] = useState<NoteMode>('edit');
   const [tagDraft, setTagDraft] = useState('');
+  const [titleDraft, setTitleDraft] = useState(note.title);
   const [activeLink, setActiveLink] = useState<ActiveWikilinkQuery | null>(null);
   const [activeLinkIndex, setActiveLinkIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => setTitleDraft(note.title), [note.id, note.title]);
 
   const linkCandidates = useMemo(() => {
     if (activeLink === null) return [];
@@ -152,6 +123,21 @@ export function LocalNoteEditor({
       })
       .slice(0, 8);
   }, [activeLink, note.id, notes]);
+
+  function commitTitle(): void {
+    const title = titleDraft.trim().replace(/\s+/g, ' ') || 'Untitled note';
+    setTitleDraft(title);
+    if (title === note.title) return;
+    if (onRenameTitle !== undefined) onRenameTitle(title);
+    else onChange({ ...note, title });
+  }
+
+  function updateTitleDraft(value: string): void {
+    setTitleDraft(value);
+    if (onRenameTitle === undefined && value.trim() !== '') {
+      onChange({ ...note, title: value });
+    }
+  }
 
   function addTag(): void {
     const tag = tagDraft.trim().toLowerCase();
@@ -191,72 +177,30 @@ export function LocalNoteEditor({
           aria-label="Note title"
           title="Edit note title"
           placeholder="Untitled note"
-          value={note.title}
-          onChange={(event) => onChange({ ...note, title: event.target.value })}
-          onBlur={() => {
-            if (note.title.trim() === '') onChange({ ...note, title: 'Untitled note' });
+          value={titleDraft}
+          onChange={(event) => updateTitleDraft(event.target.value)}
+          onBlur={commitTitle}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') event.currentTarget.blur();
+            if (event.key === 'Escape') {
+              setTitleDraft(note.title);
+              event.currentTarget.blur();
+            }
           }}
         />
-        <ToggleGroup.Root
-          type="single"
-          value={mode}
-          aria-label="Note view mode"
-          className="flex shrink-0 rounded-lg border border-cs-border bg-cs-surface p-0.5"
-          onValueChange={(value) => {
-            if (value === 'edit' || value === 'preview') setMode(value);
-          }}
-        >
-          <ToggleGroup.Item
-            value="edit"
-            aria-label="Edit note"
-            title="Edit"
-            className="grid size-6 place-items-center rounded-md text-cs-subtle outline-none transition-colors hover:bg-cs-hover hover:text-cs-text focus-visible:ring-1 focus-visible:ring-cs-focus/50 data-[state=on]:bg-cs-text data-[state=on]:text-cs-bg data-[state=on]:shadow-sm"
-          >
-            <Pencil size={10} aria-hidden="true" />
-          </ToggleGroup.Item>
-          <ToggleGroup.Item
-            value="preview"
-            aria-label="Preview note"
-            title="Preview"
-            className="grid size-6 place-items-center rounded-md text-cs-subtle outline-none transition-colors hover:bg-cs-hover hover:text-cs-text focus-visible:ring-1 focus-visible:ring-cs-focus/50 data-[state=on]:bg-cs-text data-[state=on]:text-cs-bg data-[state=on]:shadow-sm"
-          >
-            <Eye size={10} aria-hidden="true" />
-          </ToggleGroup.Item>
+        <ToggleGroup.Root type="single" value={mode} aria-label="Note view mode" className="flex shrink-0 rounded-lg border border-cs-border bg-cs-surface p-0.5" onValueChange={(value) => { if (value === 'edit' || value === 'preview') setMode(value); }}>
+          <ToggleGroup.Item value="edit" aria-label="Edit note" title="Edit" className="grid size-6 place-items-center rounded-md text-cs-subtle outline-none transition-colors hover:bg-cs-hover hover:text-cs-text focus-visible:ring-1 focus-visible:ring-cs-focus/50 data-[state=on]:bg-cs-text data-[state=on]:text-cs-bg"><Pencil size={10} aria-hidden="true" /></ToggleGroup.Item>
+          <ToggleGroup.Item value="preview" aria-label="Preview note" title="Preview" className="grid size-6 place-items-center rounded-md text-cs-subtle outline-none transition-colors hover:bg-cs-hover hover:text-cs-text focus-visible:ring-1 focus-visible:ring-cs-focus/50 data-[state=on]:bg-cs-text data-[state=on]:text-cs-bg"><Eye size={10} aria-hidden="true" /></ToggleGroup.Item>
         </ToggleGroup.Root>
       </div>
 
       <div className="flex min-w-0 items-center gap-1.5 border-b border-cs-border bg-cs-panel/70 px-2.5 py-1">
         <Tag size={10} className="shrink-0 text-cs-subtle" aria-hidden="true" />
         <div className="no-scrollbar flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" aria-label="Note tags">
-          {note.tags.map((tag) => (
-            <span className="flex h-5 shrink-0 items-center gap-1 rounded border border-cs-border bg-cs-control pl-1.5 text-[9px] text-cs-muted" key={tag}>
-              #{tag}
-              <button
-                type="button"
-                className="grid h-full w-5 place-items-center text-cs-subtle outline-none hover:text-cs-text focus-visible:text-cs-text"
-                aria-label={`Remove tag ${tag}`}
-                onClick={() => onChange({ ...note, tags: note.tags.filter((item) => item !== tag) })}
-              >
-                <X size={9} aria-hidden="true" />
-              </button>
-            </span>
-          ))}
+          {note.tags.map((tag) => <span className="flex h-5 shrink-0 items-center gap-1 rounded border border-cs-border bg-cs-control pl-1.5 text-[9px] text-cs-muted" key={tag}>#{tag}<button type="button" className="grid h-full w-5 place-items-center text-cs-subtle outline-none hover:text-cs-text" aria-label={`Remove tag ${tag}`} onClick={() => onChange({ ...note, tags: note.tags.filter((item) => item !== tag) })}><X size={9} aria-hidden="true" /></button></span>)}
           {note.tags.length === 0 && <span className="text-[9px] text-cs-subtle">No tags</span>}
         </div>
-        <Input
-          className="h-6 w-24 shrink-0 border-transparent bg-transparent px-1.5 text-[9px] focus:bg-cs-surface"
-          aria-label="Add note tag"
-          placeholder="Add tag"
-          value={tagDraft}
-          onChange={(event) => setTagDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' || event.key === ',') {
-              event.preventDefault();
-              addTag();
-            }
-          }}
-          onBlur={addTag}
-        />
+        <Input className="h-6 w-24 shrink-0 border-transparent bg-transparent px-1.5 text-[9px] focus:bg-cs-surface" aria-label="Add note tag" placeholder="Add tag" value={tagDraft} onChange={(event) => setTagDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ',') { event.preventDefault(); addTag(); } }} onBlur={addTag} />
       </div>
 
       {mode === 'edit' ? (
@@ -267,124 +211,32 @@ export function LocalNoteEditor({
             aria-label="Markdown content"
             placeholder="Write Markdown…"
             value={note.content}
-            onChange={(event) => {
-              const content = event.target.value;
-              onChange({ ...note, content });
-              updateActiveLink(content, event.target.selectionStart);
-            }}
+            onChange={(event) => { const content = event.target.value; onChange({ ...note, content }); updateActiveLink(content, event.target.selectionStart); }}
             onClick={(event) => updateActiveLink(note.content, event.currentTarget.selectionStart)}
-            onKeyUp={(event) => {
-              if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Enter' && event.key !== 'Escape') {
-                updateActiveLink(note.content, event.currentTarget.selectionStart);
-              }
-            }}
+            onKeyUp={(event) => { if (!['ArrowDown', 'ArrowUp', 'Enter', 'Escape'].includes(event.key)) updateActiveLink(note.content, event.currentTarget.selectionStart); }}
             onKeyDown={(event) => {
               if (activeLink === null || linkCandidates.length === 0) return;
-              if (event.key === 'ArrowDown') {
-                event.preventDefault();
-                setActiveLinkIndex((current) => (current + 1) % linkCandidates.length);
-              } else if (event.key === 'ArrowUp') {
-                event.preventDefault();
-                setActiveLinkIndex((current) => (current - 1 + linkCandidates.length) % linkCandidates.length);
-              } else if (event.key === 'Enter') {
-                event.preventDefault();
-                const target = linkCandidates[activeLinkIndex];
-                if (target !== undefined) insertNoteLink(target);
-              } else if (event.key === 'Escape') {
-                event.preventDefault();
-                setActiveLink(null);
-              }
+              if (event.key === 'ArrowDown') { event.preventDefault(); setActiveLinkIndex((current) => (current + 1) % linkCandidates.length); }
+              else if (event.key === 'ArrowUp') { event.preventDefault(); setActiveLinkIndex((current) => (current - 1 + linkCandidates.length) % linkCandidates.length); }
+              else if (event.key === 'Enter') { event.preventDefault(); const target = linkCandidates[activeLinkIndex]; if (target !== undefined) insertNoteLink(target); }
+              else if (event.key === 'Escape') { event.preventDefault(); setActiveLink(null); }
             }}
           />
-          {activeLink !== null && linkCandidates.length > 0 && (
-            <div className="absolute bottom-2 left-3 right-3 z-10 max-h-44 overflow-y-auto rounded-lg border border-cs-border bg-cs-surface p-1 shadow-[0_12px_36px_rgba(0,0,0,0.24)]" role="listbox" aria-label="Link note">
-              {linkCandidates.map((candidate, index) => (
-                <button
-                  type="button"
-                  role="option"
-                  aria-selected={index === activeLinkIndex}
-                  key={candidate.id}
-                  className={index === activeLinkIndex
-                    ? 'flex h-7 w-full items-center rounded px-2 text-left text-[10px] text-cs-text bg-cs-active'
-                    : 'flex h-7 w-full items-center rounded px-2 text-left text-[10px] text-cs-muted hover:bg-cs-hover hover:text-cs-text'}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => insertNoteLink(candidate)}
-                >
-                  <span className="truncate">{candidate.title}</span>
-                </button>
-              ))}
-            </div>
-          )}
+          {activeLink !== null && linkCandidates.length > 0 && <div className="absolute bottom-2 left-3 right-3 z-10 max-h-44 overflow-y-auto rounded-lg border border-cs-border bg-cs-surface p-1 shadow-[0_12px_36px_rgba(0,0,0,0.24)]" role="listbox" aria-label="Link note">{linkCandidates.map((candidate, index) => <button type="button" role="option" aria-selected={index === activeLinkIndex} key={candidate.id} className={index === activeLinkIndex ? 'flex h-7 w-full items-center rounded bg-cs-active px-2 text-left text-[10px] text-cs-text' : 'flex h-7 w-full items-center rounded px-2 text-left text-[10px] text-cs-muted hover:bg-cs-hover hover:text-cs-text'} onMouseDown={(event) => event.preventDefault()} onClick={() => insertNoteLink(candidate)}><span className="truncate">{candidate.title}</span></button>)}</div>}
         </div>
       ) : (
-        <article className="min-h-0 overflow-y-auto px-4 py-4" aria-label="Markdown preview">
-          <div className="mx-auto max-w-3xl">
-            {note.content.trim() === '' ? (
-              <div className="grid min-h-44 place-items-center text-center text-[10px] text-cs-subtle">
-                <span>Nothing to preview yet.</span>
-              </div>
-            ) : renderSafeMarkdown(note.content, notes, onOpenNote)}
-          </div>
-        </article>
+        <article className="min-h-0 overflow-y-auto px-4 py-4" aria-label="Markdown preview"><div className="mx-auto max-w-3xl">{note.content.trim() === '' ? <div className="grid min-h-44 place-items-center text-center text-[10px] text-cs-subtle"><span>Nothing to preview yet.</span></div> : renderSafeMarkdown(note.content, notes, onOpenNote)}</div></article>
       )}
 
       <footer className="flex min-w-0 items-center justify-between gap-3 border-t border-cs-border px-2.5 py-1 text-[9px] text-cs-subtle">
-        <span className="flex shrink-0 items-center gap-1.5">
-          <Code2 size={10} aria-hidden="true" /> {note.content.length} chars · {note.tags.length} tags
-        </span>
+        <span className="flex shrink-0 items-center gap-1.5"><Code2 size={10} aria-hidden="true" /> {note.content.length} chars · {note.tags.length} tags</span>
         <div className="flex min-w-0 items-center gap-1.5">
-          {contextExpanded && chats.length > 0 && (
-            <>
-              <Link2 size={10} className="shrink-0" aria-hidden="true" />
-              <Select
-                className="h-6 max-w-40 text-[9px]"
-                aria-label="Chat to link"
-                value={selectedChatId}
-                options={[
-                  { value: '', label: 'Select chat' },
-                  ...availableChats.map((chat) => ({ value: chat.id, label: chat.label })),
-                ]}
-                onValueChange={setSelectedChatId}
-              />
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 px-1.5 text-[9px]"
-                disabled={selectedChatId === ''}
-                onClick={() => {
-                  if (selectedChatId !== '') {
-                    onLinkChat(selectedChatId);
-                    setSelectedChatId('');
-                  }
-                }}
-              >
-                <Link2 size={9} aria-hidden="true" /> Link chat
-              </Button>
-            </>
-          )}
-          <IconButton
-            className="size-6 text-cs-subtle"
-            aria-label={contextExpanded ? 'Collapse note context' : 'Expand note context'}
-            title={contextExpanded ? 'Collapse note context' : 'Expand note context'}
-            onClick={onToggleContext}
-          >
-            {contextExpanded ? <ChevronDown size={11} aria-hidden="true" /> : <ChevronUp size={11} aria-hidden="true" />}
-          </IconButton>
+          {contextExpanded && chats.length > 0 && <><Link2 size={10} className="shrink-0" aria-hidden="true" /><Select className="h-6 max-w-40 text-[9px]" aria-label="Chat to link" value={selectedChatId} options={[{ value: '', label: 'Select chat' }, ...availableChats.map((chat) => ({ value: chat.id, label: chat.label }))]} onValueChange={setSelectedChatId} /><Button size="sm" variant="ghost" className="h-6 px-1.5 text-[9px]" disabled={selectedChatId === ''} onClick={() => { if (selectedChatId !== '') { onLinkChat(selectedChatId); setSelectedChatId(''); } }}><Link2 size={9} aria-hidden="true" /> Link chat</Button></>}
+          <IconButton className="size-6 text-cs-subtle" aria-label={contextExpanded ? 'Collapse note context' : 'Expand note context'} title={contextExpanded ? 'Collapse note context' : 'Expand note context'} onClick={onToggleContext}>{contextExpanded ? <ChevronDown size={11} aria-hidden="true" /> : <ChevronUp size={11} aria-hidden="true" />}</IconButton>
         </div>
       </footer>
 
-      {contextExpanded && note.linkedChatIds.length > 0 && (
-        <div className="no-scrollbar flex gap-1 overflow-x-auto border-t border-cs-border bg-cs-panel/60 px-2.5 py-1" aria-label="Linked chats">
-          {note.linkedChatIds.map((chatId) => {
-            const chat = chats.find((candidate) => candidate.id === chatId);
-            return (
-              <span className="flex h-5 shrink-0 items-center gap-1 rounded border border-cs-border bg-cs-control px-1.5 text-[9px] text-cs-muted" key={chatId}>
-                <Link2 size={9} aria-hidden="true" /> {chat?.label ?? chatId}
-              </span>
-            );
-          })}
-        </div>
-      )}
+      {contextExpanded && note.linkedChatIds.length > 0 && <div className="no-scrollbar flex gap-1 overflow-x-auto border-t border-cs-border bg-cs-panel/60 px-2.5 py-1" aria-label="Linked chats">{note.linkedChatIds.map((chatId) => { const chat = chats.find((candidate) => candidate.id === chatId); return <span className="flex h-5 shrink-0 items-center gap-1 rounded border border-cs-border bg-cs-control px-1.5 text-[9px] text-cs-muted" key={chatId}><Link2 size={9} aria-hidden="true" /> {chat?.label ?? chatId}</span>; })}</div>}
     </section>
   );
 }

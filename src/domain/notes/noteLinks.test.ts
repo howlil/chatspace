@@ -4,9 +4,12 @@ import { createLocalNote } from '../workspace/model';
 import {
   deriveBacklinks,
   deriveOutgoingNoteIds,
+  diagnoseNoteLinks,
   findActiveWikilinkQuery,
   parseNoteLinks,
+  replaceNoteLinkToken,
   resolveNoteLinks,
+  rewriteInboundLinksForRename,
 } from './noteLinks';
 
 function note(id: string, title: string, content = '') {
@@ -14,12 +17,12 @@ function note(id: string, title: string, content = '') {
 }
 
 describe('note wikilinks', () => {
-  it('parses multiple wikilinks while ignoring fenced code', () => {
-    const content = 'See [[Storage recovery]] and [[Graph semantics]].\n```md\n[[Ignored code]]\n```\n[[Local first]]';
-    expect(parseNoteLinks(content).map((link) => link.title)).toEqual([
-      'Storage recovery',
-      'Graph semantics',
-      'Local first',
+  it('parses aliases while ignoring fenced code', () => {
+    const content = 'See [[Storage recovery|recovery]] and [[Graph semantics]].\n```md\n[[Ignored code]]\n```\n[[Local first]]';
+    expect(parseNoteLinks(content).map((link) => [link.title, link.alias])).toEqual([
+      ['Storage recovery', 'recovery'],
+      ['Graph semantics', null],
+      ['Local first', null],
     ]);
   });
 
@@ -33,6 +36,7 @@ describe('note wikilinks', () => {
       ['Missing', 'unresolved', null],
       ['Duplicate', 'ambiguous', null],
     ]);
+    expect(diagnoseNoteLinks(source, notes)).toEqual({ resolved: 1, unresolved: 1, ambiguous: 1 });
   });
 
   it('derives unique outgoing links and backlinks from Markdown only', () => {
@@ -45,8 +49,37 @@ describe('note wikilinks', () => {
     expect(deriveBacklinks(target.id, notes).map((backlink) => backlink.sourceNoteId)).toEqual(['source', 'source', 'other']);
   });
 
-  it('finds only an unfinished wikilink at the current caret', () => {
+  it('rewrites only inbound links that uniquely resolved before rename and preserves aliases', () => {
+    const target = note('target', 'Persistence model');
+    const source = note('source', 'Architecture', 'Use [[Persistence model]] and [[Persistence model|storage]].\n```md\n[[Persistence model]]\n```');
+    const unresolved = note('unresolved', 'Other', 'Keep [[Missing]].');
+    const renamed = rewriteInboundLinksForRename([source, target, unresolved], target.id, 'Storage model', 9);
+
+    expect(renamed.find((item) => item.id === 'target')?.title).toBe('Storage model');
+    expect(renamed.find((item) => item.id === 'source')?.content).toBe('Use [[Storage model]] and [[Storage model|storage]].\n```md\n[[Persistence model]]\n```');
+    expect(renamed.find((item) => item.id === 'unresolved')?.content).toBe('Keep [[Missing]].');
+    expect(deriveBacklinks('target', renamed).map((item) => item.sourceNoteId)).toEqual(['source', 'source']);
+  });
+
+  it('does not rewrite an ambiguous title during rename', () => {
+    const source = note('source', 'Source', '[[TCP]]');
+    const target = note('target', 'TCP');
+    const duplicate = note('duplicate', ' tcp ');
+    const renamed = rewriteInboundLinksForRename([source, target, duplicate], target.id, 'Transport', 2);
+    expect(renamed.find((item) => item.id === 'source')?.content).toBe('[[TCP]]');
+    expect(renamed.find((item) => item.id === 'target')?.title).toBe('Transport');
+  });
+
+  it('replaces one broken token without affecting surrounding Markdown', () => {
+    const source = note('source', 'Source', 'Before [[Missing|label]] after');
+    const token = parseNoteLinks(source.content)[0];
+    expect(token).toBeDefined();
+    expect(replaceNoteLinkToken(source.content, token!, 'Existing')).toBe('Before [[Existing|label]] after');
+  });
+
+  it('finds only an unfinished wikilink target at the current caret', () => {
     expect(findActiveWikilinkQuery('See [[Stor', 10)).toEqual({ start: 4, end: 10, query: 'Stor' });
+    expect(findActiveWikilinkQuery('See [[Storage|label', 19)).toEqual({ start: 4, end: 19, query: 'Storage' });
     expect(findActiveWikilinkQuery('See [[Storage]]', 15)).toBeNull();
     expect(findActiveWikilinkQuery('[[One\nTwo', 9)).toBeNull();
   });

@@ -4,6 +4,7 @@ export type NoteLinkStatus = 'resolved' | 'unresolved' | 'ambiguous';
 
 export interface NoteLinkToken {
   title: string;
+  alias: string | null;
   start: number;
   end: number;
 }
@@ -27,8 +28,25 @@ export interface ActiveWikilinkQuery {
   query: string;
 }
 
+export interface NoteLinkDiagnostics {
+  resolved: number;
+  unresolved: number;
+  ambiguous: number;
+}
+
 export function normalizeNoteTitle(value: string): string {
   return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+}
+
+function parseLinkBody(body: string): { title: string; alias: string | null } {
+  const separator = body.indexOf('|');
+  const title = (separator < 0 ? body : body.slice(0, separator)).trim();
+  const rawAlias = separator < 0 ? '' : body.slice(separator + 1).trim();
+  return { title, alias: rawAlias === '' ? null : rawAlias };
+}
+
+export function formatNoteLink(title: string, alias: string | null = null): string {
+  return alias === null ? `[[${title}]]` : `[[${title}|${alias}]]`;
 }
 
 export function parseNoteLinks(markdown: string): NoteLinkToken[] {
@@ -48,10 +66,12 @@ export function parseNoteLinks(markdown: string): NoteLinkToken[] {
       const pattern = /\[\[([^\]\n]+)\]\]/g;
       let match: RegExpExecArray | null;
       while ((match = pattern.exec(line)) !== null) {
-        const title = (match[1] ?? '').trim();
+        const body = (match[1] ?? '').trim();
+        const { title, alias } = parseLinkBody(body);
         if (title !== '') {
           tokens.push({
             title,
+            alias,
             start: offset + match.index,
             end: offset + match.index + match[0].length,
           });
@@ -77,7 +97,7 @@ export function resolveNoteLinkTitle(title: string, notes: LocalNote[]): Resolve
       : 'ambiguous';
 
   return {
-    token: { title, start: 0, end: title.length },
+    token: { title, alias: null, start: 0, end: title.length },
     status,
     targetNoteId: status === 'resolved' ? matchingNoteIds[0] ?? null : null,
     matchingNoteIds,
@@ -132,13 +152,53 @@ export function deriveBacklinks(targetNoteId: string, notes: LocalNote[]): NoteB
   return backlinks;
 }
 
+export function diagnoseNoteLinks(note: LocalNote, notes: LocalNote[]): NoteLinkDiagnostics {
+  const diagnostics: NoteLinkDiagnostics = { resolved: 0, unresolved: 0, ambiguous: 0 };
+  for (const link of resolveNoteLinks(note, notes)) diagnostics[link.status] += 1;
+  return diagnostics;
+}
+
+export function replaceNoteLinkToken(content: string, token: NoteLinkToken, targetTitle: string): string {
+  return `${content.slice(0, token.start)}${formatNoteLink(targetTitle, token.alias)}${content.slice(token.end)}`;
+}
+
+export function rewriteInboundLinksForRename(
+  notes: LocalNote[],
+  targetNoteId: string,
+  nextTitle: string,
+  now: number,
+): LocalNote[] {
+  const target = notes.find((note) => note.id === targetNoteId);
+  if (target === undefined) return notes;
+  const cleanedTitle = nextTitle.trim().replace(/\s+/g, ' ');
+  if (cleanedTitle === '') return notes;
+
+  const activeNotes = notes.filter((note) => note.archivedAt === null);
+  const rewritten = notes.map((note) => {
+    const matches = resolveNoteLinks(note, activeNotes)
+      .filter((link) => link.status === 'resolved' && link.targetNoteId === targetNoteId)
+      .sort((left, right) => right.token.start - left.token.start);
+    if (matches.length === 0) return note;
+    let content = note.content;
+    for (const link of matches) content = replaceNoteLinkToken(content, link.token, cleanedTitle);
+    return content === note.content ? note : { ...note, content, updatedAt: now };
+  });
+
+  return rewritten.map((note) => (
+    note.id === targetNoteId
+      ? { ...note, title: cleanedTitle, updatedAt: now }
+      : note
+  ));
+}
+
 export function findActiveWikilinkQuery(content: string, cursor: number): ActiveWikilinkQuery | null {
   const beforeCursor = content.slice(0, cursor);
   const start = beforeCursor.lastIndexOf('[[');
   if (start < 0) return null;
   const candidate = beforeCursor.slice(start + 2);
   if (candidate.includes(']]') || candidate.includes('\n') || candidate.includes('\r')) return null;
-  return { start, end: cursor, query: candidate };
+  const query = candidate.includes('|') ? candidate.slice(0, candidate.indexOf('|')) : candidate;
+  return { start, end: cursor, query };
 }
 
 export function noteLinkPairKey(sourceNoteId: string, targetNoteId: string): string {
