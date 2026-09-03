@@ -1,13 +1,13 @@
-
 import { BookmarkPlus, Link2, Pin, X } from 'lucide-react';
 import { Dialog } from 'radix-ui';
 import { useEffect, useState } from 'react';
 
 import type { WorkspaceFolder } from '../../domain/workspace/model';
-import { Button, Checkbox, IconButton, Input, Select } from '../../ui/primitives';
+import { Button, Checkbox, IconButton, Input, Select, Textarea } from '../../ui/primitives';
 
 export interface SaveConversationInput {
   label: string;
+  annotation: string;
   folderId: string | null;
   pinned: boolean;
 }
@@ -32,17 +32,20 @@ export function SaveConversationDialog({
   onSave,
 }: SaveConversationDialogProps) {
   const [label, setLabel] = useState(defaultLabel);
+  const [annotation, setAnnotation] = useState('');
   const [folderId, setFolderId] = useState(defaultFolderId ?? '');
   const [pinned, setPinned] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setLabel(defaultLabel);
+    setAnnotation('');
     setFolderId(defaultFolderId ?? '');
     setPinned(false);
   }, [defaultFolderId, defaultLabel, open]);
 
   const cleanLabel = label.trim();
+  const cleanAnnotation = annotation.trim();
   const folderOptions = [
     { value: '', label: 'Workspace root' },
     ...folders.map((folder) => ({ value: folder.id, label: folder.name })),
@@ -62,7 +65,7 @@ export function SaveConversationDialog({
                 <strong className="text-xs font-semibold">Save conversation</strong>
               </Dialog.Title>
               <Dialog.Description className="text-[10px] leading-4 text-cs-muted">
-                Keep a local reference to this ChatGPT conversation.
+                Save a local reference and enough context to recognize why it matters later.
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -85,26 +88,44 @@ export function SaveConversationDialog({
               />
             </label>
 
-            <div className="grid gap-1.5">
-              <span className="text-[10px] font-medium text-cs-muted">Folder</span>
-              <Select
-                className="h-8 text-xs"
-                aria-label="Conversation folder"
-                value={folderId}
-                options={folderOptions}
-                onValueChange={setFolderId}
+            <label className="grid gap-1.5">
+              <span className="flex items-center justify-between gap-2 text-[10px] font-medium text-cs-muted">
+                <span>Why saved</span>
+                <span className="text-[9px] font-normal text-cs-subtle">Optional</span>
+              </span>
+              <Textarea
+                className="min-h-20 resize-none text-xs leading-5"
+                aria-label="Why saved"
+                value={annotation}
+                onChange={(event) => setAnnotation(event.target.value)}
+                placeholder="e.g. Clear explanation of write skew"
+                maxLength={500}
               />
-            </div>
-
-            <label className="flex cursor-pointer items-center gap-2 rounded-md border border-cs-border bg-cs-control px-2.5 py-2 text-[10px] text-cs-muted hover:bg-cs-hover">
-              <Checkbox
-                aria-label="Pin this conversation"
-                checked={pinned}
-                onCheckedChange={setPinned}
-              />
-              <Pin size={11} aria-hidden="true" />
-              <span>Pin this conversation</span>
             </label>
+
+            <div className="grid gap-2 border-t border-cs-border pt-3" aria-label="Optional organization">
+              <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-cs-subtle">Optional organization</span>
+              <div className="grid gap-1.5">
+                <span className="text-[10px] font-medium text-cs-muted">Folder</span>
+                <Select
+                  className="h-8 text-xs"
+                  aria-label="Conversation folder"
+                  value={folderId}
+                  options={folderOptions}
+                  onValueChange={setFolderId}
+                />
+              </div>
+
+              <label className="flex cursor-pointer items-center gap-2 rounded-md border border-cs-border bg-cs-control px-2.5 py-2 text-[10px] text-cs-muted hover:bg-cs-hover">
+                <Checkbox
+                  aria-label="Pin this conversation"
+                  checked={pinned}
+                  onCheckedChange={setPinned}
+                />
+                <Pin size={11} aria-hidden="true" />
+                <span>Pin this conversation</span>
+              </label>
+            </div>
 
             {target !== null && (
               <div className="flex min-w-0 items-center gap-2 rounded-md border border-cs-border bg-cs-bg px-2.5 py-2 text-[9px] text-cs-subtle" title={target}>
@@ -121,7 +142,12 @@ export function SaveConversationDialog({
             <Button
               variant="primary"
               disabled={cleanLabel.length === 0}
-              onClick={() => onSave({ label: cleanLabel, folderId: folderId === '' ? null : folderId, pinned })}
+              onClick={() => onSave({
+                label: cleanLabel,
+                annotation: cleanAnnotation,
+                folderId: folderId === '' ? null : folderId,
+                pinned,
+              })}
             >
               Save
             </Button>
