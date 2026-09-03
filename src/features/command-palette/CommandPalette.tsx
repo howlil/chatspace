@@ -8,6 +8,7 @@ import { Button, Input } from '../../ui/primitives';
 export interface WorkspaceCommand {
   id: string;
   label: string;
+  priority?: number;
   run: () => void;
 }
 
@@ -16,6 +17,11 @@ export interface WorkspaceQuickOpenItem {
   kind: 'folder' | 'chat' | 'note' | 'view';
   label: string;
   searchText?: string;
+  contextText?: string;
+  contentText?: string;
+  detail?: string;
+  pinned?: boolean;
+  updatedAt?: number;
   run: () => void;
 }
 
@@ -50,6 +56,11 @@ export function CommandPalette({ commands, items = [], onClose }: CommandPalette
       kind: item.kind,
       label: item.label,
       searchText: item.searchText ?? item.label,
+      contextText: item.contextText,
+      contentText: item.contentText,
+      detail: item.detail,
+      pinned: item.pinned,
+      updatedAt: item.updatedAt,
       run: item.run,
     })),
     ...commands.map((command) => ({
@@ -57,6 +68,7 @@ export function CommandPalette({ commands, items = [], onClose }: CommandPalette
       kind: 'command' as const,
       label: command.label,
       searchText: command.label,
+      priority: command.priority,
       run: command.run,
     })),
   ], [commands, items]);
@@ -78,14 +90,14 @@ export function CommandPalette({ commands, items = [], onClose }: CommandPalette
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/35 backdrop-blur-[1px]" />
         <Dialog.Content className="fixed left-1/2 top-14 z-[60] h-fit w-[calc(100%-1.5rem)] max-w-lg -translate-x-1/2 overflow-hidden rounded-xl border border-cs-border bg-cs-panel shadow-[0_24px_80px_rgba(0,0,0,0.35)]">
           <Dialog.Title className="sr-only">Command palette</Dialog.Title>
-          <Dialog.Description className="sr-only">Quick-open local notes, saved chats, folders, saved views, and workspace commands.</Dialog.Description>
+          <Dialog.Description className="sr-only">Quick-open recent local work, notes, saved chats, folders, views, and workspace commands.</Dialog.Description>
           <div className="flex h-10 items-center gap-2 border-b border-cs-border px-3">
             <Search size={14} className="shrink-0 text-cs-subtle" aria-hidden="true" />
             <Input
               autoFocus
               className="h-auto min-w-0 flex-1 border-0 bg-transparent px-0 text-xs text-cs-text shadow-none outline-none focus:border-transparent focus:ring-0"
               aria-label="Search notes, chats, folders, views, or commands"
-              placeholder="Search notes, chats, folders, views, or commands…"
+              placeholder="Find recent work, notes, chats, folders, or commands…"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => {
@@ -111,19 +123,26 @@ export function CommandPalette({ commands, items = [], onClose }: CommandPalette
                 aria-label={item.label}
                 data-active={index === activeIndex ? 'true' : 'false'}
                 className={index === activeIndex
-                  ? 'h-8 w-full justify-between bg-cs-active px-2.5 text-left text-[11px] text-cs-text'
-                  : 'h-8 w-full justify-between px-2.5 text-left text-[11px] text-cs-muted'}
+                  ? 'min-h-9 h-auto w-full justify-between bg-cs-active px-2.5 py-1.5 text-left text-[11px] text-cs-text'
+                  : 'min-h-9 h-auto w-full justify-between px-2.5 py-1.5 text-left text-[11px] text-cs-muted'}
                 key={item.id}
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => runItem(item)}
               >
-                <span className="flex min-w-0 items-center gap-2">
-                  {iconFor(item.kind)}
-                  <span className="truncate">{item.label}</span>
-                  <span className="shrink-0 text-[8px] uppercase tracking-wide text-cs-subtle">{kindLabel(item.kind)}</span>
+                <span className="flex min-w-0 items-start gap-2">
+                  <span className="mt-0.5">{iconFor(item.kind)}</span>
+                  <span className="grid min-w-0 gap-0.5">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate">{item.label}</span>
+                      <span className="shrink-0 text-[8px] uppercase tracking-wide text-cs-subtle">{kindLabel(item.kind)}</span>
+                    </span>
+                    {item.detail !== undefined && item.detail !== '' && (
+                      <small className="truncate text-[9px] font-normal text-cs-subtle">{item.detail}</small>
+                    )}
+                  </span>
                 </span>
                 {index === activeIndex && (
-                  <kbd aria-hidden="true" className="flex items-center gap-1 text-[9px] text-cs-subtle">
+                  <kbd aria-hidden="true" className="flex shrink-0 items-center gap-1 text-[9px] text-cs-subtle">
                     Enter <CornerDownLeft size={9} />
                   </kbd>
                 )}

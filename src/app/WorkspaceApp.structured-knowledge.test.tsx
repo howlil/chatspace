@@ -33,27 +33,36 @@ describe('WorkspaceApp structured knowledge', () => {
     expect(screen.getByText('research')).toBeVisible();
   });
 
-  it('creates a normal note from the built-in Learning Note template through Quick Open', async () => {
-    const repository = new MemoryWorkspaceRepository(createInitialWorkspace(1));
+  it('does not seed or promote the built-in Learning Note in a new workspace', async () => {
+    const initial = createInitialWorkspace(1);
+    expect(initial.noteTemplates).toEqual([]);
+    const repository = new MemoryWorkspaceRepository(initial);
     render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
 
     await screen.findByText('Local workspace ready.');
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
-    fireEvent.click(screen.getByRole('button', { name: 'New from template: Learning Note' }));
-    expect(screen.getByRole('dialog', { name: 'New from Learning Note' })).toBeVisible();
-    fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), { target: { value: 'TCP' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create note' }));
+    expect(screen.queryByRole('button', { name: 'New from template: Learning Note' })).not.toBeInTheDocument();
+  });
 
-    await waitFor(async () => {
-      const saved = await repository.load();
-      expect(saved?.notes).toHaveLength(1);
-      expect(saved?.notes[0]).toMatchObject({
-        title: 'TCP',
-        properties: { type: 'learning', status: 'active' },
-      });
-      expect(saved?.notes[0]?.content).toContain('# Summary');
-      expect(saved?.tabs.some((tab) => tab.kind === 'note' && tab.entityId === saved.notes[0]?.id)).toBe(true);
-    });
+  it('keeps a migrated legacy Learning Note stored but hides it from default Quick Open', async () => {
+    const initial = createInitialWorkspace(1);
+    initial.noteTemplates = [{
+      id: 'template-learning',
+      name: 'Learning Note',
+      titlePattern: '{{title}}',
+      content: '# Summary',
+      tags: [],
+      properties: { type: 'learning' },
+      createdAt: 1,
+      updatedAt: 1,
+    }];
+    const repository = new MemoryWorkspaceRepository(initial);
+    render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
+
+    await screen.findByText('Local workspace ready.');
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+    expect(screen.queryByRole('button', { name: 'New from template: Learning Note' })).not.toBeInTheDocument();
+    expect((await repository.load())?.noteTemplates).toHaveLength(1);
   });
 
   it('quick-opens a persisted saved view as an AND-filtered projection without copying notes', async () => {

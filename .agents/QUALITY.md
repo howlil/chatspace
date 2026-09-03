@@ -55,7 +55,7 @@ The repository CI gate is an integration/release-confidence boundary. It is not 
 
 ## Risk-proportional verification
 
-Use the narrowest stable boundary that can actually establish confidence for the changed risk. Escalate only when a cheaper layer cannot prove the relevant behavior.
+Use the narrowest stable repository-owned boundary that can establish confidence for the changed risk. Escalate only when a cheaper deterministic layer cannot prove the relevant behavior.
 
 ### Documentation / repository-knowledge changes
 
@@ -74,7 +74,7 @@ Do not treat static checks as evidence for runtime behavior they cannot establis
 
 ### Deterministic behavior tests
 
-Use unit/component tests for behavior that can be proven without pretending to reproduce the browser environment, including:
+Use unit/component tests for behavior that can be proven deterministically, including:
 
 - workspace hierarchy and reducer invariants;
 - structured properties, saved-view definitions/projection, and template behavior;
@@ -95,25 +95,18 @@ Use integration coverage when a user behavior crosses multiple real repository-o
 
 - domain -> reducer/application orchestration -> persistence adapter serialization;
 - import parser -> migration/validation -> accepted workspace transition;
-- structured-property state -> saved-view projection -> user-visible workspace behavior.
+- structured-property state -> saved-view projection -> user-visible workspace behavior;
+- local capture/retrieval state -> command execution -> validated provider-port invocation.
 
 Do not add integration tests when an existing deterministic owner boundary already proves the behavior adequately.
 
-### Black-box / live-browser acceptance
+### Browser/runtime boundaries
 
-The following are environment behavior and must not be claimed as accepted from jsdom or fake browser handles:
+Black-box/live-browser testing is not a required verification layer and is not a milestone completion gate.
 
-- Chromium Side Panel lifecycle and narrow-panel visual usability;
-- real `showDirectoryPicker()` prompts/cancellation behavior;
-- real filesystem permission prompts and restored-handle permission behavior;
-- actual IndexedDB persistence of browser directory handles across extension/browser lifecycle;
-- actual filesystem writes through `FileSystemFileHandle`/writable streams;
-- real provider tab lifecycle/navigation in Chromium;
-- Graph pan/zoom/fit/drag and visual interaction quality in the actual Side Panel.
+Repository tests should protect the deterministic decisions Chatspace owns around browser/runtime boundaries, such as validated targets, adapter decisions, persistence contracts, path handling, and user-visible application orchestration. Do not build synthetic browser suites merely to imitate Chromium Side Panel, File System Access permission UI, provider-tab lifecycle, or visual Graph gestures.
 
-Repository tests may still protect local decision logic around those boundaries, but acceptance of the environment itself is black-box/live-browser evidence.
-
-Do not create “daily-driver”, “browser”, or “end-to-end” test names around a jsdom/fake-runtime test unless the test actually runs that environment.
+Manual runtime inspection may still be used opportunistically during development or debugging, but it is optional evidence rather than required release ceremony.
 
 ## Verification selection by change shape
 
@@ -126,12 +119,12 @@ Use this as a decision aid, not a mandatory ladder:
 | reusable/shared domain behavior | focused tests + relevant broader deterministic suite |
 | persisted schema/import/export | migration/data-integrity tests + relevant deterministic suite + typecheck |
 | UI interaction semantics | focused component/interaction test + accessibility semantics |
-| cross-owner repository workflow | integration coverage when isolated owners cannot prove the path |
-| browser/filesystem/provider-runtime behavior | deterministic owned-port logic + real-browser acceptance |
+| cross-owner repository workflow | deterministic integration coverage when isolated owners cannot prove the path |
+| browser/filesystem/provider-runtime boundary | owned-port/domain tests + relevant application integration coverage; no mandatory black-box suite |
 | landing-only implementation | landing build gate; extension gate is unrelated |
-| release-ready master | full extension gate + landing gate + required environment evidence for changed risk |
+| release-ready master | full extension gate + landing gate |
 
-A higher-cost layer is required only when it covers material risk left unproven by lower-cost evidence.
+A higher-cost layer is required only when it covers material risk left unproven by lower-cost repository-owned evidence.
 
 ## CI scoping invariants
 
@@ -157,9 +150,7 @@ A persisted-contract change requires explicit approval before implementation.
 
 ## Provider boundary
 
-When provider integration changes, verify target normalization and owned-port decision behavior locally. Actual browser tab lifecycle remains black-box acceptance.
-
-Provider DOM/content automation is outside the current approved architecture.
+When provider integration changes, verify target normalization and owned-port decision behavior deterministically. Provider DOM/content automation remains outside the current approved architecture.
 
 ## Security-sensitive changes
 
@@ -172,11 +163,11 @@ Verification should target the changed threat boundary rather than trigger unrel
 A logical change is integration-ready when:
 
 - the intended observable behavior for its slice is satisfied;
-- affected risk has sufficient evidence at the narrowest truthful boundary;
+- affected risk has sufficient deterministic repository-owned evidence;
 - the diff contains only intended coherent scope;
 - changed canonical project knowledge/state is current when the implementation made it stale.
 
-A slice is demonstrable when its integrated user behavior works across the owners it actually requires. A milestone is complete only when the coherent milestone user outcome is delivered end-to-end; isolated architecture-layer completion is not milestone completion.
+A slice is demonstrable when its integrated user behavior works across the owners it actually requires. A milestone is complete when the coherent milestone user outcome is implemented, relevant deterministic/integration tests pass, data-integrity requirements are satisfied, and repository CI is green. Separate black-box/live-browser acceptance is not required.
 
 ## CI gate behavior
 
@@ -201,14 +192,14 @@ Keep these states distinct:
 
 - **development-ready** — bounded change is correct with sufficient affected-risk evidence;
 - **release-ready increment** — accepted increment can safely remain on releasable `master` after repository integration gates;
-- **daily-driver candidate** — release-ready plus required real-browser environment acceptance for repeated use;
-- **store-ready** — daily-driver confidence plus reproducible packaging, permission/privacy review, install/update lifecycle, distribution metadata, and applicable store-policy requirements.
+- **daily-driver candidate** — repository-owned core workflow is integrated and continuously verified, while product usage can continue to expose friction;
+- **store-ready** — release confidence plus reproducible packaging, permission/privacy review, install/update lifecycle, distribution metadata, and applicable store-policy requirements.
 
 The package is currently pre-release (`0.0.0`). Do not invent a versioning scheme outside an actual release milestone.
 
-## Current known evidence gap
+## Current verification posture
 
-Repository CI proves deterministic code/build/package confidence. It does not prove actual File System Access API behavior, real provider tab lifecycle, or complete narrow-panel Graph/Side Panel interaction. Those remain bounded live-browser acceptance concerns.
+Repository CI is the canonical automated confidence boundary. It proves deterministic code/type/test/package integration for the repository-owned behavior. Browser-runtime limitations are design/implementation constraints to account for, not a separate mandatory testing layer.
 
 ## Test data and diagnostics
 

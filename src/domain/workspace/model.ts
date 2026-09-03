@@ -1,4 +1,4 @@
-export const WORKSPACE_SCHEMA_VERSION = 3 as const;
+export const WORKSPACE_SCHEMA_VERSION = 4 as const;
 export const DEFAULT_WORKSPACE_ID = 'default';
 export const INBOX_FOLDER_ID = 'system-inbox';
 export const LEARNING_TEMPLATE_ID = 'template-learning';
@@ -19,6 +19,7 @@ export interface ChatReference {
   provider: 'chatgpt';
   target: string;
   label: string;
+  annotation: string;
   folderId: string | null;
   pinned: boolean;
   archivedAt: number | null;
@@ -120,6 +121,7 @@ interface FolderInput {
 interface ChatReferenceInput {
   id: string;
   label: string;
+  annotation?: string;
   target: string;
   folderId: string | null;
   now: number;
@@ -135,6 +137,10 @@ interface LocalNoteInput {
 function cleanLabel(value: string, fallback: string): string {
   const cleaned = value.trim().replace(/\s+/g, ' ').slice(0, 160);
   return cleaned.length > 0 ? cleaned : fallback;
+}
+
+export function cleanChatAnnotation(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').slice(0, 500);
 }
 
 export function createFolder(input: FolderInput): WorkspaceFolder {
@@ -163,6 +169,7 @@ export function createChatReference(input: ChatReferenceInput): ChatReference {
     provider: 'chatgpt',
     target: input.target,
     label: cleanLabel(input.label, 'Untitled conversation'),
+    annotation: cleanChatAnnotation(input.annotation ?? ''),
     folderId: input.folderId,
     pinned: false,
     archivedAt: null,
@@ -186,19 +193,6 @@ export function createLocalNote(input: LocalNoteInput): LocalNote {
   };
 }
 
-export function createDefaultNoteTemplates(now: number): NoteTemplate[] {
-  return [{
-    id: LEARNING_TEMPLATE_ID,
-    name: 'Learning Note',
-    titlePattern: '{{title}}',
-    content: '# Summary\n\n## Mental model\n\n## Example\n\n## Questions\n',
-    tags: [],
-    properties: { type: 'learning', status: 'active' },
-    createdAt: now,
-    updatedAt: now,
-  }];
-}
-
 export function createInitialWorkspace(now = Date.now()): WorkspaceSnapshot {
   const homeTab: WorkspaceTab = {
     id: 'tab-home',
@@ -216,7 +210,7 @@ export function createInitialWorkspace(now = Date.now()): WorkspaceSnapshot {
     chatRefs: [],
     notes: [],
     savedViews: [],
-    noteTemplates: createDefaultNoteTemplates(now),
+    noteTemplates: [],
     manualEdges: [],
     tabs: [homeTab],
     activeTabId: homeTab.id,

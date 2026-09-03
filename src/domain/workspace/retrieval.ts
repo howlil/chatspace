@@ -9,6 +9,12 @@ export interface WorkspaceRetrievalItem {
   kind: 'folder' | WorkspaceArtifactKind | 'view' | 'command';
   label: string;
   searchText: string;
+  contextText?: string | undefined;
+  contentText?: string | undefined;
+  detail?: string | undefined;
+  pinned?: boolean | undefined;
+  updatedAt?: number | undefined;
+  priority?: number | undefined;
   run: () => void;
 }
 
@@ -50,7 +56,10 @@ export function matchesWorkspaceQuery(
 ): boolean {
   const normalized = normalizedText(query);
   if (normalized === '') return true;
-  if (kind === 'chat') return (artifact as ChatReference).label.toLocaleLowerCase().includes(normalized);
+  if (kind === 'chat') {
+    const chat = artifact as ChatReference;
+    return `${chat.label}\n${chat.annotation}`.toLocaleLowerCase().includes(normalized);
+  }
   const note = artifact as LocalNote;
   const properties = Object.entries(note.properties).map(([key, value]) => `${key} ${JSON.stringify(value)}`).join(' ');
   return `${note.title}\n${note.tags.join(' ')}\n${properties}\n${note.content}`.toLocaleLowerCase().includes(normalized);
@@ -61,22 +70,56 @@ export function folderMatchesQuery(folder: WorkspaceFolder, query: string): bool
   return normalized === '' || folder.name.toLocaleLowerCase().includes(normalized);
 }
 
-function scoreItem(item: WorkspaceRetrievalItem, query: string): number {
+function queryMatchScore(item: WorkspaceRetrievalItem, query: string): number {
   const normalized = normalizedText(query);
-  if (normalized === '') return item.kind === 'command' ? 4 : 0;
+  if (normalized === '') return 0;
+
   const label = item.label.toLocaleLowerCase();
+  const context = (item.contextText ?? '').toLocaleLowerCase();
   const searchText = item.searchText.toLocaleLowerCase();
+  const content = (item.contentText ?? '').toLocaleLowerCase();
+
   if (label === normalized) return 0;
-  if (label.startsWith(normalized)) return 1;
-  if (label.includes(normalized)) return 2;
-  if (searchText.includes(normalized)) return 3;
+  if (label.startsWith(normalized)) return 10;
+  if (label.includes(normalized)) return 20;
+  if (context.includes(normalized)) return 30;
+  if (searchText.includes(normalized)) return 40;
+  if (content.includes(normalized)) return 50;
   return Number.POSITIVE_INFINITY;
 }
 
+function emptyQueryGroup(item: WorkspaceRetrievalItem): number {
+  if (item.kind === 'chat' || item.kind === 'note') return 0;
+  if (item.kind === 'command') return 1;
+  return 2;
+}
+
+function compareSignals(left: WorkspaceRetrievalItem, right: WorkspaceRetrievalItem): number {
+  const pinDelta = Number(Boolean(right.pinned)) - Number(Boolean(left.pinned));
+  if (pinDelta !== 0) return pinDelta;
+
+  const recencyDelta = (right.updatedAt ?? Number.NEGATIVE_INFINITY) - (left.updatedAt ?? Number.NEGATIVE_INFINITY);
+  if (recencyDelta !== 0) return recencyDelta;
+
+  const priorityDelta = (left.priority ?? 100) - (right.priority ?? 100);
+  if (priorityDelta !== 0) return priorityDelta;
+
+  return left.label.localeCompare(right.label);
+}
+
 export function rankRetrievalItems(items: WorkspaceRetrievalItem[], query: string): WorkspaceRetrievalItem[] {
+  const normalized = normalizedText(query);
+
+  if (normalized === '') {
+    return [...items].sort((left, right) => {
+      const groupDelta = emptyQueryGroup(left) - emptyQueryGroup(right);
+      return groupDelta !== 0 ? groupDelta : compareSignals(left, right);
+    });
+  }
+
   return items
-    .map((item) => ({ item, score: scoreItem(item, query) }))
+    .map((item) => ({ item, score: queryMatchScore(item, normalized) }))
     .filter(({ score }) => Number.isFinite(score))
-    .sort((left, right) => left.score - right.score || left.item.label.localeCompare(right.item.label))
+    .sort((left, right) => left.score - right.score || compareSignals(left.item, right.item))
     .map(({ item }) => item);
 }

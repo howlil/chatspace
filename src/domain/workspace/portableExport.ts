@@ -116,6 +116,7 @@ function chatReferenceMarkdown(chat: ChatReference): string {
     ['chatspace_id', chat.id],
     ['provider', chat.provider],
     ['label', chat.label],
+    ['annotation', chat.annotation],
     ['target', chat.target],
     ['folder_id', chat.folderId],
     ['pinned', chat.pinned],
@@ -123,7 +124,8 @@ function chatReferenceMarkdown(chat: ChatReference): string {
     ['created_at', chat.createdAt],
     ['updated_at', chat.updatedAt],
   ]);
-  return `${metadata}\n# ${chat.label}\n\n<${chat.target}>\n`;
+  const annotation = chat.annotation === '' ? '' : `\n${chat.annotation}\n`;
+  return `${metadata}\n# ${chat.label}\n${annotation}\n<${chat.target}>\n`;
 }
 
 function noteLinks(snapshot: WorkspaceSnapshot): PortableNoteLink[] {
