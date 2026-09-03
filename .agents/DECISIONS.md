@@ -52,13 +52,13 @@ Record only durable material Chatspace decisions whose rationale would be expens
 
 **Consequence:** Reintroducing provider DOM/content access is a new material trust/provider-boundary decision.
 
-## D-010 — Browser-environment acceptance is black-box
+## D-010 — Repository-owned deterministic verification is the completion gate
 
-**Decision:** CI proves deterministic repository/build/package behavior. Real Side Panel, provider-tab lifecycle, File System Access permission/restoration/write behavior, and visual Graph interaction are accepted in the actual Chromium environment rather than through synthetic browser mocks.
+**Decision:** Milestone completion and merge confidence are based on relevant repository-owned static checks, deterministic tests, integration coverage, and packaging/CI gates. Black-box/live-browser testing is not required as a separate acceptance layer.
 
-**Why:** Deeply mocked browser tests can produce false confidence while adding maintenance ceremony.
+**Why:** Synthetic or manually maintained browser acceptance adds ceremony and can duplicate behavior already protected at owned boundaries. The repository should optimize for deterministic, repeatable evidence that can run continuously.
 
-**Consequence:** Unit/component tests remain focused on deterministic domain logic, owned-port decisions, pure helpers, and stable interaction semantics.
+**Consequence:** Unit/component/integration tests remain focused on deterministic domain logic, owned-port decisions, persistence contracts, stable interaction semantics, and packaging. Browser-specific runtime behavior may still be manually inspected during development when useful, but it is not a milestone completion gate.
 
 ## D-011 — Deterministic local semantic relations only
 
@@ -72,7 +72,7 @@ Record only durable material Chatspace decisions whose rationale would be expens
 
 **Why:** The old bridge had no current runtime consumer, duplicated an outcome already owned by direct File System Access, and added a separate permission/trust/maintenance surface.
 
-**Consequences:** Chatspace no longer carries a localhost fallback or requests localhost host access. Reintroducing a local server bridge is a new material product/security decision. Real direct-folder lifecycle behavior remains a live-browser acceptance concern.
+**Consequences:** Chatspace no longer carries a localhost fallback or requests localhost host access. Reintroducing a local server bridge is a new material product/security decision.
 
 ## D-013 — Direct selected-folder sync is the vault path
 
@@ -80,7 +80,7 @@ Record only durable material Chatspace decisions whose rationale would be expens
 
 **Why:** The user can connect and sync a vault without terminal, token, Node process, or localhost-server setup.
 
-**Consequences:** Sync is explicit, manual, and one-way to `<vault>/Chatspace/`; reconnect/change/disconnect remain explicit. Browser permission/restoration/write behavior is verified through live-browser acceptance rather than fake-handle tests.
+**Consequences:** Sync is explicit, manual, and one-way to `<vault>/Chatspace/`; reconnect/change/disconnect remain explicit. Deterministic repository tests protect owned path/decision/persistence behavior without requiring a separate black-box acceptance suite.
 
 ## Superseded historical directions
 
