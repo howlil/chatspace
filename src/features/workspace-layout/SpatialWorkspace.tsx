@@ -73,7 +73,7 @@ export function SpatialWorkspace({
       {!treeCollapsed && (
         <nav
           className="min-h-0 overflow-hidden border-r border-cs-border bg-cs-panel max-[520px]:absolute max-[520px]:inset-y-0 max-[520px]:left-0 max-[520px]:z-20 max-[520px]:w-[min(84vw,320px)] max-[520px]:shadow-2xl"
-          aria-label="Workspace explorer"
+          aria-label="Workspace library"
         >
           {tree ?? <p className="p-3 text-[11px] text-cs-muted">Folders, chats, and notes appear here.</p>}
         </nav>
@@ -82,7 +82,7 @@ export function SpatialWorkspace({
         <div
           className="group relative z-10 cursor-col-resize bg-transparent outline-none transition-colors hover:bg-cs-hover focus-visible:bg-cs-active max-[520px]:hidden"
           role="separator"
-          aria-label="Resize explorer"
+          aria-label="Resize library"
           aria-orientation="vertical"
           aria-valuemin={MIN_TREE_WIDTH}
           aria-valuemax={MAX_TREE_WIDTH}
@@ -96,7 +96,7 @@ export function SpatialWorkspace({
           <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent group-hover:bg-cs-focus/30" />
         </div>
       )}
-      <main className="min-h-0 min-w-0 overflow-hidden bg-cs-bg" aria-label="Workspace workbench">
+      <main className="min-h-0 min-w-0 overflow-hidden bg-cs-bg" aria-label="Chatspace workspace">
         {surface ?? (
           <section className="mx-auto max-w-xl p-5">
             <strong className="text-sm">Local workspace</strong>
