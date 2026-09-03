@@ -8,13 +8,13 @@ import {
 } from './markdownImport';
 
 describe('Markdown import', () => {
-  it('scans folders, YAML frontmatter, tags, body, wikilinks, and Chatspace IDs without mutating workspace', () => {
+  it('scans folders, YAML frontmatter, tags, body, wikilinks, structured properties, and Chatspace IDs without mutating workspace', () => {
     const workspace = createInitialWorkspace(10);
     const before = JSON.stringify(workspace);
     const scan = scanMarkdownImport(workspace, [
       {
         path: 'Backend/TCP.md',
-        content: '---\ntitle: TCP\ntags:\n  - networking\n  - backend\nchatspace_id: note-tcp\n---\n# TCP\nSee [[MVCC]].',
+        content: '---\ntitle: TCP\ntags:\n  - networking\n  - backend\nproperties: {"status":"research","score":2,"reviewed":false,"labels":["transport"],"due":{"type":"date","value":"2026-09-30"}}\nchatspace_id: note-tcp\n---\n# TCP\nSee [[MVCC]].',
       },
       {
         path: 'Database/MVCC.md',
@@ -35,6 +35,13 @@ describe('Markdown import', () => {
     expect(scan.notes[0]).toMatchObject({
       title: 'TCP',
       tags: ['networking', 'backend'],
+      properties: {
+        status: 'research',
+        score: 2,
+        reviewed: false,
+        labels: ['transport'],
+        due: { type: 'date', value: '2026-09-30' },
+      },
       folderPath: ['Backend'],
       requestedNoteId: 'note-tcp',
       wikilinks: ['MVCC'],
@@ -42,11 +49,11 @@ describe('Markdown import', () => {
     expect(scan.warnings[0]).toContain('skipped Chatspace chat-reference');
   });
 
-  it('recognizes exported Chatspace note paths and keeps authored Markdown body stable', () => {
+  it('recognizes exported Chatspace note paths and keeps authored Markdown body and properties stable', () => {
     const workspace = createInitialWorkspace(10);
     const scan = scanMarkdownImport(workspace, [{
       path: 'notes/Backend--folder-backend/TCP--note-tcp.md',
-      content: '---\nchatspace_type: "note"\nchatspace_id: "note-tcp"\ntitle: "TCP"\ntags: ["networking"]\n---\n\nOriginal body with [[UDP]].',
+      content: '---\nchatspace_type: "note"\nchatspace_id: "note-tcp"\ntitle: "TCP"\ntags: ["networking"]\nproperties: {"status":"active","started":{"type":"date","value":"2026-09-03"}}\n---\n\nOriginal body with [[UDP]].',
     }]);
 
     expect(scan.notes[0]).toMatchObject({
@@ -54,8 +61,17 @@ describe('Markdown import', () => {
       folderPath: ['Backend'],
       requestedNoteId: 'note-tcp',
       tags: ['networking'],
+      properties: { status: 'active', started: { type: 'date', value: '2026-09-03' } },
       content: '\nOriginal body with [[UDP]].',
     });
+  });
+
+  it('rejects unsupported structured property shapes instead of silently losing them', () => {
+    const workspace = createInitialWorkspace(10);
+    expect(() => scanMarkdownImport(workspace, [{
+      path: 'Bad.md',
+      content: '---\nproperties: {"nested":{"unexpected":true}}\n---\nBad',
+    }])).toThrow(/Unsupported structured property value/);
   });
 
   it('requires explicit decisions for ID and title conflicts, then applies them as one snapshot transition', () => {
@@ -65,6 +81,7 @@ describe('Markdown import', () => {
       ...createLocalNote({ id: 'note-tcp', title: 'TCP', folderId: backend.id, now: 3 }),
       content: 'Old TCP',
       tags: ['old'],
+      properties: { status: 'old' },
     };
     const architecture = {
       ...createLocalNote({ id: 'note-architecture', title: 'Architecture', folderId: null, now: 4 }),
@@ -78,11 +95,11 @@ describe('Markdown import', () => {
     const scan = scanMarkdownImport(workspace, [
       {
         path: 'Networking/Transport.md',
-        content: '---\nchatspace_id: note-tcp\ntitle: Transport\ntags: [networking]\n---\nUpdated transport body',
+        content: '---\nchatspace_id: note-tcp\ntitle: Transport\ntags: [networking]\nproperties: {"status":"research","priority":3}\n---\nUpdated transport body',
       },
       {
         path: 'Patterns/Retries.md',
-        content: '---\ntitle: Retries\n---\nIncoming retry body',
+        content: '---\ntitle: Retries\nproperties: {"topic":"reliability"}\n---\nIncoming retry body',
       },
     ]);
 
@@ -103,9 +120,10 @@ describe('Markdown import', () => {
       title: 'Transport',
       content: 'Updated transport body',
       tags: ['networking'],
+      properties: { status: 'research', priority: 3 },
     });
     expect(result.snapshot.notes.find((note) => note.id === 'note-architecture')?.content).toBe('Read [[Transport]].');
-    expect(result.snapshot.notes.some((note) => note.title === 'Retry patterns')).toBe(true);
+    expect(result.snapshot.notes.find((note) => note.title === 'Retry patterns')?.properties).toEqual({ topic: 'reliability' });
     expect(result.snapshot.folders.some((folder) => folder.name === 'Networking')).toBe(true);
     expect(result.snapshot.folders.some((folder) => folder.name === 'Patterns')).toBe(true);
     expect(workspace.notes.find((note) => note.id === 'note-tcp')?.title).toBe('TCP');
