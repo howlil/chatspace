@@ -26,7 +26,7 @@ class MemoryDirectory implements PortableDirectoryHandle {
   }
 
   async getFileHandle(name: string): Promise<PortableFileHandle> {
-    const owner = this;
+    const files = this.files;
     return {
       async createWritable(): Promise<PortableWritable> {
         let content = '';
@@ -35,7 +35,7 @@ class MemoryDirectory implements PortableDirectoryHandle {
             content = data;
           },
           async close() {
-            owner.files.set(name, content);
+            files.set(name, content);
           },
         };
       },
