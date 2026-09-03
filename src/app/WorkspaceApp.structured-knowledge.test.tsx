@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { createInitialWorkspace, createLocalNote } from '../domain/workspace/model';
@@ -80,9 +80,10 @@ describe('WorkspaceApp structured knowledge', () => {
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
     fireEvent.click(screen.getByRole('button', { name: 'Backend research' }));
 
-    expect(await screen.findByLabelText('Saved view Backend research')).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Storage' })).toBeVisible();
-    expect(screen.queryByRole('button', { name: 'UI polish' })).not.toBeInTheDocument();
+    const projection = await screen.findByLabelText('Saved view Backend research');
+    expect(projection).toBeVisible();
+    expect(within(projection).getByRole('button', { name: 'Storage' })).toBeVisible();
+    expect(within(projection).queryByRole('button', { name: 'UI polish' })).not.toBeInTheDocument();
     expect((await repository.load())?.notes).toHaveLength(2);
   });
 });
