@@ -25,6 +25,30 @@ describe('SettingsPanel', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Invalid workspace JSON.');
   });
 
+  it('exports portable knowledge through one explicit folder action', async () => {
+    const onPortableExport = vi.fn().mockResolvedValue({
+      destinationName: 'Exports',
+      rootDirectoryName: 'Chatspace Export--Chatspace',
+      filesWritten: 7,
+    });
+    render(
+      <SettingsPanel
+        exportJson={'{"schemaVersion":2}'}
+        recoveryJson={null}
+        persistenceError={null}
+        onImport={vi.fn()}
+        onReset={vi.fn()}
+        onDownload={vi.fn()}
+        onPortableExport={onPortableExport}
+        portableExportSupported
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export portable knowledge' }));
+    await waitFor(() => expect(onPortableExport).toHaveBeenCalledWith('{"schemaVersion":2}'));
+    expect(await screen.findByText('Exported 7 files to Chatspace Export--Chatspace.')).toBeVisible();
+  });
+
   it('requires an explicit second action before reset', async () => {
     const onReset = vi.fn().mockResolvedValue(undefined);
     render(

@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Chatspace is a local-first Chromium Side Panel workspace for organizing, revisiting, and connecting work around native ChatGPT conversations without replacing the ChatGPT conversation experience.
+Chatspace is a local-first Chromium Side Panel workspace for organizing, revisiting, connecting, and exporting user-owned work around native ChatGPT conversations without replacing the ChatGPT conversation experience.
 
 ```text
 ChatGPT   = provider-owned conversation runtime
-Chatspace = local workspace, organization, notes, navigation, and graph
+Chatspace = local workspace, organization, notes, navigation, graph, and portable local export
 ```
 
 ## Intended experience
@@ -20,7 +20,8 @@ The main browser page remains native ChatGPT. Chatspace lives beside it in the S
 - outgoing note links and backlinks derived from Markdown rather than persisted separately;
 - a spatial Graph over canonical local workspace state plus explicit/derived local relationships;
 - validated navigation back to supported ChatGPT conversation URLs;
-- optional manual Markdown sync to a user-selected local vault.
+- optional manual Markdown sync to a user-selected local vault;
+- explicit portable folder export of Chatspace-owned notes, hierarchy, metadata, relationships, manifest, and canonical workspace backup.
 
 ## Core entities
 
@@ -45,6 +46,9 @@ Spatial projection over canonical workspace state. Manual relations may be canon
 ### Vault connection
 Optional local integration used to manually write Chatspace notes beneath a user-selected vault directory.
 
+### Portable knowledge bundle
+A one-way, human-readable projection of the canonical local workspace into a user-selected folder. It contains Markdown notes, saved-chat reference metadata, relationship metadata, a manifest, and a canonical JSON backup. It is not a second persisted workspace model.
+
 ## Committed behavior
 
 - Chatspace uses the browser Side Panel and does not cover or recreate native ChatGPT.
@@ -66,6 +70,10 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - Markdown Sync is manual and one-way from Chatspace to the selected vault.
 - Direct selected-folder access is the only current vault-sync runtime path.
 - The selected vault directory handle is integration-owned state and is not part of workspace export/import.
+- Portable knowledge export is an explicit one-way projection from `WorkspaceSnapshot` v2 and does not change or replace that canonical schema.
+- Portable export writes beneath a user-selected folder and does not persist that export destination.
+- Portable export includes active and archived Chatspace-owned notes/chat references with lifecycle metadata, plus folder hierarchy, linked-chat metadata, resolved active note-link relationships, manual graph edges, manifest, and canonical JSON backup.
+- Portable saved-chat files contain only Chatspace-owned reference metadata and validated ChatGPT target URLs. Native ChatGPT conversation content is never exported.
 
 ## Primary daily-driver journey
 
@@ -78,6 +86,7 @@ Optional local integration used to manually write Chatspace notes beneath a user
 7. Curate durable knowledge into Markdown notes and connect notes directly with `[[Title]]` while writing.
 8. Follow outgoing links/backlinks in note context or navigate the same explicit relationships through Graph.
 9. Optionally sync the active note to a selected local vault.
+10. When portability is needed, explicitly export the Chatspace-owned knowledge bundle to a selected local folder.
 
 ## Scope boundaries
 
@@ -89,7 +98,8 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - URL-only provider presence/navigation;
 - spatial local Graph navigation with manual, explicit-note-link, and related-local provenance;
 - local recovery/import/export/reset;
-- explicit manual local-vault note sync.
+- explicit manual local-vault note sync;
+- explicit one-way portable folder export of Chatspace-owned local knowledge.
 
 ### Non-goals
 
@@ -97,12 +107,13 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - provider cookie/session handling;
 - provider history crawling;
 - provider DOM scraping or semantic indexing;
-- automated extraction of ChatGPT output;
+- automated extraction or export of ChatGPT output;
 - network interception/replay;
 - replacing native ChatGPT with a custom client;
 - opaque AI-generated graph edges or automatic note-link creation;
 - cross-device sync;
 - bidirectional or automatic vault sync;
+- automatic/background portable export;
 - localhost/server-based vault sync in the current product;
 - mobile support in the current desktop-first product.
 
@@ -112,7 +123,9 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - Native ChatGPT owns provider conversation content/runtime.
 - `WorkspaceSnapshot` schema v2 is the canonical persisted workspace contract; archive lifecycle for notes/chat references is represented by `archivedAt: number | null`.
 - `[[Title]]` note-link relationships and backlinks are derived from note Markdown and do not add fields to `WorkspaceSnapshot`.
-- The selected filesystem directory handle is stored separately from `WorkspaceSnapshot`.
+- Portable knowledge bundle format versioning is separate from `WorkspaceSnapshot` schema versioning; the bundle is a projection, not canonical persisted state.
+- The selected vault filesystem directory handle is stored separately from `WorkspaceSnapshot`.
+- The portable-export destination handle is not persisted.
 - Provider targets are supported only through validated ChatGPT URL shapes owned by the provider adapter.
 
 ## Important product constraints
@@ -120,9 +133,10 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - Provider failure must not break local workspace usage.
 - Global create actions have stable semantics regardless of current selection.
 - Graph renderer/layout state must not silently become canonical persisted state.
-- Provider content must not become an implicit input to Chatspace local knowledge or retrieval.
+- Provider content must not become an implicit input to Chatspace local knowledge, retrieval, or portable export.
 - Archive must remain reversible and non-destructive; delete remains the explicit destructive lifecycle action.
 - Title-based note links must fail visibly on missing/ambiguous targets instead of silently selecting a note.
+- Portable export must remain understandable outside Chatspace and must not imply ownership of native ChatGPT conversation content.
 - User-created local data must remain understandable, exportable, and explicitly deletable.
 
 ## Deferred / requires explicit product decision
@@ -132,4 +146,5 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - automatic/bidirectional vault synchronization;
 - remote analytics/telemetry;
 - future material workspace-schema changes;
-- automatic rewrite of existing `[[Title]]` links when a target note is renamed.
+- automatic rewrite of existing `[[Title]]` links when a target note is renamed;
+- portable-bundle import beyond the existing canonical JSON backup/import path.

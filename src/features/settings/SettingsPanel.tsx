@@ -1,6 +1,11 @@
 import { Database, Download, RotateCcw, Upload } from 'lucide-react';
 import { useState } from 'react';
 
+import {
+  exportPortableWorkspaceJson,
+  isPortableWorkspaceExportSupported,
+  type PortableWorkspaceExportResult,
+} from '../../integrations/portable-export/BrowserPortableWorkspaceExporter';
 import { Button, Panel, Textarea } from '../../ui/primitives';
 import { InlineFeedback, WorkspaceHeader } from '../../ui/workspace';
 
@@ -11,6 +16,8 @@ interface SettingsPanelProps {
   onImport: (json: string) => Promise<void>;
   onReset: () => Promise<void>;
   onDownload: (filename: string, content: string) => void;
+  onPortableExport?: (workspaceJson: string) => Promise<PortableWorkspaceExportResult | null>;
+  portableExportSupported?: boolean;
 }
 
 function errorMessage(error: unknown): string {
@@ -42,9 +49,19 @@ function SettingsCard({
   );
 }
 
-export function SettingsPanel({ exportJson, recoveryJson, persistenceError, onImport, onReset, onDownload }: SettingsPanelProps) {
+export function SettingsPanel({
+  exportJson,
+  recoveryJson,
+  persistenceError,
+  onImport,
+  onReset,
+  onDownload,
+  onPortableExport = exportPortableWorkspaceJson,
+  portableExportSupported = isPortableWorkspaceExportSupported(),
+}: SettingsPanelProps) {
   const [importText, setImportText] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
+  const [portableMessage, setPortableMessage] = useState<string | null>(null);
   const [resetArmed, setResetArmed] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -54,6 +71,22 @@ export function SettingsPanel({ exportJson, recoveryJson, persistenceError, onIm
     try {
       await onImport(importText);
       setImportText('');
+    } catch (error) {
+      setActionError(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function exportPortableKnowledge() {
+    setBusy(true);
+    setActionError(null);
+    setPortableMessage(null);
+    try {
+      const result = await onPortableExport(exportJson);
+      if (result !== null) {
+        setPortableMessage(`Exported ${result.filesWritten} files to ${result.rootDirectoryName}.`);
+      }
     } catch (error) {
       setActionError(errorMessage(error));
     } finally {
@@ -103,6 +136,30 @@ export function SettingsPanel({ exportJson, recoveryJson, persistenceError, onIm
         )}
       >
         <Textarea className="h-28 w-full resize-none font-mono text-[9px] leading-4" aria-label="Workspace export" readOnly value={exportJson} />
+      </SettingsCard>
+
+      <SettingsCard
+        title="Portable knowledge"
+        description="Write understandable Markdown, local chat-reference metadata, explicit relationships, a manifest, and the canonical JSON backup into a folder you choose."
+        action={(
+          <Button
+            disabled={busy || !portableExportSupported}
+            aria-label="Export portable knowledge"
+            onClick={() => void exportPortableKnowledge()}
+          >
+            <Download size={11} aria-hidden="true" /> Export folder
+          </Button>
+        )}
+      >
+        <div className="grid gap-2 text-[9px] leading-4 text-cs-muted">
+          <p className="m-0">
+            Notes keep their Markdown and folder hierarchy. Saved ChatGPT conversations export only Chatspace-owned reference metadata and validated URLs, never provider conversation content.
+          </p>
+          {!portableExportSupported && (
+            <InlineFeedback>Direct folder export requires browser File System Access support.</InlineFeedback>
+          )}
+          {portableMessage !== null && <InlineFeedback>{portableMessage}</InlineFeedback>}
+        </div>
       </SettingsCard>
 
       {recoveryJson !== null && (
@@ -160,7 +217,7 @@ export function SettingsPanel({ exportJson, recoveryJson, persistenceError, onIm
         <InlineFeedback tone="danger">{actionError}</InlineFeedback>
       )}
       <p className="m-0 px-1 text-[9px] leading-4 text-cs-subtle">
-        No provider cookies, auth tokens, private API responses, or automatically extracted ChatGPT output are stored by Chatspace.
+        No provider cookies, auth tokens, private API responses, or automatically extracted ChatGPT output are stored or exported by Chatspace.
       </p>
     </section>
   );

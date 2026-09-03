@@ -2,73 +2,78 @@
 
 Status: **READY_FOR_MILESTONE**
 
-Goal: Make note-to-note knowledge navigation a natural part of writing without introducing another persisted relationship source of truth.
+Goal: Make Chatspace-owned knowledge portable as understandable files without expanding provider access or introducing another persisted source of truth.
 
-Why: Chatspace already had Markdown notes, manual Graph relations, and locally derived similarity. M11 adds one coherent writing-to-navigation use case: write `[[Title]]` → resolve locally → follow outgoing links/backlinks → see the same explicit relation in Graph.
+Why: JSON backup preserves the canonical application state, but it is not the best human-readable handoff format. M12 adds one coherent portability use case: choose a folder → export local notes and hierarchy as Markdown → retain local chat-reference metadata and explicit relationships → keep a canonical JSON backup alongside a manifest.
 
 ## Feature Compass
 
-**Shape:** Local notes use `[[Title]]` as the canonical explicit note-link syntax. The editor offers local title completion, Preview opens uniquely resolved links, the note context exposes outgoing links and backlinks, and Graph projects those links with `derived-link` provenance. Missing or duplicate titles are surfaced as unresolved/ambiguous instead of guessed.
+**Shape:** Settings now exposes an explicit Portable knowledge export. Chatspace projects `WorkspaceSnapshot` v2 into a user-selected folder containing Markdown notes in their local hierarchy, Markdown files for saved ChatGPT reference metadata, relationship metadata, `manifest.json`, and the canonical `workspace.json` backup. Native ChatGPT conversation content is never part of the projection.
 
-**Position:** M11 — Linked Notes & Backlinks is complete and ready to integrate.
+**Position:** M12 — Portable Knowledge is complete and ready to integrate.
 
-**Delta:** Added deterministic wikilink parsing/resolution, backlinks, editor completion, safe Preview navigation, link-aware note context, and Graph note-link projection. Explicit links take precedence over generic related-local similarity, while manual graph relations retain highest precedence for the same pair.
+**Delta:** Added a deterministic portable-export projection, path-safe human-readable folder/file naming, Markdown frontmatter, relationship/manifest metadata, direct File System Access writing, cancellation handling, and Settings UI. The export includes active and archived Chatspace-owned artifacts while retaining their lifecycle metadata.
 
-**Next Move:** Execute the already-approved M12 — Portable Knowledge milestone: export the user-owned local workspace as understandable Markdown hierarchy + metadata + manifest + workspace backup through direct File System Access, without exporting native ChatGPT conversation content.
+**Next Move:** Wait for an explicit next product/engineering outcome. Do not invent another milestone and do not create a black-box/live-browser milestone.
 
 ## Scope
 
 ### In
 
-- canonical `[[Title]]` note links stored directly in Markdown content;
-- deterministic parsing that ignores fenced code blocks;
-- exact normalized-title resolution;
-- fail-closed ambiguous and unresolved link states;
-- editor title completion while writing a wikilink;
-- clickable uniquely resolved links in safe Markdown Preview;
-- outgoing links and backlinks derived from active local notes;
-- Graph `note-link` edges with `derived-link` provenance;
-- precedence: manual relation > explicit note link > locally derived similarity for the same note pair.
+- deterministic projection from canonical `WorkspaceSnapshot` v2;
+- human-readable folder hierarchy with stable IDs in directory/file names to avoid collisions;
+- note Markdown files preserving user-authored Markdown plus explicit frontmatter metadata;
+- saved ChatGPT reference Markdown containing only Chatspace-owned metadata and validated target URLs;
+- `relationships.json` for linked chats, derived active `[[Title]]` note links, and canonical manual graph edges;
+- `manifest.json` with format/version, workspace metadata, counts, folder mapping, file layout, and explicit provider-content boundary;
+- `workspace.json` as the canonical machine-readable backup inside the portable bundle;
+- active and archived local artifacts included with `archived_at` metadata;
+- direct user-selected folder export through File System Access;
+- user cancellation treated as a no-op rather than an error.
 
 ### Out
 
-- no persisted backlink array or second relationship database;
-- no ID-based hidden wikilink syntax;
-- no automatic link creation, AI linking, semantic indexing, or provider-content extraction;
-- no title-rename rewrite framework in this milestone;
-- no archived-note linking surface;
+- no native ChatGPT conversation body/output export;
+- no provider DOM/content access, history crawling, private API access, cookie/session access, or network interception;
+- no new `WorkspaceSnapshot` field or schema-version change;
+- no persisted portable-export directory handle;
+- no automatic, scheduled, background, or bidirectional export/sync;
+- no ZIP/archive dependency or remote storage target;
+- no portable-bundle import format in this milestone;
 - no black-box/live-browser milestone.
 
 ## Slices
 
-- [x] **Slice 1 — Link model:** parse `[[Title]]`, resolve unique titles, and derive outgoing/backlink relationships deterministically.
-- [x] **Slice 2 — Writing flow:** add note-title completion and safe Preview navigation while keeping Markdown canonical.
-- [x] **Slice 3 — Knowledge navigation:** expose links/backlinks in note context and project explicit note links into Graph with provenance/precedence.
-- [x] **Slice 4 — Milestone gate:** wire active-note catalogs through WorkspaceApp and pass the full deterministic repository gate.
+- [x] **Slice 1 — Portable projection:** produce deterministic Markdown, manifest, relationship metadata, and canonical JSON backup from `WorkspaceSnapshot` v2.
+- [x] **Slice 2 — Direct folder writer:** write the projected bundle beneath one explicit export root using File System Access without persisting the chosen destination.
+- [x] **Slice 3 — Settings flow:** expose one explicit Portable knowledge action with capability/error/success feedback and clear provider-content boundaries.
+- [x] **Slice 4 — Milestone gate:** add deterministic projection/writer/UI tests, fix lint feedback, and pass the full repository verification ladder.
 
 ## Current Decisions
 
-- `[[Title]]` is the only canonical note-link syntax introduced by M11; links remain user-readable Markdown.
-- A normalized title resolves only when exactly one active note matches. Zero matches are unresolved; multiple matches are ambiguous.
-- Link relationships and backlinks are projections of Markdown, not persisted workspace fields, so M11 does not change `WorkspaceSnapshot` schema v2.
-- Archived notes are excluded from active link resolution/navigation and Graph projection until restored.
-- For a note pair, manual Graph relation wins over explicit Markdown link; explicit Markdown link wins over related-local similarity.
-- Safe Preview still renders React content rather than raw HTML injection.
+- Portable export is a projection only. `WorkspaceSnapshot` v2 remains the single canonical persisted workspace contract.
+- The bundle format is `chatspace-portable-knowledge`, version 1; this version is an export-format version, not a workspace-schema version.
+- Human-readable names are combined with stable local IDs so duplicate titles/folder names do not collide on disk.
+- Notes preserve original Markdown content after frontmatter. `[[Title]]` syntax remains readable and unchanged in exported note bodies.
+- Saved chat-reference files contain provider name, local label, validated target URL, local folder/pin/archive/timestamp metadata only. They never contain provider conversation content.
+- `relationships.json` carries explicit metadata useful outside the application while `workspace.json` remains the lossless Chatspace backup.
+- Archived notes/chat references are included because portability should cover user-owned local data, but their archived lifecycle state remains explicit.
+- The selected export folder is session-local to the user action and is not persisted in `WorkspaceSnapshot` or integration storage.
 
 ## Verification / Evidence
 
-- Deterministic note-link tests cover parsing, fenced-code exclusion, unique/missing/ambiguous resolution, outgoing links, backlinks, and active wikilink queries.
-- LocalNoteEditor tests cover safe Markdown rendering and navigation through a uniquely resolved `[[Title]]` link.
-- Graph tests cover explicit note-link projection and relationship precedence.
-- Existing workspace, migration, bulk triage, retrieval, Graph, persistence, provider-adapter, settings, command-palette, and local-vault suites remain part of the gate.
-- PR CI #241 passed frozen install, lint, strict typecheck, deterministic tests, WXT ZIP packaging, landing frozen install, and Astro static build.
+- Portable projection tests cover nested hierarchy, note/chat frontmatter, linked chats, derived note links, manual relationships, archived artifacts, provider-content boundary metadata, and path sanitization.
+- Direct-folder writer tests use deterministic in-memory File System Access-shaped handles and cover root/file creation, injected picker behavior, and cancellation.
+- Settings tests cover explicit portable-export invocation and success feedback while retaining import/reset/recovery coverage.
+- Existing workspace, migration, bulk triage, retrieval, linked-note, Graph, persistence, provider-adapter, command-palette, local-vault, and landing suites remain part of the gate.
+- PR CI #246 passed lint, strict typecheck, deterministic tests, WXT ZIP packaging, landing frozen install, and Astro static build after the initial lint issue was corrected.
 
 ## Blockers / Risks
 
 - No known repository or product blocker.
-- Title-based links intentionally expose ambiguity when duplicate note titles exist; do not silently select one target.
-- Renaming a target note can make existing title-based links unresolved; automatic rewrite remains out of scope unless explicitly requested.
+- Direct folder export depends on browser File System Access support; unsupported contexts disable the action and surface that limitation.
+- Portable export is intentionally one-way. Restoring canonical Chatspace state still uses the existing schema-valid JSON backup/import path.
 
 ## Next Action
 
-Integrate M11 after this documentation-only closure commit passes CI, then execute M12 from fresh `master`.
+Integrate M12 after this documentation-only closure commit passes CI. After merge, verify `master` CI and stop.
