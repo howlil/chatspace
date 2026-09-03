@@ -112,7 +112,7 @@ For Chromium development:
 4. click the Chatspace extension action; Chatspace opens in the browser Side Panel
 5. keep native ChatGPT in the main page and use the Side Panel for local capture/retrieval/navigation
 
-CI uses the committed `pnpm-lock.yaml` with frozen install and repository gates. Real Side Panel/provider-tab/File System behavior is validated separately through bounded live-browser acceptance; jsdom tests are not labeled as browser/E2E evidence.
+CI uses the committed `pnpm-lock.yaml` with frozen install, lint, strict typecheck, deterministic tests, and extension packaging. Repository-owned deterministic verification is the completion gate; a separate black-box/live-browser test layer is not required.
 
 ## Agent/project knowledge
 
@@ -133,7 +133,7 @@ DESIGN.md
 
 ## Release status
 
-Chatspace is a development/daily-driver candidate, not yet a public/store-ready release. Repository build/package confidence is automated; actual Chromium Side Panel interaction and File System Access behavior still require bounded live-browser acceptance where relevant.
+Chatspace is a development/daily-driver candidate, not yet a public/store-ready release. Repository build, deterministic behavior, and package confidence are automated through CI; store readiness remains a separate release/distribution concern.
 
 ## Safety and privacy
 
