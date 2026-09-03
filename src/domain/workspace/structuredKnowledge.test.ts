@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createDefaultNoteTemplates, createLocalNote } from './model';
+import { createLocalNote, type NoteTemplate } from './model';
 import {
   createSavedKnowledgeView,
   distinctKnowledgePropertyValues,
@@ -67,20 +67,24 @@ describe('structured knowledge', () => {
     });
   });
 
-  it('instantiates the fixed Learning Note template with only title and date variables', () => {
-    const template = createDefaultNoteTemplates(1)[0]!;
-    const note = instantiateNoteTemplate({
-      template: {
-        ...template,
-        titlePattern: '{{title}} · {{date}}',
-        content: '{{title}}\n{{date}}\n{{unknown}}',
-        properties: {
-          type: 'learning',
-          status: 'active',
-          started: { type: 'date', value: '{{date}}' },
-        },
+  it('instantiates an explicit template with only title and date variables', () => {
+    const template: NoteTemplate = {
+      id: 'template-research',
+      name: 'Research Note',
+      titlePattern: '{{title}} · {{date}}',
+      content: '{{title}}\n{{date}}\n{{unknown}}',
+      tags: [],
+      properties: {
+        type: 'research',
+        status: 'active',
+        started: { type: 'date', value: '{{date}}' },
       },
-      id: 'note-learning',
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    const note = instantiateNoteTemplate({
+      template,
+      id: 'note-research',
       title: 'TCP',
       folderId: null,
       now: Date.UTC(2026, 8, 3, 12),
@@ -89,7 +93,7 @@ describe('structured knowledge', () => {
     expect(note.title).toBe('TCP · 2026-09-03');
     expect(note.content).toBe('TCP\n2026-09-03\n{{unknown}}');
     expect(note.properties).toEqual({
-      type: 'learning',
+      type: 'research',
       status: 'active',
       started: { type: 'date', value: '2026-09-03' },
     });
