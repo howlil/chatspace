@@ -3,34 +3,44 @@ import { normalizeChatGptTarget } from './adapter';
 export interface ProviderTab {
   id: number | undefined;
   url: string | undefined;
+  title: string | undefined;
+  windowId: number | undefined;
 }
 
 export interface ProviderTabsPort {
   getActive(): Promise<ProviderTab | undefined>;
+  findByTarget?(target: string): Promise<ProviderTab | undefined>;
+  focus?(tab: ProviderTab): Promise<void>;
   update(tabId: number, url: string): Promise<void>;
   create(url: string): Promise<void>;
 }
 
 export type ProviderTabState =
-  | { kind: 'conversation'; url: string; target: string }
-  | { kind: 'chatgpt'; url: string }
-  | { kind: 'unavailable'; url: string | null };
+  | { kind: 'conversation'; url: string; target: string; title: string | null }
+  | { kind: 'chatgpt'; url: string; title: string | null }
+  | { kind: 'unavailable'; url: string | null; title: string | null };
+
+function tabTitle(tab: ProviderTab | undefined): string | null {
+  const title = tab?.title?.trim();
+  return title === undefined || title === '' ? null : title;
+}
 
 export function classifyProviderTab(tab: ProviderTab | undefined): ProviderTabState {
   const url = tab?.url ?? null;
-  if (url === null) return { kind: 'unavailable', url: null };
+  const title = tabTitle(tab);
+  if (url === null) return { kind: 'unavailable', url: null, title };
 
   const target = normalizeChatGptTarget(url);
-  if (target !== null) return { kind: 'conversation', url, target };
+  if (target !== null) return { kind: 'conversation', url, target, title };
 
   try {
     const parsed = new URL(url);
-    if (parsed.origin === 'https://chatgpt.com') return { kind: 'chatgpt', url };
+    if (parsed.origin === 'https://chatgpt.com') return { kind: 'chatgpt', url, title };
   } catch {
-    return { kind: 'unavailable', url };
+    return { kind: 'unavailable', url, title };
   }
 
-  return { kind: 'unavailable', url };
+  return { kind: 'unavailable', url, title };
 }
 
 export async function readActiveProviderState(port: ProviderTabsPort): Promise<ProviderTabState> {
@@ -40,6 +50,12 @@ export async function readActiveProviderState(port: ProviderTabsPort): Promise<P
 export async function navigateActiveProvider(port: ProviderTabsPort, target: string): Promise<void> {
   const normalized = normalizeChatGptTarget(target);
   if (normalized === null) throw new Error('Unsupported ChatGPT conversation target.');
+
+  const matching = await port.findByTarget?.(normalized);
+  if (matching !== undefined) {
+    await port.focus?.(matching);
+    return;
+  }
 
   const tab = await port.getActive();
   const state = classifyProviderTab(tab);
