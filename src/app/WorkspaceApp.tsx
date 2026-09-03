@@ -7,6 +7,7 @@ import { canMoveFolder } from '../domain/workspace/integrity';
 import { exportWorkspaceJson } from '../domain/workspace/io';
 import {
   INBOX_FOLDER_ID,
+  LEARNING_TEMPLATE_ID,
   createChatReference,
   createEntityId,
   createFolder,
@@ -114,6 +115,7 @@ export function WorkspaceApp({
 
   const activeChatRefs = useMemo(() => workspace.chatRefs.filter((chat) => chat.archivedAt === null), [workspace.chatRefs]);
   const activeNotes = useMemo(() => workspace.notes.filter((note) => note.archivedAt === null), [workspace.notes]);
+  const folderNameById = useMemo(() => new Map(workspace.folders.map((folder) => [folder.id, folder.name])), [workspace.folders]);
   const graph = useMemo(() => projectWorkspaceGraph(workspace), [workspace]);
   const exportJson = useMemo(() => exportWorkspaceJson(workspace), [workspace]);
   const { persistenceError, recoveryJson, importBackup, resetLocalData } = useWorkspacePersistence({
@@ -274,7 +276,14 @@ export function WorkspaceApp({
     }
     const now = Date.now();
     const chat = {
-      ...createChatReference({ id: createEntityId('chat'), label: input.label, target: saveDialogTarget, folderId: input.folderId, now }),
+      ...createChatReference({
+        id: createEntityId('chat'),
+        label: input.label,
+        annotation: input.annotation,
+        target: saveDialogTarget,
+        folderId: input.folderId,
+        now,
+      }),
       pinned: input.pinned,
     };
     dispatch({ type: 'chat/create', chat });
@@ -282,6 +291,10 @@ export function WorkspaceApp({
     setSelectedFolderId(input.folderId);
     setSaveDialogTarget(null);
     setStatus(`Saved “${chat.label}”.`);
+  }
+
+  function updateChatAnnotation(chat: ChatReference, annotation: string): void {
+    dispatch({ type: 'chat/update', chat: { ...chat, annotation: annotation.slice(0, 500) }, now: Date.now() });
   }
 
   function togglePinChat(chat: ChatReference): void {
@@ -457,11 +470,6 @@ export function WorkspaceApp({
     openHome();
   }
 
-  function createManualEdge(sourceEntityId: string, targetEntityId: string): void {
-    const now = Date.now();
-    dispatch({ type: 'edge/create', edge: { id: createEntityId('edge'), sourceEntityId, targetEntityId, kind: 'related-manually', createdAt: now }, now });
-  }
-
   function deleteManualEdge(graphEdgeId: string): void {
     const prefix = 'manual:';
     if (!graphEdgeId.startsWith(prefix)) return;
@@ -505,23 +513,74 @@ export function WorkspaceApp({
   const capability = getChatGptCapability(currentUrl());
   const currentLinkedChat = capability.currentTarget === null ? undefined : activeChatRefs.find((chat) => chat.target === capability.currentTarget);
   const compatibilityLabel = capability.canCaptureCurrentReference ? 'Conversation detected' : capability.supportedOrigin ? 'ChatGPT detected' : 'Open ChatGPT';
+  const templateCommands: WorkspaceCommand[] = workspace.noteTemplates
+    .filter((template) => template.id !== LEARNING_TEMPLATE_ID)
+    .map((template) => ({
+      id: `template-${template.id}`,
+      label: `New from template: ${template.name}`,
+      priority: 60,
+      run: () => setPendingTemplate(template),
+    }));
   const commands: WorkspaceCommand[] = [
-    { id: 'capture-quick', label: 'Quick capture to Inbox', run: () => setCaptureOpen(true) },
-    { id: 'view-create', label: 'Create saved view', run: () => setViewDialogOpen(true) },
-    ...workspace.noteTemplates.map((template) => ({ id: `template-${template.id}`, label: `New from template: ${template.name}`, run: () => setPendingTemplate(template) })),
-    { id: 'explorer-toggle', label: workspace.layout.treeCollapsed ? 'Show explorer' : 'Hide explorer', run: () => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed }) },
-    { id: 'folder-create', label: 'Create folder at root', run: () => addFolder(null) },
-    { id: 'note-create', label: 'Create note', run: () => addNote() },
-    { id: 'chat-save', label: 'Save current chat', run: saveCurrentChat },
-    { id: 'graph-open', label: 'Open graph', run: openGraph },
-    { id: 'settings-open', label: 'Open settings', run: openSettings },
-    { id: 'home-open', label: 'Open home', run: openHome },
+    { id: 'capture-quick', label: 'Quick capture to Inbox', priority: 0, run: () => setCaptureOpen(true) },
+    { id: 'chat-save', label: 'Save current chat', priority: 1, run: saveCurrentChat },
+    { id: 'note-create', label: 'Create note', priority: 2, run: () => addNote() },
+    { id: 'home-open', label: 'Open home', priority: 3, run: openHome },
+    { id: 'folder-create', label: 'Create folder at root', priority: 4, run: () => addFolder(null) },
+    { id: 'explorer-toggle', label: workspace.layout.treeCollapsed ? 'Show explorer' : 'Hide explorer', priority: 5, run: () => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed }) },
+    { id: 'settings-open', label: 'Open settings', priority: 20, run: openSettings },
+    { id: 'view-create', label: 'Create saved view', priority: 40, run: () => setViewDialogOpen(true) },
+    { id: 'graph-open', label: 'Open graph', priority: 50, run: openGraph },
+    ...templateCommands,
   ];
   const quickOpenItems: WorkspaceQuickOpenItem[] = [
-    ...workspace.folders.map((folder) => ({ id: folder.id, kind: 'folder' as const, label: folder.name, searchText: folder.name, run: () => { setSelectedFolderId(folder.id); openHome(); } })),
-    ...workspace.savedViews.map((savedView) => ({ id: savedView.id, kind: 'view' as const, label: savedView.name, searchText: `${savedView.name}\n${savedView.filters.map((filter) => `${filter.property} ${JSON.stringify(filter.value)}`).join('\n')}`, run: () => openSavedView(savedView) })),
-    ...activeChatRefs.map((chat) => ({ id: chat.id, kind: 'chat' as const, label: chat.label, searchText: chat.label, run: () => openSavedChat(chat) })),
-    ...activeNotes.map((note) => ({ id: note.id, kind: 'note' as const, label: note.title, searchText: `${note.title}\n${note.tags.join(' ')}\n${Object.entries(note.properties).map(([key, value]) => `${key} ${JSON.stringify(value)}`).join(' ')}\n${note.content}`, run: () => openNote(note) })),
+    ...workspace.folders.map((folder) => ({
+      id: folder.id,
+      kind: 'folder' as const,
+      label: folder.name,
+      searchText: folder.name,
+      detail: 'Folder',
+      run: () => { setSelectedFolderId(folder.id); openHome(); },
+    })),
+    ...workspace.savedViews.map((savedView) => ({
+      id: savedView.id,
+      kind: 'view' as const,
+      label: savedView.name,
+      searchText: savedView.name,
+      contextText: savedView.filters.map((filter) => `${filter.property} ${JSON.stringify(filter.value)}`).join('\n'),
+      detail: 'Saved view',
+      updatedAt: savedView.updatedAt,
+      run: () => openSavedView(savedView),
+    })),
+    ...activeChatRefs.map((chat) => {
+      const folderName = chat.folderId === null ? '' : folderNameById.get(chat.folderId) ?? '';
+      return {
+        id: chat.id,
+        kind: 'chat' as const,
+        label: chat.label,
+        searchText: chat.label,
+        contextText: `${chat.annotation}\n${folderName}`,
+        detail: chat.annotation || folderName || 'Saved conversation',
+        pinned: chat.pinned,
+        updatedAt: chat.updatedAt,
+        run: () => openSavedChat(chat),
+      };
+    }),
+    ...activeNotes.map((note) => {
+      const folderName = note.folderId === null ? '' : folderNameById.get(note.folderId) ?? '';
+      const properties = Object.entries(note.properties).map(([key, value]) => `${key} ${JSON.stringify(value)}`).join(' ');
+      return {
+        id: note.id,
+        kind: 'note' as const,
+        label: note.title,
+        searchText: note.title,
+        contextText: `${note.tags.join(' ')}\n${properties}\n${folderName}`,
+        contentText: note.content,
+        detail: note.tags.length > 0 ? note.tags.join(' · ') : folderName || 'Local note',
+        updatedAt: note.updatedAt,
+        run: () => openNote(note),
+      };
+    }),
   ];
 
   let surfaceContent: ReactNode;
@@ -534,7 +593,7 @@ export function WorkspaceApp({
       </div>
     );
   } else if (activeTab?.kind === 'graph') {
-    surfaceContent = <GraphNavigator graph={graph} onOpenNode={openGraphNode} onCreateManualEdge={createManualEdge} onDeleteManualEdge={deleteManualEdge} />;
+    surfaceContent = <GraphNavigator graph={graph} onOpenNode={openGraphNode} onDeleteManualEdge={deleteManualEdge} />;
   } else if (activeSavedView !== undefined) {
     surfaceContent = <KnowledgeViewPage view={activeSavedView} notes={activeNotes} onOpenNote={openNote} onDelete={() => deleteKnowledgeView(activeSavedView)} />;
   } else if (activeNote !== undefined) {
@@ -555,7 +614,17 @@ export function WorkspaceApp({
     );
   } else if (activeChat !== undefined) {
     const folder = workspace.folders.find((item) => item.id === activeChat.folderId);
-    surfaceContent = <ChatDetails chat={activeChat} folder={folder} folders={workspace.folders} onRename={() => renameChat(activeChat)} onTogglePin={() => togglePinChat(activeChat)} onMove={(folderId) => moveChat(activeChat, folderId)} />;
+    surfaceContent = (
+      <ChatDetails
+        chat={activeChat}
+        folder={folder}
+        folders={workspace.folders}
+        onRename={() => renameChat(activeChat)}
+        onAnnotationChange={(annotation) => updateChatAnnotation(activeChat, annotation)}
+        onTogglePin={() => togglePinChat(activeChat)}
+        onMove={(folderId) => moveChat(activeChat, folderId)}
+      />
+    );
   } else {
     surfaceContent = <DailyHome chats={activeChatRefs} notes={activeNotes} status={status} onOpenChat={openSavedChat} onOpenNote={openNote} />;
   }
