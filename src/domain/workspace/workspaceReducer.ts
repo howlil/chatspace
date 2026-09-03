@@ -65,6 +65,22 @@ function refIds(refs: WorkspaceArtifactRef[], kind: WorkspaceArtifactRef['kind']
   return new Set(refs.filter((ref) => ref.kind === kind).map((ref) => ref.id));
 }
 
+function renameNote(state: WorkspaceSnapshot, noteId: string, title: string, now: number, replacement?: LocalNote): WorkspaceSnapshot {
+  const current = state.notes.find((note) => note.id === noteId);
+  const cleanedTitle = title.trim().replace(/\s+/g, ' ');
+  if (current === undefined || cleanedTitle === '') return state;
+  let notes = rewriteInboundLinksForRename(state.notes, noteId, cleanedTitle, now);
+  if (replacement !== undefined) {
+    notes = notes.map((note) => note.id === noteId ? { ...replacement, title: cleanedTitle, updatedAt: now } : note);
+  }
+  return {
+    ...state,
+    notes,
+    tabs: state.tabs.map((tab) => tab.kind === 'note' && tab.entityId === noteId ? { ...tab, title: cleanedTitle } : tab),
+    updatedAt: now,
+  };
+}
+
 export function workspaceReducer(state: WorkspaceSnapshot, action: WorkspaceAction): WorkspaceSnapshot {
   switch (action.type) {
     case 'folder/create':
@@ -79,11 +95,7 @@ export function workspaceReducer(state: WorkspaceSnapshot, action: WorkspaceActi
     }
 
     case 'folder/toggle':
-      return {
-        ...state,
-        folders: state.folders.map((folder) => folder.id === action.folderId ? { ...folder, collapsed: !folder.collapsed, updatedAt: action.now } : folder),
-        updatedAt: action.now,
-      };
+      return { ...state, folders: state.folders.map((folder) => folder.id === action.folderId ? { ...folder, collapsed: !folder.collapsed, updatedAt: action.now } : folder), updatedAt: action.now };
 
     case 'folder/delete': {
       const removed = state.folders.find((folder) => folder.id === action.folderId);
@@ -123,21 +135,16 @@ export function workspaceReducer(state: WorkspaceSnapshot, action: WorkspaceActi
       if (!folderExists(state.folders, action.note.folderId)) return state;
       return { ...state, notes: appendUnique(state.notes, action.note), updatedAt: Math.max(state.updatedAt, action.note.updatedAt) };
 
-    case 'note/update':
+    case 'note/update': {
       if (!folderExists(state.folders, action.note.folderId)) return state;
+      const current = state.notes.find((note) => note.id === action.note.id);
+      if (current === undefined) return state;
+      if (current.title !== action.note.title) return renameNote(state, action.note.id, action.note.title, action.now, action.note);
       return { ...state, notes: replaceById(state.notes, { ...action.note, updatedAt: action.now }), updatedAt: action.now };
-
-    case 'note/rename': {
-      const current = state.notes.find((note) => note.id === action.noteId);
-      const title = action.title.trim().replace(/\s+/g, ' ');
-      if (current === undefined || title === '') return state;
-      return {
-        ...state,
-        notes: rewriteInboundLinksForRename(state.notes, action.noteId, title, action.now),
-        tabs: state.tabs.map((tab) => tab.kind === 'note' && tab.entityId === action.noteId ? { ...tab, title } : tab),
-        updatedAt: action.now,
-      };
     }
+
+    case 'note/rename':
+      return renameNote(state, action.noteId, action.title, action.now);
 
     case 'note/delete': {
       const tabs = removeEntityTabs(state.tabs, action.noteId);
@@ -153,22 +160,13 @@ export function workspaceReducer(state: WorkspaceSnapshot, action: WorkspaceActi
 
     case 'note/link-chat':
       if (!state.chatRefs.some((chat) => chat.id === action.chatId)) return state;
-      return {
-        ...state,
-        notes: state.notes.map((note) => note.id === action.noteId && !note.linkedChatIds.includes(action.chatId) ? { ...note, linkedChatIds: [...note.linkedChatIds, action.chatId], updatedAt: action.now } : note),
-        updatedAt: action.now,
-      };
+      return { ...state, notes: state.notes.map((note) => note.id === action.noteId && !note.linkedChatIds.includes(action.chatId) ? { ...note, linkedChatIds: [...note.linkedChatIds, action.chatId], updatedAt: action.now } : note), updatedAt: action.now };
 
     case 'artifact/bulk-move': {
       if (!folderExists(state.folders, action.folderId)) return state;
       const chatIds = refIds(action.refs, 'chat');
       const noteIds = refIds(action.refs, 'note');
-      return {
-        ...state,
-        chatRefs: state.chatRefs.map((chat) => chatIds.has(chat.id) ? { ...chat, folderId: action.folderId, updatedAt: action.now } : chat),
-        notes: state.notes.map((note) => noteIds.has(note.id) ? { ...note, folderId: action.folderId, updatedAt: action.now } : note),
-        updatedAt: action.now,
-      };
+      return { ...state, chatRefs: state.chatRefs.map((chat) => chatIds.has(chat.id) ? { ...chat, folderId: action.folderId, updatedAt: action.now } : chat), notes: state.notes.map((note) => noteIds.has(note.id) ? { ...note, folderId: action.folderId, updatedAt: action.now } : note), updatedAt: action.now };
     }
 
     case 'artifact/bulk-pin': {
@@ -181,14 +179,7 @@ export function workspaceReducer(state: WorkspaceSnapshot, action: WorkspaceActi
       const noteIds = refIds(action.refs, 'note');
       const affected = new Set([...chatIds, ...noteIds]);
       const tabs = action.archivedAt === null ? state.tabs : removeEntityTabsMany(state.tabs, affected);
-      return {
-        ...state,
-        chatRefs: state.chatRefs.map((chat) => chatIds.has(chat.id) ? { ...chat, archivedAt: action.archivedAt, updatedAt: action.now } : chat),
-        notes: state.notes.map((note) => noteIds.has(note.id) ? { ...note, archivedAt: action.archivedAt, updatedAt: action.now } : note),
-        tabs,
-        activeTabId: safeActiveTab(tabs, state.activeTabId),
-        updatedAt: action.now,
-      };
+      return { ...state, chatRefs: state.chatRefs.map((chat) => chatIds.has(chat.id) ? { ...chat, archivedAt: action.archivedAt, updatedAt: action.now } : chat), notes: state.notes.map((note) => noteIds.has(note.id) ? { ...note, archivedAt: action.archivedAt, updatedAt: action.now } : note), tabs, activeTabId: safeActiveTab(tabs, state.activeTabId), updatedAt: action.now };
     }
 
     case 'artifact/bulk-delete': {
