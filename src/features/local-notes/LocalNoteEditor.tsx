@@ -132,6 +132,13 @@ export function LocalNoteEditor({ note, notes, chats, contextExpanded, onChange,
     else onChange({ ...note, title });
   }
 
+  function updateTitleDraft(value: string): void {
+    setTitleDraft(value);
+    if (onRenameTitle === undefined && value.trim() !== '') {
+      onChange({ ...note, title: value });
+    }
+  }
+
   function addTag(): void {
     const tag = tagDraft.trim().toLowerCase();
     if (tag === '') return;
@@ -171,7 +178,7 @@ export function LocalNoteEditor({ note, notes, chats, contextExpanded, onChange,
           title="Edit note title"
           placeholder="Untitled note"
           value={titleDraft}
-          onChange={(event) => setTitleDraft(event.target.value)}
+          onChange={(event) => updateTitleDraft(event.target.value)}
           onBlur={commitTitle}
           onKeyDown={(event) => {
             if (event.key === 'Enter') event.currentTarget.blur();
