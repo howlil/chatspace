@@ -58,7 +58,9 @@ interface WorkspaceAppProps {
   repository: WorkspaceRepository;
   view?: WorkspaceView;
   onBackToWorkspace?: () => void;
+  onOpenMarkdownSync?: () => void;
   currentUrl?: () => string;
+  currentTitle?: () => string | null;
   navigate?: (url: string) => void;
   downloadText?: (filename: string, content: string) => void;
   localVault?: LocalVault;
@@ -92,11 +94,20 @@ function captureTitle(content: string): string {
   return firstLine.replace(/^#+\s*/, '').slice(0, 96) || 'Inbox capture';
 }
 
+function browserConversationLabel(title: string | null | undefined): string | null {
+  const trimmed = title?.trim();
+  if (trimmed === undefined || trimmed === '') return null;
+  const withoutProvider = trimmed.replace(/\s*(?:[-–—|]\s*)?ChatGPT\s*$/i, '').trim();
+  return withoutProvider === '' ? null : withoutProvider.slice(0, 120);
+}
+
 export function WorkspaceApp({
   repository: workspaceRepository,
   view = 'workspace',
   onBackToWorkspace = () => undefined,
+  onOpenMarkdownSync,
   currentUrl = () => window.location.href,
+  currentTitle = () => null,
   navigate = (url) => window.location.assign(url),
   downloadText = defaultDownloadText,
   localVault,
@@ -451,6 +462,10 @@ export function WorkspaceApp({
     dispatch({ type: 'tab/activate', tabId: 'tab-home', now: Date.now() });
   }
 
+  function openLibrary(): void {
+    if (workspace.layout.treeCollapsed) updateLayout({ treeCollapsed: false });
+  }
+
   function openGraphNode(node: GraphNode): void {
     if (node.kind === 'chat') {
       const chat = workspace.chatRefs.find((item) => item.id === node.entityId);
@@ -513,6 +528,7 @@ export function WorkspaceApp({
   const capability = getChatGptCapability(currentUrl());
   const currentLinkedChat = capability.currentTarget === null ? undefined : activeChatRefs.find((chat) => chat.target === capability.currentTarget);
   const compatibilityLabel = capability.canCaptureCurrentReference ? 'Conversation detected' : capability.supportedOrigin ? 'ChatGPT detected' : 'Open ChatGPT';
+  const currentConversationLabel = browserConversationLabel(currentTitle()) ?? `Conversation ${workspace.chatRefs.length + 1}`;
   const templateCommands: WorkspaceCommand[] = workspace.noteTemplates
     .filter((template) => template.id !== LEARNING_TEMPLATE_ID)
     .map((template) => ({
@@ -527,7 +543,7 @@ export function WorkspaceApp({
     { id: 'note-create', label: 'Create note', priority: 2, run: () => addNote() },
     { id: 'home-open', label: 'Open home', priority: 3, run: openHome },
     { id: 'folder-create', label: 'Create folder at root', priority: 4, run: () => addFolder(null) },
-    { id: 'explorer-toggle', label: workspace.layout.treeCollapsed ? 'Show explorer' : 'Hide explorer', priority: 5, run: () => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed }) },
+    { id: 'library-open', label: 'Open library', priority: 5, run: openLibrary },
     { id: 'settings-open', label: 'Open settings', priority: 20, run: openSettings },
     { id: 'view-create', label: 'Create saved view', priority: 40, run: () => setViewDialogOpen(true) },
     { id: 'graph-open', label: 'Open graph', priority: 50, run: openGraph },
@@ -540,7 +556,7 @@ export function WorkspaceApp({
       label: folder.name,
       searchText: folder.name,
       detail: 'Folder',
-      run: () => { setSelectedFolderId(folder.id); openHome(); },
+      run: () => { setSelectedFolderId(folder.id); openLibrary(); },
     })),
     ...workspace.savedViews.map((savedView) => ({
       id: savedView.id,
@@ -588,7 +604,15 @@ export function WorkspaceApp({
     surfaceContent = (
       <div className="h-full min-h-0 overflow-y-auto">
         <div className="mx-auto grid w-full max-w-3xl gap-5 px-4 py-5 sm:px-5">
-          <SettingsPanel exportJson={exportJson} recoveryJson={recoveryJson} persistenceError={persistenceError} onImport={importBackup} onReset={resetLocalData} onDownload={downloadText} />
+          <SettingsPanel
+            exportJson={exportJson}
+            recoveryJson={recoveryJson}
+            persistenceError={persistenceError}
+            onImport={importBackup}
+            onReset={resetLocalData}
+            onDownload={downloadText}
+            onOpenMarkdownSync={onOpenMarkdownSync}
+          />
         </div>
       </div>
     );
@@ -626,12 +650,39 @@ export function WorkspaceApp({
       />
     );
   } else {
-    surfaceContent = <DailyHome chats={activeChatRefs} notes={activeNotes} status={status} onOpenChat={openSavedChat} onOpenNote={openNote} />;
+    surfaceContent = (
+      <DailyHome
+        chats={activeChatRefs}
+        notes={activeNotes}
+        status={status}
+        currentConversation={{
+          supported: capability.currentTarget !== null,
+          label: currentConversationLabel,
+          savedChat: currentLinkedChat ?? null,
+        }}
+        onSaveCurrentChat={saveCurrentChat}
+        onOpenChat={openSavedChat}
+        onOpenNote={openNote}
+      />
+    );
   }
 
   const surface = (
     <div className="grid h-full min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden">
-      <WorkbenchChrome tabs={workspace.tabs} activeTabId={workspace.activeTabId} explorerCollapsed={workspace.layout.treeCollapsed} providerSupported={capability.supportedOrigin} providerLabel={compatibilityLabel} onToggleExplorer={() => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed })} onActivateTab={activateTab} onCloseTab={(tabId) => dispatch({ type: 'tab/close', tabId, now: Date.now() })} />
+      <WorkbenchChrome
+        tabs={workspace.tabs}
+        activeTabId={workspace.activeTabId}
+        explorerCollapsed={workspace.layout.treeCollapsed}
+        providerSupported={capability.supportedOrigin}
+        providerLabel={compatibilityLabel}
+        onToggleExplorer={() => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed })}
+        onOpenHome={openHome}
+        onOpenLibrary={openLibrary}
+        onOpenSettings={openSettings}
+        onOpenMore={openGraph}
+        onActivateTab={activateTab}
+        onCloseTab={(tabId) => dispatch({ type: 'tab/close', tabId, now: Date.now() })}
+      />
       {persistenceError !== null && (
         <div className="flex min-w-0 items-center gap-2 border-b border-red-300/10 bg-red-300/[0.045] px-2.5 py-1.5 text-[9px] text-red-100" role="alert">
           <AlertTriangle size={11} className="shrink-0" aria-hidden="true" />
@@ -720,7 +771,7 @@ export function WorkspaceApp({
           <CreateKnowledgeViewDialog open={viewDialogOpen} notes={activeNotes} onSave={createKnowledgeView} onClose={() => setViewDialogOpen(false)} />
         </>
       )}
-      <SaveConversationDialog open={saveDialogTarget !== null} target={saveDialogTarget} folders={workspace.folders} defaultFolderId={selectedFolderId} defaultLabel={`Conversation ${workspace.chatRefs.length + 1}`} onCancel={() => setSaveDialogTarget(null)} onSave={confirmSaveCurrentChat} />
+      <SaveConversationDialog open={saveDialogTarget !== null} target={saveDialogTarget} folders={workspace.folders} defaultFolderId={selectedFolderId} defaultLabel={currentConversationLabel} onCancel={() => setSaveDialogTarget(null)} onSave={confirmSaveCurrentChat} />
       <ConfirmDialog open={pendingDelete !== null} title={deleteTitle} description={deleteDescription} confirmLabel="Delete" danger onConfirm={confirmDelete} onCancel={() => setPendingDelete(null)} />
       <TextInputDialog
         open={pendingRename !== null}
