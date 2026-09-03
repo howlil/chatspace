@@ -9,5 +9,10 @@ export default defineConfig({
     resolve: {
       tsconfigPaths: false,
     },
+    build: {
+      rolldownOptions: {
+        tsconfig: './tsconfig.json',
+      },
+    },
   },
 });
