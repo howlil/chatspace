@@ -23,6 +23,13 @@ describe('portable workspace export', () => {
       ...createLocalNote({ id: 'note-mvcc', title: 'MVCC', folderId: db.id, now: 4 }),
       content: 'Isolation connects to [[Transactions]].',
       tags: ['postgres'],
+      properties: {
+        status: 'research',
+        priority: 2,
+        reviewed: false,
+        labels: ['database', 'postgres'],
+        due: { type: 'date' as const, value: '2026-09-30' },
+      },
       linkedChatIds: [chat.id],
     };
     const transactions = {
@@ -55,6 +62,7 @@ describe('portable workspace export', () => {
     const noteFile = bundle.files.find((file) => file.path.endsWith('/MVCC--note-mvcc.md'));
     expect(noteFile?.content).toContain('chatspace_type: "note"');
     expect(noteFile?.content).toContain('tags: ["postgres"]');
+    expect(noteFile?.content).toContain('properties: {"status":"research","priority":2,"reviewed":false,"labels":["database","postgres"],"due":{"type":"date","value":"2026-09-30"}}');
     expect(noteFile?.content).toContain('linked_chat_ids: ["chat-mvcc"]');
     expect(noteFile?.content).toContain('Isolation connects to [[Transactions]].');
 
@@ -73,6 +81,11 @@ describe('portable workspace export', () => {
       expect.objectContaining({ sourceNoteId: 'note-mvcc', targetNoteId: 'note-transactions' }),
     ]);
     expect(relationships.manualEdges).toHaveLength(1);
+
+    const manifest = JSON.parse(bundle.files.find((file) => file.path === 'manifest.json')?.content ?? '{}') as {
+      counts?: { savedViews?: number; noteTemplates?: number };
+    };
+    expect(manifest.counts).toEqual(expect.objectContaining({ savedViews: 0, noteTemplates: 1 }));
   });
 
   it('includes archived local artifacts while marking the export boundary against provider content', () => {
