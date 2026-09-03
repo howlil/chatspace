@@ -10,7 +10,7 @@ import { directNeighborhood, edgeVisualWeight, layoutWorkspaceGraph, type Positi
 interface GraphNavigatorProps {
   graph: WorkspaceGraph;
   onOpenNode: (node: GraphNode) => void;
-  onCreateManualEdge: (sourceEntityId: string, targetEntityId: string) => void;
+  onCreateManualEdge?: (sourceEntityId: string, targetEntityId: string) => void;
   onDeleteManualEdge?: (edgeId: string) => void;
 }
 
@@ -121,7 +121,7 @@ export function GraphNavigator({ graph, onOpenNode, onCreateManualEdge, onDelete
   }
 
   function selectNode(node: GraphNode): void {
-    if (connectingFromEntityId !== null && node.kind !== 'workspace') {
+    if (connectingFromEntityId !== null && onCreateManualEdge !== undefined && node.kind !== 'workspace') {
       if (node.entityId !== connectingFromEntityId && !sameManualPair(graph, connectingFromEntityId, node.entityId)) {
         onCreateManualEdge(connectingFromEntityId, node.entityId);
       }
@@ -309,18 +309,18 @@ export function GraphNavigator({ graph, onOpenNode, onCreateManualEdge, onDelete
                 <strong className="min-w-0 truncate text-[12px] font-medium">{selectedNode.label}</strong>
                 <div className="flex flex-wrap gap-1">
                   <Button variant="ghost" className="h-6 px-1.5 text-[9px]" onClick={() => onOpenNode(selectedNode)}>Open</Button>
-                  {selectedNode.kind !== 'workspace' && connectingFromEntityId === null && (
+                  {onCreateManualEdge !== undefined && selectedNode.kind !== 'workspace' && connectingFromEntityId === null && (
                     <Button variant="ghost" className="h-6 px-1.5 text-[9px]" onClick={() => setConnectingFromEntityId(selectedNode.entityId)}>
                       <Link2 size={10} aria-hidden="true" /> Connect
                     </Button>
                   )}
-                  {connectingFromEntityId !== null && (
+                  {onCreateManualEdge !== undefined && connectingFromEntityId !== null && (
                     <Button variant="ghost" className="h-6 px-1.5 text-[9px]" onClick={() => setConnectingFromEntityId(null)}>
                       <X size={10} aria-hidden="true" /> Cancel
                     </Button>
                   )}
                 </div>
-                {connectingFromEntityId !== null && (
+                {onCreateManualEdge !== undefined && connectingFromEntityId !== null && (
                   <p className="m-0 text-[8px] leading-4 text-cs-muted">Choose another node on the canvas to create a manual relation.</p>
                 )}
               </div>
@@ -359,7 +359,7 @@ export function GraphNavigator({ graph, onOpenNode, onCreateManualEdge, onDelete
               <div className="mt-4 grid gap-1 border-t border-cs-border pt-3 text-[8px] text-cs-subtle" aria-label="Graph relationship legend">
                 <span><strong className="font-medium text-cs-muted">contains</strong> · hierarchy</span>
                 <span><strong className="font-medium text-cs-muted">references</strong> · explicit note → chat</span>
-                <span><strong className="font-medium text-cs-muted">related-manually</strong> · user-created</span>
+                <span><strong className="font-medium text-cs-muted">related-manually</strong> · preserved legacy relation</span>
                 <span><strong className="font-medium text-cs-muted">related-local</strong> · locally derived</span>
               </div>
             </>
