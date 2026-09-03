@@ -10,7 +10,7 @@ Why: JSON backup preserves the canonical application state, but it is not the be
 
 **Shape:** Settings now exposes an explicit Portable knowledge export. Chatspace projects `WorkspaceSnapshot` v2 into a user-selected folder containing Markdown notes in their local hierarchy, Markdown files for saved ChatGPT reference metadata, relationship metadata, `manifest.json`, and the canonical `workspace.json` backup. Native ChatGPT conversation content is never part of the projection.
 
-**Position:** M12 — Portable Knowledge is complete and ready to integrate.
+**Position:** M12 — Portable Knowledge is complete and integrated on `master`.
 
 **Delta:** Added a deterministic portable-export projection, path-safe human-readable folder/file naming, Markdown frontmatter, relationship/manifest metadata, direct File System Access writing, cancellation handling, and Settings UI. The export includes active and archived Chatspace-owned artifacts while retaining their lifecycle metadata.
 
@@ -66,7 +66,8 @@ Why: JSON backup preserves the canonical application state, but it is not the be
 - Direct-folder writer tests use deterministic in-memory File System Access-shaped handles and cover root/file creation, injected picker behavior, and cancellation.
 - Settings tests cover explicit portable-export invocation and success feedback while retaining import/reset/recovery coverage.
 - Existing workspace, migration, bulk triage, retrieval, linked-note, Graph, persistence, provider-adapter, command-palette, local-vault, and landing suites remain part of the gate.
-- PR CI #246 passed lint, strict typecheck, deterministic tests, WXT ZIP packaging, landing frozen install, and Astro static build after the initial lint issue was corrected.
+- PR CI #248 passed frozen install, lint, strict typecheck, deterministic tests, WXT ZIP packaging, landing frozen install, and Astro static build.
+- Post-merge `master` CI #249 passed the same repository gate.
 
 ## Blockers / Risks
 
@@ -76,4 +77,4 @@ Why: JSON backup preserves the canonical application state, but it is not the be
 
 ## Next Action
 
-Integrate M12 after this documentation-only closure commit passes CI. After merge, verify `master` CI and stop.
+Wait for an explicit next product/engineering outcome.
