@@ -1,6 +1,6 @@
 # Agent Instructions
 
-This repository uses root `AGENTS.md` as the thin agent entrypoint and `.agents/` as the canonical project knowledge + active engineering state.
+This repository uses root `AGENTS.md` as the thin agent entrypoint and `.agents/` as the canonical project knowledge + active engineering state. Repository execution must be resumable from these files plus current code/tests; do not depend on chat history or hidden planning state.
 
 ## Canonical Sources
 
@@ -41,11 +41,27 @@ Definitions:
 
 Before proposing a new milestone, reconstruct the relevant core user journey and capability gap from `.agents/PROJECT.md` plus current code/evidence. Prefer the highest-value missing core behavior; do not promote nice-to-have polish or isolated technical work into a product milestone.
 
-Follow the user's canonical global SWE rules for Product Authority, change ownership, implementation autonomy, evidence, retrospective, dependency/code quality, and stop conditions. Keep repository documents focused on Chatspace-specific state and constraints rather than duplicating long generic process manuals.
-
-Do not change product behavior, public/persisted contracts, architecture/data ownership, security/privacy/permission/trust boundaries, or other material decisions without explicit user approval.
-
 Prefer the smallest coherent vertical change that preserves the intended user outcome. Do not create persistent sprint/task plans, retrospective archives, status files, workflow-rule files, or additional `.agents/*.md` authorities.
+
+## Authority and autonomy
+
+The user owns product purpose, observable product behavior, scope, acceptance criteria, material architecture boundaries, public/persisted contracts, data ownership, and security/privacy/permission/trust boundaries.
+
+The implementing agent owns repository inspection, local implementation design inside approved boundaries, coding, focused refactoring required by the change, testing, debugging, verification, and implementation-level decisions.
+
+Use this design preference order for implementation choices:
+
+```text
+reuse existing owner/pattern
+-> extend existing owner/pattern
+-> small local abstraction
+-> new component/module
+-> architecture change
+```
+
+Do not introduce unrelated refactors, speculative abstractions, future-proofing, dependency upgrades, or scope expansion. A material contract/boundary change requires explicit approval before implementation.
+
+Stop and surface the decision instead of guessing when the requested work requires a contradictory product rule, destructive migration, public/persisted contract change, security/trust-boundary change, or major architecture change that has not already been approved.
 
 ## Verification Rule
 
