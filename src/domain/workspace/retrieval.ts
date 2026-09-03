@@ -9,12 +9,12 @@ export interface WorkspaceRetrievalItem {
   kind: 'folder' | WorkspaceArtifactKind | 'view' | 'command';
   label: string;
   searchText: string;
-  contextText?: string;
-  contentText?: string;
-  detail?: string;
-  pinned?: boolean;
-  updatedAt?: number;
-  priority?: number;
+  contextText?: string | undefined;
+  contentText?: string | undefined;
+  detail?: string | undefined;
+  pinned?: boolean | undefined;
+  updatedAt?: number | undefined;
+  priority?: number | undefined;
   run: () => void;
 }
 
