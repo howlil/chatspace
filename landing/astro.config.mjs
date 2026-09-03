@@ -5,4 +5,9 @@ export default defineConfig({
   build: {
     format: 'directory',
   },
+  vite: {
+    resolve: {
+      tsconfigPaths: false,
+    },
+  },
 });
