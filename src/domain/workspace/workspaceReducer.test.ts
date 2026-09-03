@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  INBOX_FOLDER_ID,
   createChatReference,
   createFolder,
   createInitialWorkspace,
   createLocalNote,
 } from './model';
 import { workspaceReducer } from './workspaceReducer';
+
+function userFolders(state: ReturnType<typeof createInitialWorkspace>) {
+  return state.folders.filter((folder) => folder.id !== INBOX_FOLDER_ID);
+}
 
 describe('workspaceReducer', () => {
   it('keeps folders, chat references, notes, and tabs in one canonical snapshot', () => {
@@ -21,7 +26,8 @@ describe('workspaceReducer', () => {
     state = workspaceReducer(state, { type: 'note/link-chat', noteId: note.id, chatId: chat.id, now: 5 });
     state = workspaceReducer(state, { type: 'tab/open', tab: { id: 'tab-chat-mvcc', kind: 'chat', entityId: chat.id, title: chat.label, pinned: false }, now: 6 });
 
-    expect(state.folders).toEqual([folder]);
+    expect(state.folders.find((item) => item.id === INBOX_FOLDER_ID)?.name).toBe('Inbox');
+    expect(userFolders(state)).toEqual([folder]);
     expect(state.chatRefs).toEqual([chat]);
     expect(state.notes[0]?.linkedChatIds).toEqual([chat.id]);
     expect(state.activeTabId).toBe('tab-chat-mvcc');
@@ -41,9 +47,18 @@ describe('workspaceReducer', () => {
     state = workspaceReducer(state, { type: 'note/create', note });
     state = workspaceReducer(state, { type: 'folder/delete', folderId: parent.id, now: 6 });
 
-    expect(state.folders).toEqual([{ ...child, parentId: null, updatedAt: 6 }]);
+    expect(userFolders(state)).toEqual([{ ...child, parentId: null, updatedAt: 6 }]);
     expect(state.chatRefs[0]?.folderId).toBeNull();
     expect(state.notes[0]?.folderId).toBeNull();
+  });
+
+  it('keeps Inbox at the root and rejects rename/delete/nesting changes', () => {
+    const state = createInitialWorkspace(1);
+    const inbox = state.folders.find((folder) => folder.id === INBOX_FOLDER_ID)!;
+    expect(workspaceReducer(state, { type: 'folder/delete', folderId: INBOX_FOLDER_ID, now: 2 })).toBe(state);
+    expect(workspaceReducer(state, { type: 'folder/update', folder: { ...inbox, name: 'Other' }, now: 2 })).toBe(state);
+    const child = createFolder({ id: 'child', name: 'Child', parentId: INBOX_FOLDER_ID, now: 2 });
+    expect(workspaceReducer(state, { type: 'folder/create', folder: child })).toBe(state);
   });
 
   it('renames a note and rewrites uniquely resolved inbound wikilinks in one transition', () => {
