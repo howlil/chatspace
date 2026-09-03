@@ -5,4 +5,14 @@ export default defineConfig({
   build: {
     format: 'directory',
   },
+  vite: {
+    resolve: {
+      tsconfigPaths: false,
+    },
+    build: {
+      rolldownOptions: {
+        tsconfig: './tsconfig.json',
+      },
+    },
+  },
 });

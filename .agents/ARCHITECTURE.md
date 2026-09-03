@@ -25,7 +25,7 @@ Chromium
 │   └── provider-owned conversation UI/content
 │
 └── Chatspace Side Panel
-    ├── Explorer / Workbench / Notes / Graph / Settings
+    ├── Explorer / Home / Notes / Saved Views / Graph / Settings
     ├── Workspace domain and application coordination
     ├── ProviderTabsPort -> browser.tabs
     ├── WorkspaceRepository -> chrome.storage.local
@@ -66,9 +66,25 @@ Provider failure degrades only provider-dependent navigation.
 
 ## Workspace domain
 
-Canonical local state includes folders, saved chat references, notes, tabs, pins, persisted panel layout state, and manual graph relations.
+`WorkspaceSnapshot` schema v3 is the canonical local workspace contract.
+
+Canonical local state includes:
+
+- folders;
+- saved ChatGPT references;
+- Markdown notes including tags, linked chats, archive lifecycle, and lightweight typed properties;
+- saved knowledge views containing named AND-only equality filter definitions;
+- note templates including the built-in Learning Note template;
+- tabs and active-tab state;
+- persisted panel layout;
+- manual graph relations;
+- workspace identity/update metadata.
 
 Domain transitions are deterministic and remain independent from React, WXT, Chrome APIs, and provider-specific browser APIs. Folder hierarchy and local entity folder ownership are invariants; cycles, missing parents, and references to missing folders are rejected at domain/persistence boundaries.
+
+Saved views are projections over canonical notes. They do not copy note entities or introduce another writable knowledge store.
+
+`[[Title]]` links/backlinks and related-local graph relations are derived from canonical local note state; they do not become independent writable truth.
 
 ## Persistence
 
@@ -76,6 +92,7 @@ Domain transitions are deterministic and remain independent from React, WXT, Chr
 
 Persistence invariants:
 
+- schema v1/v2 accepted state migrates deterministically to schema v3;
 - corrupted/unsupported state fails closed;
 - failed loads/saves do not silently replace accepted state;
 - export/import/reset/recovery remain explicit;
@@ -84,7 +101,23 @@ Persistence invariants:
 - physical storage writes are serialized;
 - clearing storage cancels pending buffered writes first.
 
-`shellCollapsed` and `shellWidth` are part of the persisted workspace contract. Changes/removal require an approved persisted-contract change.
+The persisted `layout` contract currently contains `shellCollapsed`, `treeCollapsed`, `shellWidth`, and `treeWidth`. Changing/removing persisted layout fields requires an approved persisted-contract change.
+
+Changes to note property representation, saved-view definitions, template persistence, schema version, or migration semantics are persisted-contract changes rather than local implementation details.
+
+## Structured knowledge boundary
+
+Structured knowledge remains deliberately lightweight:
+
+```text
+LocalNote.properties
++ SavedKnowledgeView.filters
++ NoteTemplate
+-> deterministic local retrieval/projection
+-> note/view UI
+```
+
+Current property values are text, number, boolean, tags, and date. Saved views use AND-only equality semantics. This layer must not silently grow into a database engine, computed-field system, automation platform, or second canonical store.
 
 ## Graph boundary
 
@@ -112,6 +145,8 @@ Markdown Sync uses the browser File System Access API through `src/integrations/
 
 This is the only current vault-sync runtime path.
 
+Explicit Markdown folder scan/import is also user-initiated and does not establish continuous or bidirectional synchronization.
+
 ## Trust and security boundaries
 
 Current trust boundaries are:
@@ -119,7 +154,7 @@ Current trust boundaries are:
 1. validated Chatspace-owned local workspace data;
 2. browser tab metadata/navigation through the URL-only provider boundary;
 3. native ChatGPT as external provider-owned runtime/content;
-4. explicit user-selected filesystem access for direct local-vault sync.
+4. explicit user-selected filesystem access for direct local-vault sync/import/export.
 
 Project-specific security invariants:
 
@@ -128,7 +163,7 @@ Project-specific security invariants:
 - no provider cookies/session tokens/private payloads are stored;
 - user-authored/imported Markdown is rendered without executable raw HTML/script behavior;
 - MV3 CSP is respected: no `eval`, remote executable scripts, or fetched executable provider code;
-- direct filesystem writes remain beneath the selected vault's `Chatspace/` path and must resist traversal/out-of-root writes;
+- direct filesystem writes remain beneath explicitly selected user-owned destinations and must resist traversal/out-of-root writes;
 - diagnostics must not contain provider conversation content, tokens/cookies, private page content, or raw real-user storage dumps.
 
 New privileged permissions, provider DOM/content access, credentials, remote telemetry, expanded filesystem scope, or a reintroduced localhost service are material trust-boundary changes.
@@ -138,7 +173,8 @@ New privileged permissions, provider DOM/content access, credentials, remote tel
 - provider unavailable -> local workspace remains usable;
 - corrupt workspace storage -> persistence fails closed and recovery is surfaced;
 - Side Panel crash -> native ChatGPT remains unaffected;
-- direct local-vault unavailable -> only Markdown Sync degrades.
+- direct local-vault unavailable -> only vault-specific Markdown Sync degrades;
+- filesystem import/export unavailable -> canonical local workspace remains unchanged unless an explicit accepted import transition occurs.
 
 ## Material architecture boundaries
 
