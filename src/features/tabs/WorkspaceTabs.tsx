@@ -1,4 +1,4 @@
-import { FileText, Home, MessageSquareText, Network, Settings, X } from 'lucide-react';
+import { FileText, Filter, Home, MessageSquareText, Network, Settings, X } from 'lucide-react';
 import { Tabs } from 'radix-ui';
 
 import type { TabKind, WorkspaceTab } from '../../domain/workspace/model';
@@ -18,6 +18,7 @@ function TabIcon({ kind }: { kind: TabKind }) {
   if (kind === 'chat') return <MessageSquareText {...props} />;
   if (kind === 'note') return <FileText {...props} />;
   if (kind === 'graph') return <Network {...props} />;
+  if (kind === 'view') return <Filter {...props} />;
   return <Settings {...props} />;
 }
 

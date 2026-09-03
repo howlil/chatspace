@@ -6,6 +6,7 @@ import {
   createFolder,
   createInitialWorkspace,
   createLocalNote,
+  type SavedKnowledgeView,
 } from './model';
 import { workspaceReducer } from './workspaceReducer';
 
@@ -32,6 +33,30 @@ describe('workspaceReducer', () => {
     expect(state.notes[0]?.linkedChatIds).toEqual([chat.id]);
     expect(state.activeTabId).toBe('tab-chat-mvcc');
     expect(state.updatedAt).toBe(6);
+  });
+
+  it('persists saved view definitions and removes their open tabs without touching notes', () => {
+    let state = createInitialWorkspace(1);
+    const note = { ...createLocalNote({ id: 'note-research', title: 'Research', folderId: null, now: 2 }), properties: { status: 'research' } };
+    const view: SavedKnowledgeView = {
+      id: 'view-research',
+      name: 'Research',
+      filters: [{ property: 'status', value: 'research' }],
+      createdAt: 3,
+      updatedAt: 3,
+    };
+    state = workspaceReducer(state, { type: 'note/create', note });
+    state = workspaceReducer(state, { type: 'view/create', view });
+    state = workspaceReducer(state, { type: 'tab/open', tab: { id: 'tab-view-research', kind: 'view', entityId: view.id, title: view.name, pinned: false }, now: 4 });
+
+    expect(state.savedViews).toEqual([view]);
+    expect(state.activeTabId).toBe('tab-view-research');
+
+    state = workspaceReducer(state, { type: 'view/delete', viewId: view.id, now: 5 });
+    expect(state.savedViews).toEqual([]);
+    expect(state.tabs.some((tab) => tab.entityId === view.id)).toBe(false);
+    expect(state.notes).toEqual([note]);
+    expect(state.activeTabId).toBe('tab-home');
   });
 
   it('reparents children and local entities instead of deleting data when a folder is removed', () => {

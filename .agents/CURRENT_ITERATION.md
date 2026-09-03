@@ -2,60 +2,58 @@
 
 Status: **READY_FOR_MILESTONE**
 
-Goal: Let users safely bring existing Markdown knowledge into Chatspace and export it back without introducing live filesystem sync or a second source of truth.
+Goal: Add useful structure to local notes without turning Chatspace into a database, workflow suite, or second source of truth.
 
 ## Feature Compass
 
-**Shape:** Settings now exposes one explicit Markdown round-trip surface. Import follows `Choose folder → read-only scan → review counts/conflicts → explicit resolution → one canonical workspace replacement`. Export continues to project Chatspace-owned knowledge into understandable Markdown through the existing portable export. Folder hierarchy, body Markdown, tags, wikilinks, and Chatspace note IDs are recognized.
+**Shape:** Local notes can now carry small typed properties, be projected through named AND-only saved views, and be created from the built-in `Learning Note` template. The canonical workspace is schema v3, older v1/v2 state migrates deterministically, and M15 Markdown round-trip preserves supported structured properties.
 
-**Position:** M15 — Markdown Import & Round-trip Knowledge is implementation-complete and awaiting the final repository gate.
+**Position:** M16 — Structured Knowledge is complete.
 
-**Delta:** Added a deterministic Markdown scanner/parser, recursive read-only folder integration, preview metrics for notes/folders/resolved and unresolved links/conflicts, explicit ID/title conflict actions, stale-scan protection, and one coherent import transition. Existing notes are never silently overwritten or auto-merged.
+**Delta:** Added typed note properties (`text`, `number`, `boolean`, `tags`, `date`), compact property editing in note context, named saved views that persist filters rather than copied results, Quick Open support for views, a built-in Learning Note template with only `{{title}}` and `{{date}}`, schema v1/v2 → v3 migration, and structured-property portable Markdown import/export.
 
-**Next Move:** Integrate M15 after the full deterministic gate is green, then execute the already-approved M16 — Structured Knowledge milestone from fresh `master`.
+**Next Move:** Wait for an explicit next milestone outcome.
 
 ## Scope
 
 ### In
 
-- `Settings → Import Markdown folder → Choose folder → Scan → Review → Import`;
-- recursive `.md` folder scanning through File System Access in read-only mode;
-- scan and preview before any workspace mutation;
-- folder hierarchy mapping;
-- Markdown body preservation;
-- YAML frontmatter support for `title`, `tags`, `chatspace_id`, and exported `chatspace_type`;
-- wikilink parsing and resolved/unresolved preview counts;
-- prior Chatspace export note IDs recognized;
-- explicit conflict resolution:
-  - ID match: `Update existing / Keep existing / Duplicate`;
-  - title collision: `Keep existing / Import as duplicate / Rename incoming / Skip`;
-- stale scan rejection when workspace state changed after review;
-- one final canonical workspace replacement through the existing validated JSON import path;
-- existing portable Markdown export remains the explicit export half of the round-trip.
+- workspace schema v3 with deterministic v1/v2 migration;
+- typed local-note properties: text, number, boolean, tags, and date;
+- compact property add/remove UI on the note context rail;
+- property-aware local retrieval;
+- saved views as named AND-only equality filters over canonical notes;
+- saved-view Quick Open, tabs, projection surface, and deletion without deleting notes;
+- built-in `Learning Note` template;
+- template variables limited to `{{title}}` and `{{date}}`;
+- structured properties preserved through portable Markdown frontmatter and M15 import;
+- malformed unsupported structured property shapes rejected rather than silently dropped.
 
 ### Out
 
-- no continuous folder watching;
-- no automatic or bidirectional filesystem sync;
-- no silent overwrite or automatic Markdown merge;
-- no git, Dropbox, Drive, Notion API, HTML/PDF import, or full Obsidian compatibility;
-- no provider conversation import or provider DOM/content access;
-- no new workspace schema version;
+- no custom property-schema registry;
+- no database/table, board/Kanban, calendar, gallery, or timeline views;
+- no formulas, rollups, computed fields, or typed database relations;
+- no automation, reminders, task manager, or AI classification;
+- no provider conversation/content extraction;
+- no continuous filesystem sync;
 - no black-box/live-browser milestone.
 
 ## Verification / Evidence
 
-- domain tests cover YAML/frontmatter parsing, folder hierarchy, tags, body, wikilinks, Chatspace IDs, exported path recognition, conflicts, explicit decisions, atomic application, inbound-link-safe ID updates, and stale-scan rejection;
-- browser integration tests cover recursive Markdown-only read scanning and picker cancellation;
-- Settings tests cover the read-only preview-before-mutation flow and canonical import handoff;
-- the existing persistence, migration, note-link, Graph, capture Inbox, retrieval, portable export, local-vault, provider adapter, extension package, and landing build remain in the full repository gate.
+- schema migration tests cover v1 and v2 → v3 while preserving local notes, chat archive state, tabs, and hierarchy;
+- structured-knowledge domain tests cover property types, equality semantics, AND filtering, derived property values, saved-view definitions, and template variables;
+- reducer tests cover saved-view persistence/tab cleanup without note mutation;
+- Markdown import/export tests cover structured-property preservation and invalid property rejection;
+- deterministic WorkspaceApp coverage verifies property editing, Learning Note creation, and saved-view projection without copying notes;
+- Quick Open, tabs, existing workspace behavior, persistence, Graph, Capture Inbox, Markdown import, local vault, provider adapter, packaging, and landing remain under the repository gate;
+- final implementation gate passed lint, strict typecheck, 109 deterministic tests, extension ZIP build, frozen landing install, and Astro build.
 
 ## Blockers / Risks
 
 - No known product blocker.
-- Browser folder import depends on File System Access support; unsupported contexts disable the action and surface that limitation.
-- The YAML parser intentionally supports the small top-level metadata subset required by this milestone rather than full YAML/Obsidian semantics.
+- Schema v3 is intentionally narrow. Adding new property types, richer query operators, custom templates, database views, or automation changes product behavior and requires a later explicit milestone.
 
 ## Next Action
 
-Run the full M15 repository gate, integrate when green, then execute M16.
+Wait for an explicit next milestone outcome.

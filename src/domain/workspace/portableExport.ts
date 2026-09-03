@@ -86,11 +86,11 @@ function folderPath(folderId: string | null, folders: WorkspaceFolder[]): string
   return segments.length === 0 ? '_root' : segments.join('/');
 }
 
-function yamlValue(value: string | number | boolean | null | string[]): string {
-  return JSON.stringify(value);
+function yamlValue(value: unknown): string {
+  return JSON.stringify(value) ?? 'null';
 }
 
-function frontmatter(entries: Array<[string, string | number | boolean | null | string[]]>): string {
+function frontmatter(entries: Array<[string, unknown]>): string {
   return `---\n${entries.map(([key, value]) => `${key}: ${yamlValue(value)}`).join('\n')}\n---\n`;
 }
 
@@ -101,6 +101,7 @@ function noteMarkdown(note: LocalNote): string {
     ['title', note.title],
     ['folder_id', note.folderId],
     ['tags', note.tags],
+    ['properties', note.properties],
     ['linked_chat_ids', note.linkedChatIds],
     ['archived_at', note.archivedAt],
     ['created_at', note.createdAt],
@@ -134,17 +135,11 @@ function noteLinks(snapshot: WorkspaceSnapshot): PortableNoteLink[] {
     for (const targetId of deriveOutgoingNoteIds(source, activeNotes)) {
       const target = byId.get(targetId);
       if (target === undefined) continue;
-      links.push({
-        sourceNoteId: source.id,
-        sourceTitle: source.title,
-        targetNoteId: target.id,
-        targetTitle: target.title,
-      });
+      links.push({ sourceNoteId: source.id, sourceTitle: source.title, targetNoteId: target.id, targetTitle: target.title });
     }
   }
 
-  return links.sort((left, right) =>
-    left.sourceNoteId.localeCompare(right.sourceNoteId) || left.targetNoteId.localeCompare(right.targetNoteId));
+  return links.sort((left, right) => left.sourceNoteId.localeCompare(right.sourceNoteId) || left.targetNoteId.localeCompare(right.targetNoteId));
 }
 
 function linkedChats(snapshot: WorkspaceSnapshot): PortableLinkedChat[] {
@@ -162,12 +157,7 @@ function linkedChats(snapshot: WorkspaceSnapshot): PortableLinkedChat[] {
 
 function folderEntries(snapshot: WorkspaceSnapshot): PortableFolderEntry[] {
   return snapshot.folders
-    .map((folder) => ({
-      id: folder.id,
-      name: folder.name,
-      parentId: folder.parentId,
-      path: folderPath(folder.id, snapshot.folders),
-    }))
+    .map((folder) => ({ id: folder.id, name: folder.name, parentId: folder.parentId, path: folderPath(folder.id, snapshot.folders) }))
     .sort((left, right) => left.path.localeCompare(right.path));
 }
 
@@ -184,18 +174,15 @@ export function buildPortableWorkspaceBundle(snapshot: WorkspaceSnapshot, export
     format: PORTABLE_EXPORT_FORMAT,
     version: PORTABLE_EXPORT_VERSION,
     exportedAt: new Date(exportedAt).toISOString(),
-    workspace: {
-      id: snapshot.id,
-      name: snapshot.name,
-      schemaVersion: snapshot.schemaVersion,
-      updatedAt: snapshot.updatedAt,
-    },
+    workspace: { id: snapshot.id, name: snapshot.name, schemaVersion: snapshot.schemaVersion, updatedAt: snapshot.updatedAt },
     counts: {
       folders: snapshot.folders.length,
       notes: snapshot.notes.length,
       archivedNotes: snapshot.notes.filter((note) => note.archivedAt !== null).length,
       chatReferences: snapshot.chatRefs.length,
       archivedChatReferences: snapshot.chatRefs.filter((chat) => chat.archivedAt !== null).length,
+      savedViews: snapshot.savedViews.length,
+      noteTemplates: snapshot.noteTemplates.length,
       manualRelationships: snapshot.manualEdges.length,
     },
     folders: folderEntries(snapshot),

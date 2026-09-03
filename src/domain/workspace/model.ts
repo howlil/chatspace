@@ -1,8 +1,9 @@
-export const WORKSPACE_SCHEMA_VERSION = 2 as const;
+export const WORKSPACE_SCHEMA_VERSION = 3 as const;
 export const DEFAULT_WORKSPACE_ID = 'default';
 export const INBOX_FOLDER_ID = 'system-inbox';
+export const LEARNING_TEMPLATE_ID = 'template-learning';
 
-export type TabKind = 'home' | 'chat' | 'note' | 'graph' | 'settings';
+export type TabKind = 'home' | 'chat' | 'note' | 'graph' | 'settings' | 'view';
 
 export interface WorkspaceFolder {
   id: string;
@@ -25,14 +26,47 @@ export interface ChatReference {
   updatedAt: number;
 }
 
+export interface DatePropertyValue {
+  type: 'date';
+  value: string;
+}
+
+export type PropertyValue = string | number | boolean | string[] | DatePropertyValue;
+export type NoteProperties = Record<string, PropertyValue>;
+
 export interface LocalNote {
   id: string;
   title: string;
   content: string;
   tags: string[];
+  properties: NoteProperties;
   folderId: string | null;
   linkedChatIds: string[];
   archivedAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface KnowledgeFilter {
+  property: string;
+  value: PropertyValue;
+}
+
+export interface SavedKnowledgeView {
+  id: string;
+  name: string;
+  filters: KnowledgeFilter[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface NoteTemplate {
+  id: string;
+  name: string;
+  titlePattern: string;
+  content: string;
+  tags: string[];
+  properties: NoteProperties;
   createdAt: number;
   updatedAt: number;
 }
@@ -67,6 +101,8 @@ export interface WorkspaceSnapshot {
   folders: WorkspaceFolder[];
   chatRefs: ChatReference[];
   notes: LocalNote[];
+  savedViews: SavedKnowledgeView[];
+  noteTemplates: NoteTemplate[];
   manualEdges: ManualGraphEdge[];
   tabs: WorkspaceTab[];
   activeTabId: string;
@@ -141,12 +177,26 @@ export function createLocalNote(input: LocalNoteInput): LocalNote {
     title: cleanLabel(input.title, 'Untitled note'),
     content: '',
     tags: [],
+    properties: {},
     folderId: input.folderId,
     linkedChatIds: [],
     archivedAt: null,
     createdAt: input.now,
     updatedAt: input.now,
   };
+}
+
+export function createDefaultNoteTemplates(now: number): NoteTemplate[] {
+  return [{
+    id: LEARNING_TEMPLATE_ID,
+    name: 'Learning Note',
+    titlePattern: '{{title}}',
+    content: '# Summary\n\n## Mental model\n\n## Example\n\n## Questions\n',
+    tags: [],
+    properties: { type: 'learning', status: 'active' },
+    createdAt: now,
+    updatedAt: now,
+  }];
 }
 
 export function createInitialWorkspace(now = Date.now()): WorkspaceSnapshot {
@@ -165,6 +215,8 @@ export function createInitialWorkspace(now = Date.now()): WorkspaceSnapshot {
     folders: [createInboxFolder(now)],
     chatRefs: [],
     notes: [],
+    savedViews: [],
+    noteTemplates: createDefaultNoteTemplates(now),
     manualEdges: [],
     tabs: [homeTab],
     activeTabId: homeTab.id,

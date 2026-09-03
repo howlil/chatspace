@@ -13,11 +13,15 @@ import {
   createInitialWorkspace,
   createLocalNote,
   type ChatReference,
+  type KnowledgeFilter,
   type LocalNote,
+  type NoteTemplate,
+  type SavedKnowledgeView,
   type WorkspaceFolder,
   type WorkspaceTab,
 } from '../domain/workspace/model';
 import type { WorkspaceArtifactRef } from '../domain/workspace/retrieval';
+import { createSavedKnowledgeView, instantiateNoteTemplate } from '../domain/workspace/structuredKnowledge';
 import { workspaceReducer } from '../domain/workspace/workspaceReducer';
 import { ChatDetails } from '../features/chat-details/ChatDetails';
 import { QuickCaptureDialog } from '../features/capture-inbox/QuickCaptureDialog';
@@ -28,6 +32,8 @@ import {
 } from '../features/command-palette/CommandPalette';
 import { GraphNavigator } from '../features/graph/GraphNavigator';
 import { DailyHome } from '../features/home/DailyHome';
+import { CreateKnowledgeViewDialog } from '../features/knowledge-views/CreateKnowledgeViewDialog';
+import { KnowledgeViewPage } from '../features/knowledge-views/KnowledgeViewPage';
 import { LocalNoteEditor } from '../features/local-notes/LocalNoteEditor';
 import { NoteContextRail } from '../features/local-notes/NoteContextRail';
 import { LocalVaultPage } from '../features/local-vault/LocalVaultPage';
@@ -63,6 +69,7 @@ type PendingDelete =
   | { kind: 'note'; note: LocalNote }
   | { kind: 'bulk'; refs: WorkspaceArtifactRef[] }
   | null;
+
 type PendingRename =
   | { kind: 'folder'; folder: WorkspaceFolder }
   | { kind: 'chat'; chat: ChatReference }
@@ -98,6 +105,8 @@ export function WorkspaceApp({
   const [status, setStatus] = useState('Local workspace ready.');
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [pendingTemplate, setPendingTemplate] = useState<NoteTemplate | null>(null);
   const [saveDialogTarget, setSaveDialogTarget] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
   const [pendingRename, setPendingRename] = useState<PendingRename>(null);
@@ -147,6 +156,10 @@ export function WorkspaceApp({
 
   function noteTab(note: LocalNote): WorkspaceTab {
     return { id: `tab-note-${note.id}`, kind: 'note', entityId: note.id, title: note.title.trim() || 'Untitled note', pinned: false };
+  }
+
+  function viewTab(savedView: SavedKnowledgeView): WorkspaceTab {
+    return { id: `tab-view-${savedView.id}`, kind: 'view', entityId: savedView.id, title: savedView.name, pinned: false };
   }
 
   function openTab(tab: WorkspaceTab): void {
@@ -364,6 +377,44 @@ export function WorkspaceApp({
     navigateToChatGptTarget(chat.target, navigate);
   }
 
+  function openNote(note: LocalNote): void {
+    openTab(noteTab(note));
+  }
+
+  function openSavedView(savedView: SavedKnowledgeView): void {
+    openTab(viewTab(savedView));
+  }
+
+  function createKnowledgeView(name: string, filters: KnowledgeFilter[]): void {
+    const now = Date.now();
+    const savedView = createSavedKnowledgeView({ id: createEntityId('view'), name, filters, now });
+    dispatch({ type: 'view/create', view: savedView });
+    openTab(viewTab(savedView));
+    setViewDialogOpen(false);
+    setStatus(`Saved view “${savedView.name}”.`);
+  }
+
+  function deleteKnowledgeView(savedView: SavedKnowledgeView): void {
+    dispatch({ type: 'view/delete', viewId: savedView.id, now: Date.now() });
+    setStatus(`Deleted saved view “${savedView.name}”. Notes were not changed.`);
+  }
+
+  function confirmTemplateCreation(title: string): void {
+    if (pendingTemplate === null) return;
+    const now = Date.now();
+    const note = instantiateNoteTemplate({
+      template: pendingTemplate,
+      id: createEntityId('note'),
+      title,
+      folderId: selectedFolderId,
+      now,
+    });
+    dispatch({ type: 'note/create', note });
+    openTab(noteTab(note));
+    setPendingTemplate(null);
+    setStatus(`Created “${note.title}” from ${pendingTemplate.name}.`);
+  }
+
   function activateTab(tabId: string): void {
     const tab = workspace.tabs.find((item) => item.id === tabId);
     const now = Date.now();
@@ -373,10 +424,6 @@ export function WorkspaceApp({
     if (chat === undefined) return;
     dispatch({ type: 'chat/update', chat, now });
     navigateToChatGptTarget(chat.target, navigate);
-  }
-
-  function openNote(note: LocalNote): void {
-    openTab(noteTab(note));
   }
 
   function openGraph(): void {
@@ -454,11 +501,14 @@ export function WorkspaceApp({
   const activeTab = workspace.tabs.find((tab) => tab.id === workspace.activeTabId) ?? workspace.tabs[0];
   const activeChat = activeTab?.kind === 'chat' ? workspace.chatRefs.find((chat) => chat.id === activeTab.entityId) : undefined;
   const activeNote = activeTab?.kind === 'note' ? workspace.notes.find((note) => note.id === activeTab.entityId) : undefined;
+  const activeSavedView = activeTab?.kind === 'view' ? workspace.savedViews.find((savedView) => savedView.id === activeTab.entityId) : undefined;
   const capability = getChatGptCapability(currentUrl());
   const currentLinkedChat = capability.currentTarget === null ? undefined : activeChatRefs.find((chat) => chat.target === capability.currentTarget);
   const compatibilityLabel = capability.canCaptureCurrentReference ? 'Conversation detected' : capability.supportedOrigin ? 'ChatGPT detected' : 'Open ChatGPT';
   const commands: WorkspaceCommand[] = [
     { id: 'capture-quick', label: 'Quick capture to Inbox', run: () => setCaptureOpen(true) },
+    { id: 'view-create', label: 'Create saved view', run: () => setViewDialogOpen(true) },
+    ...workspace.noteTemplates.map((template) => ({ id: `template-${template.id}`, label: `New from template: ${template.name}`, run: () => setPendingTemplate(template) })),
     { id: 'explorer-toggle', label: workspace.layout.treeCollapsed ? 'Show explorer' : 'Hide explorer', run: () => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed }) },
     { id: 'folder-create', label: 'Create folder at root', run: () => addFolder(null) },
     { id: 'note-create', label: 'Create note', run: () => addNote() },
@@ -469,8 +519,9 @@ export function WorkspaceApp({
   ];
   const quickOpenItems: WorkspaceQuickOpenItem[] = [
     ...workspace.folders.map((folder) => ({ id: folder.id, kind: 'folder' as const, label: folder.name, searchText: folder.name, run: () => { setSelectedFolderId(folder.id); openHome(); } })),
+    ...workspace.savedViews.map((savedView) => ({ id: savedView.id, kind: 'view' as const, label: savedView.name, searchText: `${savedView.name}\n${savedView.filters.map((filter) => `${filter.property} ${JSON.stringify(filter.value)}`).join('\n')}`, run: () => openSavedView(savedView) })),
     ...activeChatRefs.map((chat) => ({ id: chat.id, kind: 'chat' as const, label: chat.label, searchText: chat.label, run: () => openSavedChat(chat) })),
-    ...activeNotes.map((note) => ({ id: note.id, kind: 'note' as const, label: note.title, searchText: `${note.title}\n${note.tags.join(' ')}\n${note.content}`, run: () => openNote(note) })),
+    ...activeNotes.map((note) => ({ id: note.id, kind: 'note' as const, label: note.title, searchText: `${note.title}\n${note.tags.join(' ')}\n${Object.entries(note.properties).map(([key, value]) => `${key} ${JSON.stringify(value)}`).join(' ')}\n${note.content}`, run: () => openNote(note) })),
   ];
 
   let surfaceContent: ReactNode;
@@ -484,6 +535,8 @@ export function WorkspaceApp({
     );
   } else if (activeTab?.kind === 'graph') {
     surfaceContent = <GraphNavigator graph={graph} onOpenNode={openGraphNode} onCreateManualEdge={createManualEdge} onDeleteManualEdge={deleteManualEdge} />;
+  } else if (activeSavedView !== undefined) {
+    surfaceContent = <KnowledgeViewPage view={activeSavedView} notes={activeNotes} onOpenNote={openNote} onDelete={() => deleteKnowledgeView(activeSavedView)} />;
   } else if (activeNote !== undefined) {
     surfaceContent = (
       <div className={noteContextExpanded ? 'grid h-full min-h-0 min-[880px]:grid-cols-[minmax(0,1fr)_260px] max-[879px]:grid-rows-[minmax(0,1fr)_auto]' : 'h-full min-h-0'}>
@@ -492,6 +545,7 @@ export function WorkspaceApp({
           <NoteContextRail
             note={activeNote}
             notes={activeNotes}
+            onChangeNote={updateNote}
             onOpenNote={openNote}
             onCreateMissingLink={(title) => createMissingLinkedNote(title, activeNote)}
             onReplaceBrokenLink={(token, target) => replaceBrokenLink(activeNote, token, target)}
@@ -592,7 +646,10 @@ export function WorkspaceApp({
       ) : workspaceSurface}
       {view === 'workspace' && paletteOpen && <CommandPalette commands={commands} items={quickOpenItems} onClose={() => setPaletteOpen(false)} />}
       {view === 'workspace' && (
-        <QuickCaptureDialog open={captureOpen} linkedChatLabel={currentLinkedChat?.label ?? null} onSave={captureToInbox} onClose={() => setCaptureOpen(false)} />
+        <>
+          <QuickCaptureDialog open={captureOpen} linkedChatLabel={currentLinkedChat?.label ?? null} onSave={captureToInbox} onClose={() => setCaptureOpen(false)} />
+          <CreateKnowledgeViewDialog open={viewDialogOpen} notes={activeNotes} onSave={createKnowledgeView} onClose={() => setViewDialogOpen(false)} />
+        </>
       )}
       <SaveConversationDialog open={saveDialogTarget !== null} target={saveDialogTarget} folders={workspace.folders} defaultFolderId={selectedFolderId} defaultLabel={`Conversation ${workspace.chatRefs.length + 1}`} onCancel={() => setSaveDialogTarget(null)} onSave={confirmSaveCurrentChat} />
       <ConfirmDialog open={pendingDelete !== null} title={deleteTitle} description={deleteDescription} confirmLabel="Delete" danger onConfirm={confirmDelete} onCancel={() => setPendingDelete(null)} />
@@ -605,6 +662,16 @@ export function WorkspaceApp({
         confirmLabel="Rename"
         onConfirm={confirmRename}
         onCancel={() => setPendingRename(null)}
+      />
+      <TextInputDialog
+        open={pendingTemplate !== null}
+        title={pendingTemplate === null ? 'New from template' : `New from ${pendingTemplate.name}`}
+        description="Creates a normal local note. Supported template variables are {{title}} and {{date}} only."
+        label="Note title"
+        initialValue=""
+        confirmLabel="Create note"
+        onConfirm={confirmTemplateCreation}
+        onCancel={() => setPendingTemplate(null)}
       />
     </>
   );

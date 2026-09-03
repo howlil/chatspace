@@ -5,6 +5,8 @@ import {
   createFolder,
   createLocalNote,
   type LocalNote,
+  type NoteProperties,
+  type PropertyValue,
   type WorkspaceFolder,
   type WorkspaceSnapshot,
 } from './model';
@@ -19,6 +21,7 @@ export interface MarkdownImportCandidate {
   title: string;
   content: string;
   tags: string[];
+  properties: NoteProperties;
   folderPath: string[];
   requestedNoteId: string | null;
   wikilinks: string[];
@@ -71,6 +74,17 @@ interface ParsedFrontmatter {
   body: string;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isPropertyValue(value: unknown): value is PropertyValue {
+  if (typeof value === 'string' || typeof value === 'boolean') return true;
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (Array.isArray(value)) return value.every((item) => typeof item === 'string');
+  return isRecord(value) && value.type === 'date' && typeof value.value === 'string';
+}
+
 function cleanPath(path: string): string {
   return path.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
 }
@@ -81,9 +95,7 @@ function parseScalar(raw: string): unknown {
   try {
     return JSON.parse(value) as unknown;
   } catch {
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      return value.slice(1, -1);
-    }
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) return value.slice(1, -1);
     if (value === 'null' || value === '~') return null;
     if (value === 'true') return true;
     if (value === 'false') return false;
@@ -141,10 +153,22 @@ function tagsMetadata(metadata: Record<string, unknown>): string[] {
   if (Array.isArray(value)) {
     return [...new Set(value.filter((tag): tag is string => typeof tag === 'string').map((tag) => tag.trim().toLocaleLowerCase()).filter(Boolean))];
   }
-  if (typeof value === 'string') {
-    return [...new Set(value.split(',').map((tag) => tag.trim().toLocaleLowerCase()).filter(Boolean))];
-  }
+  if (typeof value === 'string') return [...new Set(value.split(',').map((tag) => tag.trim().toLocaleLowerCase()).filter(Boolean))];
   return [];
+}
+
+function propertiesMetadata(metadata: Record<string, unknown>): NoteProperties {
+  const value = metadata.properties;
+  if (value === undefined || value === null) return {};
+  if (!isRecord(value)) throw new Error('properties frontmatter must be an object.');
+  const properties: NoteProperties = {};
+  for (const [key, property] of Object.entries(value)) {
+    const cleanKey = key.trim().replace(/\s+/g, ' ').slice(0, 64);
+    if (cleanKey === '') throw new Error('properties frontmatter contains an empty property name.');
+    if (!isPropertyValue(property)) throw new Error(`Unsupported structured property value for ${cleanKey}.`);
+    properties[cleanKey] = property;
+  }
+  return properties;
 }
 
 function portableLabel(segment: string, portable: boolean): string {
@@ -172,25 +196,25 @@ function parseCandidate(file: MarkdownSourceFile): { candidate: MarkdownImportCa
   if (!sourcePath.toLocaleLowerCase().endsWith('.md')) return { candidate: null, warning: null };
   const parsed = parseFrontmatter(file.content);
   const type = stringMetadata(parsed.metadata, 'chatspace_type');
-  if (type !== null && type !== 'note') {
-    return { candidate: null, warning: `${sourcePath}: skipped Chatspace ${type} Markdown.` };
-  }
+  if (type !== null && type !== 'note') return { candidate: null, warning: `${sourcePath}: skipped Chatspace ${type} Markdown.` };
+
   const portable = type === 'note';
   let pathParts = sourcePath.split('/').filter(Boolean);
   const fileName = pathParts.pop() ?? sourcePath;
   if (portable && pathParts[0] === 'notes') pathParts = pathParts.slice(1);
   const folderPath = pathParts.map((segment) => portableLabel(segment, portable)).filter(Boolean);
   const title = stringMetadata(parsed.metadata, 'title') ?? headingTitle(parsed.body) ?? fallbackTitle(fileName, portable);
-  const links = parseNoteLinks(parsed.body).map((token) => token.title);
+
   return {
     candidate: {
       sourcePath,
       title: title.trim().replace(/\s+/g, ' ').slice(0, 160) || 'Untitled note',
       content: parsed.body,
       tags: tagsMetadata(parsed.metadata),
+      properties: propertiesMetadata(parsed.metadata),
       folderPath,
       requestedNoteId: stringMetadata(parsed.metadata, 'chatspace_id'),
-      wikilinks: links,
+      wikilinks: parseNoteLinks(parsed.body).map((token) => token.title),
     },
     warning: null,
   };
@@ -208,7 +232,6 @@ export function scanMarkdownImport(
 ): MarkdownImportScan {
   const candidates: MarkdownImportCandidate[] = [];
   const warnings: string[] = [];
-
   for (const file of [...files].sort((left, right) => left.path.localeCompare(right.path))) {
     try {
       const parsed = parseCandidate(file);
@@ -223,32 +246,18 @@ export function scanMarkdownImport(
   const conflicts: MarkdownImportConflict[] = [];
   const conflictPaths = new Set<string>();
   const byRequestedId = new Map(snapshot.notes.map((note) => [note.id, note]));
-
   for (const candidate of candidates) {
     if (candidate.requestedNoteId !== null) {
       const existing = byRequestedId.get(candidate.requestedNoteId);
       if (existing !== undefined) {
-        conflicts.push({
-          sourcePath: candidate.sourcePath,
-          kind: 'id-match',
-          existingNoteId: existing.id,
-          existingTitle: existing.title,
-          incomingPeerPath: null,
-        });
+        conflicts.push({ sourcePath: candidate.sourcePath, kind: 'id-match', existingNoteId: existing.id, existingTitle: existing.title, incomingPeerPath: null });
         conflictPaths.add(candidate.sourcePath);
         continue;
       }
     }
-    const existingTitles = titleMatches(snapshot.notes, candidate.title);
-    if (existingTitles.length > 0) {
-      const existing = existingTitles[0]!;
-      conflicts.push({
-        sourcePath: candidate.sourcePath,
-        kind: 'title-match',
-        existingNoteId: existing.id,
-        existingTitle: existing.title,
-        incomingPeerPath: null,
-      });
+    const existing = titleMatches(snapshot.notes, candidate.title)[0];
+    if (existing !== undefined) {
+      conflicts.push({ sourcePath: candidate.sourcePath, kind: 'title-match', existingNoteId: existing.id, existingTitle: existing.title, incomingPeerPath: null });
       conflictPaths.add(candidate.sourcePath);
     }
   }
@@ -256,22 +265,14 @@ export function scanMarkdownImport(
   const incomingByTitle = new Map<string, MarkdownImportCandidate[]>();
   for (const candidate of candidates) {
     const key = normalizeNoteTitle(candidate.title);
-    const group = incomingByTitle.get(key) ?? [];
-    group.push(candidate);
-    incomingByTitle.set(key, group);
+    incomingByTitle.set(key, [...(incomingByTitle.get(key) ?? []), candidate]);
   }
   for (const group of incomingByTitle.values()) {
     if (group.length < 2) continue;
     for (const candidate of group) {
       if (conflictPaths.has(candidate.sourcePath)) continue;
       const peer = group.find((item) => item.sourcePath !== candidate.sourcePath);
-      conflicts.push({
-        sourcePath: candidate.sourcePath,
-        kind: 'incoming-title',
-        existingNoteId: null,
-        existingTitle: null,
-        incomingPeerPath: peer?.sourcePath ?? null,
-      });
+      conflicts.push({ sourcePath: candidate.sourcePath, kind: 'incoming-title', existingNoteId: null, existingTitle: null, incomingPeerPath: peer?.sourcePath ?? null });
       conflictPaths.add(candidate.sourcePath);
     }
   }
@@ -313,11 +314,7 @@ function folderNameKey(value: string): string {
 }
 
 function findReusableFolder(folders: WorkspaceFolder[], name: string, parentId: string | null): WorkspaceFolder | null {
-  const matches = folders.filter((folder) => (
-    folder.id !== INBOX_FOLDER_ID &&
-    folder.parentId === parentId &&
-    folderNameKey(folder.name) === folderNameKey(name)
-  ));
+  const matches = folders.filter((folder) => folder.id !== INBOX_FOLDER_ID && folder.parentId === parentId && folderNameKey(folder.name) === folderNameKey(name));
   return matches.length === 1 ? matches[0] ?? null : null;
 }
 
@@ -356,9 +353,7 @@ export function applyMarkdownImport(
   now = Date.now(),
   idFactory: (prefix: string) => string = createEntityId,
 ): MarkdownImportApplyResult {
-  if (snapshot.updatedAt !== scan.baseWorkspaceUpdatedAt) {
-    throw new Error('Workspace changed after the Markdown scan. Scan the folder again before importing.');
-  }
+  if (snapshot.updatedAt !== scan.baseWorkspaceUpdatedAt) throw new Error('Workspace changed after the Markdown scan. Scan the folder again before importing.');
 
   const decisionByPath = new Map(decisions.map((decision) => [decision.sourcePath, decision]));
   const conflictByPath = new Map(scan.conflicts.map((conflict) => [conflict.sourcePath, conflict]));
@@ -366,9 +361,7 @@ export function applyMarkdownImport(
     const decision = decisionByPath.get(conflict.sourcePath);
     if (decision === undefined) throw new Error(`Resolve the conflict for ${conflict.sourcePath} before importing.`);
     if (!allowedActions(conflict.kind).has(decision.action)) throw new Error(`Invalid conflict resolution for ${conflict.sourcePath}.`);
-    if (decision.action === 'rename-incoming' && (decision.renameTo?.trim() ?? '') === '') {
-      throw new Error(`Choose a new title for ${conflict.sourcePath}.`);
-    }
+    if (decision.action === 'rename-incoming' && (decision.renameTo?.trim() ?? '') === '') throw new Error(`Choose a new title for ${conflict.sourcePath}.`);
   }
 
   let folders = [...snapshot.folders];
@@ -398,9 +391,8 @@ export function applyMarkdownImport(
       ? decision?.renameTo?.trim().replace(/\s+/g, ' ').slice(0, 160) ?? candidate.title
       : candidate.title;
 
-    if (action === 'rename-incoming') {
-      const collision = notes.some((note) => normalizeNoteTitle(note.title) === normalizeNoteTitle(title));
-      if (collision) throw new Error(`The renamed incoming note “${title}” still conflicts with an existing note.`);
+    if (action === 'rename-incoming' && notes.some((note) => normalizeNoteTitle(note.title) === normalizeNoteTitle(title))) {
+      throw new Error(`The renamed incoming note “${title}” still conflicts with an existing note.`);
     }
 
     if (action === 'update-existing') {
@@ -414,6 +406,7 @@ export function applyMarkdownImport(
         title,
         content: candidate.content,
         tags: candidate.tags,
+        properties: candidate.properties,
         folderId: folderResult.folderId,
         updatedAt: now,
       } : note);
@@ -429,6 +422,7 @@ export function applyMarkdownImport(
       ...createLocalNote({ id, title, folderId: folderResult.folderId, now }),
       content: candidate.content,
       tags: candidate.tags,
+      properties: candidate.properties,
     };
     notes = [...notes, created];
     if (action === 'duplicate') duplicated += 1;
