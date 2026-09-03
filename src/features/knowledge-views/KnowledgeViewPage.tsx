@@ -36,6 +36,7 @@ export function KnowledgeViewPage({ view, notes, onOpenNote, onDelete }: Knowled
             <button
               type="button"
               key={note.id}
+              aria-label={note.title}
               className="flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-md px-2.5 py-2 text-left outline-none hover:bg-cs-hover focus-visible:bg-cs-active"
               onClick={() => onOpenNote(note)}
             >
