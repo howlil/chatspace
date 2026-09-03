@@ -13,8 +13,8 @@ interface NoteLinksPanelProps {
   note: LocalNote;
   notes: LocalNote[];
   onOpenNote: (note: LocalNote) => void;
-  onCreateMissingLink?: (title: string) => void;
-  onReplaceBrokenLink?: (token: NoteLinkToken, target: LocalNote) => void;
+  onCreateMissingLink?: ((title: string) => void) | undefined;
+  onReplaceBrokenLink?: ((token: NoteLinkToken, target: LocalNote) => void) | undefined;
 }
 
 export function NoteLinksPanel({ note, notes, onOpenNote, onCreateMissingLink, onReplaceBrokenLink }: NoteLinksPanelProps) {
@@ -22,9 +22,7 @@ export function NoteLinksPanel({ note, notes, onOpenNote, onCreateMissingLink, o
   const outgoing = resolveNoteLinks(note, notes);
   const backlinks = deriveBacklinks(note.id, notes);
   const diagnostics = diagnoseNoteLinks(note, notes);
-  const replacementOptions = notes
-    .filter((candidate) => candidate.id !== note.id)
-    .map((candidate) => ({ value: candidate.id, label: candidate.title }));
+  const replacementOptions = notes.filter((candidate) => candidate.id !== note.id).map((candidate) => ({ value: candidate.id, label: candidate.title }));
 
   return (
     <section className="grid gap-2 border-b border-cs-border pb-3" aria-label="Note links">
@@ -42,12 +40,7 @@ export function NoteLinksPanel({ note, notes, onOpenNote, onCreateMissingLink, o
           const target = link.targetNoteId === null ? undefined : noteById.get(link.targetNoteId);
           if (link.status === 'resolved' && target !== undefined && target.id !== note.id) {
             return (
-              <Button
-                key={`${link.token.start}-${target.id}`}
-                variant="ghost"
-                className="h-7 min-w-0 justify-start gap-1.5 px-1.5 text-[9px] text-cs-muted"
-                onClick={() => onOpenNote(target)}
-              >
+              <Button key={`${link.token.start}-${target.id}`} variant="ghost" className="h-7 min-w-0 justify-start gap-1.5 px-1.5 text-[9px] text-cs-muted" onClick={() => onOpenNote(target)}>
                 <ArrowUpRight size={9} className="shrink-0 text-cs-subtle" aria-hidden="true" />
                 <span className="truncate">{link.token.alias ?? target.title}</span>
               </Button>
