@@ -1,18 +1,18 @@
 # Current Iteration
 
-Status: **VERIFYING_M18**
+Status: **READY_FOR_MILESTONE**
 
 ## Feature Compass
 
 **Shape:** Chatspace is a local-first companion beside native ChatGPT whose daily loop is contextual save, remember why, continue/find, and resume; Library, durable notes, advanced knowledge navigation, and portability support that loop without competing with it.
 
-**Position:** M18 — Core Navigation & Daily-Use Flow Simplification is implementation-complete and awaiting final repository CI evidence.
+**Position:** M18 — Core Navigation & Daily-Use Flow Simplification is complete and deterministically verified.
 
-**Delta:** M18 translates the M17 product focus into information architecture and interaction flow: Home now exposes current-conversation context and direct save; Continue no longer duplicates pinned shortcuts; empty Inbox is demoted; Quick Open groups daily retrieval before advanced objects; Home / Library / Settings are the primary user jobs; Graph is under More; vault/data maintenance is consolidated under Settings; and resume reuses/focuses matching ChatGPT tabs when possible.
+**Delta:** M18 translates the M17 product focus into information architecture and interaction flow: Home exposes current-conversation context and direct save; Continue no longer duplicates pinned shortcuts; empty Inbox is demoted; Quick Open groups daily retrieval before advanced objects; Home / Library / Settings are the primary user jobs; Graph is under More; vault/data maintenance is consolidated under Settings; and resume reuses/focuses matching ChatGPT tabs when possible.
 
-**Next Move:** Finish final deterministic CI on the complete M18 branch. If relevant gates are green, mark M18 complete, merge PR #44, and return the repository to `READY_FOR_MILESTONE`.
+**Next Move:** Merge PR #44. After integration to `master`, select the next milestone from the highest-value missing core user capability rather than continuing M18 polish by default.
 
-## Active milestone decomposition
+## Completed milestone decomposition
 
 ```text
 Product purpose: durable local context around native ChatGPT
@@ -20,37 +20,37 @@ Core journey: current context -> save -> remember -> continue/find -> resume -> 
 Milestone: M18 — Core Navigation & Daily-Use Flow Simplification
 
 Slice 1 — Contextual current-chat entry point
-  IMPLEMENTED
+  COMPLETE
   Home current-conversation state + direct Save + safe browser-tab-title prefill
 
 Slice 2 — Focused Home working set
-  IMPLEMENTED
+  COMPLETE
   unpinned Continue + distinct Pinned shortcuts + non-empty-only Inbox prominence
 
 Slice 3 — Retrieval-oriented Quick Open
-  IMPLEMENTED
+  COMPLETE
   grouped empty/search states + advanced Saved View demotion without removing searchability
 
 Slice 4 — Simplified primary navigation
-  IMPLEMENTED
+  COMPLETE
   Home / Library / Settings + Graph behind More
   Workbench retained only as an internal implementation concept
 
 Slice 5 — Advanced knowledge progressive disclosure
-  IMPLEMENTED
+  COMPLETE
   Graph advanced; Saved Views secondary; note properties/backlinks/related context remain note-scoped
 
 Slice 6 — Settings consolidation
-  IMPLEMENTED
+  COMPLETE
   Markdown vault + backup/import/export/recovery under Settings
 
 Slice 7 — Seamless resume
-  IMPLEMENTED
+  COMPLETE
   focus matching validated ChatGPT tab -> reuse active supported tab -> create validated target
 
 Slice 8 — Integrated deterministic verification
-  IN PROGRESS
-  focused M18 flow/provider/retrieval tests added; final branch CI pending
+  COMPLETE
+  focused M18 flow/provider/retrieval coverage + full relevant repository CI
 ```
 
 ## M18 product outcome
@@ -76,15 +76,17 @@ When the user opens Chatspace beside ChatGPT, the primary experience centers the
 - [x] fallback resume reuses the active supported ChatGPT tab or opens a validated target;
 - [x] no provider DOM/history/message scraping, AI semantic search, embeddings, Graph/property/view expansion, template expansion, background sync, new provider, or schema change was introduced;
 - [x] deterministic M18 integration/provider/retrieval coverage is present;
-- [ ] final relevant repository CI is green on the complete M18 branch;
-- [ ] PR #44 is merged to master.
+- [x] CI #303 passed frozen install, lint, strict TypeScript, 121 deterministic tests across 35 files, extension production build/ZIP, and final `verify`.
 
-## Verification history
+## Verification evidence
 
+- CI #303 (`33800399837`) passed on implementation-complete head `f5ec753ef793c97562869c2ea917f4db718e9066`.
+- Test result: **35 test files passed / 121 tests passed**.
+- Production Chromium MV3 package built successfully as `.output/chatspace-0.0.0-chrome.zip`.
 - Initial M18 CI failed at strict TypeScript because `exactOptionalPropertyTypes` rejected an explicitly propagated absent optional Settings integration callback. The callback contract was corrected without weakening strict TypeScript or CI.
-- The next deterministic test run exposed three legacy UX expectations that contradicted the approved M18 IA: `Command palette` vs `Quick open`, `Explorer` vs `Library`, and empty-state Saved View visibility. Production behavior was retained and the tests were updated to assert the new user contract, including explicit Saved View searchability.
+- A later deterministic test run exposed three legacy UX expectations that contradicted the approved M18 IA: `Command palette` vs `Quick open`, `Explorer` vs `Library`, and empty-state Saved View visibility. Production behavior was retained and the tests were updated to assert the approved user contract, including explicit Saved View searchability.
 - M18-specific deterministic coverage verifies contextual current-conversation capture/name prefill, Continue/Pinned separation, primary navigation + Settings vault entry, Quick Open grouping, and provider matching-tab reuse.
 
 ## Completion rule
 
-M18 becomes complete only when the final branch head passes the repository-owned relevant CI gate. Separate black-box/live-browser acceptance is not required. After green CI, update this file to `READY_FOR_MILESTONE`, merge PR #44, and verify the merged master state.
+M18 is complete. Separate black-box/live-browser acceptance is not required. Do not extend M18 with nice-to-have polish by default; choose the next milestone from the highest-value missing core capability after PR #44 is integrated to `master`.
