@@ -13,7 +13,7 @@ describe('CommandPalette', () => {
     const onClose = vi.fn();
 
     render(<CommandPalette commands={commands} onClose={onClose} />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Search notes, chats, folders, or commands' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search notes, chats, folders, views, or commands' }), {
       target: { value: 'graph' },
     });
 
@@ -30,7 +30,7 @@ describe('CommandPalette', () => {
     ];
 
     render(<CommandPalette commands={[]} items={items} onClose={vi.fn()} />);
-    const search = screen.getByRole('textbox', { name: 'Search notes, chats, folders, or commands' });
+    const search = screen.getByRole('textbox', { name: 'Search notes, chats, folders, views, or commands' });
     fireEvent.change(search, { target: { value: 'persistence' } });
     fireEvent.keyDown(search, { key: 'Enter' });
 
