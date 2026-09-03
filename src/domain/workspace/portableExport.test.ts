@@ -13,6 +13,7 @@ describe('portable workspace export', () => {
       ...createChatReference({
         id: 'chat-mvcc',
         label: 'MVCC discussion',
+        annotation: 'Clear explanation of snapshot isolation and write skew.',
         target: 'https://chatgpt.com/c/mvcc',
         folderId: db.id,
         now: 3,
@@ -68,6 +69,8 @@ describe('portable workspace export', () => {
 
     const chatFile = bundle.files.find((file) => file.path.endsWith('/MVCC discussion--chat-mvcc.md'));
     expect(chatFile?.content).toContain('chatspace_type: "chat-reference"');
+    expect(chatFile?.content).toContain('annotation: "Clear explanation of snapshot isolation and write skew."');
+    expect(chatFile?.content).toContain('Clear explanation of snapshot isolation and write skew.');
     expect(chatFile?.content).toContain('target: "https://chatgpt.com/c/mvcc"');
     expect(chatFile?.content).toContain('<https://chatgpt.com/c/mvcc>');
 
@@ -85,7 +88,7 @@ describe('portable workspace export', () => {
     const manifest = JSON.parse(bundle.files.find((file) => file.path === 'manifest.json')?.content ?? '{}') as {
       counts?: { savedViews?: number; noteTemplates?: number };
     };
-    expect(manifest.counts).toEqual(expect.objectContaining({ savedViews: 0, noteTemplates: 1 }));
+    expect(manifest.counts).toEqual(expect.objectContaining({ savedViews: 0, noteTemplates: 0 }));
   });
 
   it('includes archived local artifacts while marking the export boundary against provider content', () => {
