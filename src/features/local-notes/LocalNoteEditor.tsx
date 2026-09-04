@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Code2, Dot, Eye, FileText, Link2, Pencil, Tag, X } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, ChevronUp, Code2, Dot, Eye, FileText, Link2, Pencil, Tag, X } from 'lucide-react';
 import { ToggleGroup } from 'radix-ui';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
@@ -18,6 +18,7 @@ interface LocalNoteEditorProps {
   onChange: (note: LocalNote) => void;
   onRenameTitle?: (title: string) => void;
   onLinkChat: (chatId: string) => void;
+  onOpenChat: (chat: ChatReference) => void;
   onOpenNote: (note: LocalNote) => void;
   onToggleContext: () => void;
 }
@@ -98,8 +99,11 @@ function renderSafeMarkdown(markdown: string, notes: LocalNote[], onOpenNote: (n
   return blocks;
 }
 
-export function LocalNoteEditor({ note, notes, chats, contextExpanded, onChange, onRenameTitle, onLinkChat, onOpenNote, onToggleContext }: LocalNoteEditorProps) {
+export function LocalNoteEditor({ note, notes, chats, contextExpanded, onChange, onRenameTitle, onLinkChat, onOpenChat, onOpenNote, onToggleContext }: LocalNoteEditorProps) {
   const availableChats = chats.filter((chat) => !note.linkedChatIds.includes(chat.id));
+  const linkedChats = note.linkedChatIds
+    .map((chatId) => chats.find((chat) => chat.id === chatId))
+    .filter((chat): chat is ChatReference => chat !== undefined);
   const [selectedChatId, setSelectedChatId] = useState(availableChats[0]?.id ?? '');
   const [mode, setMode] = useState<NoteMode>('edit');
   const [tagDraft, setTagDraft] = useState('');
@@ -169,29 +173,49 @@ export function LocalNoteEditor({ note, notes, chats, contextExpanded, onChange,
   }
 
   return (
-    <section className="grid h-full min-h-0 grid-rows-[auto_auto_minmax(0,1fr)_auto_auto] bg-cs-bg" aria-label={`Edit note ${note.title}`}>
-      <div className="flex min-w-0 items-center gap-1.5 border-b border-cs-border px-2.5 py-1.5">
-        <FileText size={12} className="shrink-0 text-cs-subtle" strokeWidth={1.7} aria-hidden="true" />
-        <input
-          className="h-6 min-w-0 flex-1 bg-transparent text-[12px] font-semibold tracking-[-0.015em] text-cs-text outline-none placeholder:text-cs-subtle"
-          aria-label="Note title"
-          title="Edit note title"
-          placeholder="Untitled note"
-          value={titleDraft}
-          onChange={(event) => updateTitleDraft(event.target.value)}
-          onBlur={commitTitle}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') event.currentTarget.blur();
-            if (event.key === 'Escape') {
-              setTitleDraft(note.title);
-              event.currentTarget.blur();
-            }
-          }}
-        />
-        <ToggleGroup.Root type="single" value={mode} aria-label="Note view mode" className="flex shrink-0 rounded-lg border border-cs-border bg-cs-surface p-0.5" onValueChange={(value) => { if (value === 'edit' || value === 'preview') setMode(value); }}>
-          <ToggleGroup.Item value="edit" aria-label="Edit note" title="Edit" className="grid size-6 place-items-center rounded-md text-cs-subtle outline-none transition-colors hover:bg-cs-hover hover:text-cs-text focus-visible:ring-1 focus-visible:ring-cs-focus/50 data-[state=on]:bg-cs-text data-[state=on]:text-cs-bg"><Pencil size={10} aria-hidden="true" /></ToggleGroup.Item>
-          <ToggleGroup.Item value="preview" aria-label="Preview note" title="Preview" className="grid size-6 place-items-center rounded-md text-cs-subtle outline-none transition-colors hover:bg-cs-hover hover:text-cs-text focus-visible:ring-1 focus-visible:ring-cs-focus/50 data-[state=on]:bg-cs-text data-[state=on]:text-cs-bg"><Eye size={10} aria-hidden="true" /></ToggleGroup.Item>
-        </ToggleGroup.Root>
+    <section className="grid h-full min-h-0 grid-rows-[auto_auto_minmax(0,1fr)_auto] bg-cs-bg" aria-label={`Edit note ${note.title}`}>
+      <div className="grid border-b border-cs-border">
+        <div className="flex min-w-0 items-center gap-1.5 px-2.5 py-1.5">
+          <FileText size={12} className="shrink-0 text-cs-subtle" strokeWidth={1.7} aria-hidden="true" />
+          <input
+            className="h-6 min-w-0 flex-1 bg-transparent text-[12px] font-semibold tracking-[-0.015em] text-cs-text outline-none placeholder:text-cs-subtle"
+            aria-label="Note title"
+            title="Edit note title"
+            placeholder="Untitled note"
+            value={titleDraft}
+            onChange={(event) => updateTitleDraft(event.target.value)}
+            onBlur={commitTitle}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') event.currentTarget.blur();
+              if (event.key === 'Escape') {
+                setTitleDraft(note.title);
+                event.currentTarget.blur();
+              }
+            }}
+          />
+          <ToggleGroup.Root type="single" value={mode} aria-label="Note view mode" className="flex shrink-0 rounded-lg border border-cs-border bg-cs-surface p-0.5" onValueChange={(value) => { if (value === 'edit' || value === 'preview') setMode(value); }}>
+            <ToggleGroup.Item value="edit" aria-label="Edit note" title="Edit" className="grid size-6 place-items-center rounded-md text-cs-subtle outline-none transition-colors hover:bg-cs-hover hover:text-cs-text focus-visible:ring-1 focus-visible:ring-cs-focus/50 data-[state=on]:bg-cs-text data-[state=on]:text-cs-bg"><Pencil size={10} aria-hidden="true" /></ToggleGroup.Item>
+            <ToggleGroup.Item value="preview" aria-label="Preview note" title="Preview" className="grid size-6 place-items-center rounded-md text-cs-subtle outline-none transition-colors hover:bg-cs-hover hover:text-cs-text focus-visible:ring-1 focus-visible:ring-cs-focus/50 data-[state=on]:bg-cs-text data-[state=on]:text-cs-bg"><Eye size={10} aria-hidden="true" /></ToggleGroup.Item>
+          </ToggleGroup.Root>
+        </div>
+        {linkedChats.length > 0 && (
+          <div className="no-scrollbar flex min-w-0 items-center gap-1 overflow-x-auto border-t border-cs-border bg-cs-panel/60 px-2.5 py-1" aria-label="Source conversations">
+            <span className="shrink-0 text-[8px] font-medium uppercase tracking-[0.08em] text-cs-subtle">From conversation</span>
+            {linkedChats.map((chat) => (
+              <Button
+                key={chat.id}
+                size="sm"
+                variant="ghost"
+                className="h-6 min-w-0 shrink-0 gap-1 px-1.5 text-[9px] text-cs-muted"
+                aria-label={`Resume ${chat.label}`}
+                onClick={() => onOpenChat(chat)}
+              >
+                <span className="max-w-52 truncate">{chat.label}</span>
+                <ArrowUpRight size={9} aria-hidden="true" />
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex min-w-0 items-center gap-1.5 border-b border-cs-border bg-cs-panel/70 px-2.5 py-1">
@@ -235,8 +259,6 @@ export function LocalNoteEditor({ note, notes, chats, contextExpanded, onChange,
           <IconButton className="size-6 text-cs-subtle" aria-label={contextExpanded ? 'Collapse note context' : 'Expand note context'} title={contextExpanded ? 'Collapse note context' : 'Expand note context'} onClick={onToggleContext}>{contextExpanded ? <ChevronDown size={11} aria-hidden="true" /> : <ChevronUp size={11} aria-hidden="true" />}</IconButton>
         </div>
       </footer>
-
-      {contextExpanded && note.linkedChatIds.length > 0 && <div className="no-scrollbar flex gap-1 overflow-x-auto border-t border-cs-border bg-cs-panel/60 px-2.5 py-1" aria-label="Linked chats">{note.linkedChatIds.map((chatId) => { const chat = chats.find((candidate) => candidate.id === chatId); return <span className="flex h-5 shrink-0 items-center gap-1 rounded border border-cs-border bg-cs-control px-1.5 text-[9px] text-cs-muted" key={chatId}><Link2 size={9} aria-hidden="true" /> {chat?.label ?? chatId}</span>; })}</div>}
     </section>
   );
 }
