@@ -59,7 +59,8 @@ describe('WorkspaceApp', () => {
     render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
 
     expect(await screen.findByText('Databases')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Create folder' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create in library' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'New folder' }));
 
     await waitFor(async () => {
       const saved = await repository.load();
@@ -232,7 +233,8 @@ describe('WorkspaceApp', () => {
 
     render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Create note' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Create in library' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'New note' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), {
       target: { value: 'Transactions' },
     });
