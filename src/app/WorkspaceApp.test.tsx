@@ -389,7 +389,7 @@ describe('WorkspaceApp', () => {
       expect(saved?.layout.treeWidth).toBe(initialWidth + 16);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Toggle library' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse library' }));
 
     await waitFor(async () => {
       const saved = await repository.load();
