@@ -24,11 +24,13 @@ Work in native ChatGPT
 -> open Chatspace beside the current conversation
 -> see current-conversation saved/unsaved state
 -> save the validated conversation reference + optional Why saved
+   OR distill the conversation, saving it first when needed
    OR quick-capture a local thought to Inbox
 -> return later to Home / Ctrl-Cmd K
--> continue recent work or search local context
+-> continue recent work or search local context / durable note content
 -> resume the validated native ChatGPT target
--> organize/distill from Library and note context as needed
+-> distill important conversation context into user-authored Markdown knowledge when useful
+-> move/organize notes from Library without losing source provenance
 -> manage portability/integrations explicitly from Settings
 ```
 
@@ -57,6 +59,7 @@ Advanced PKM capabilities must not compete visually or behaviorally with the pri
 - A saved chat has a required local label and optional user-authored `annotation` exposed as **Why saved**.
 - Folder and pin remain optional organization decisions rather than required capture gates.
 - Capture Inbox creates local Markdown notes without forcing immediate organization.
+- A current supported conversation may start **Distill** directly; if it is not saved yet, Chatspace reuses the normal Save contract before creating the linked note.
 
 ### Continue and retrieve
 
@@ -67,6 +70,7 @@ Advanced PKM capabilities must not compete visually or behaviorally with the pri
 - Empty-query Quick Open groups daily work as Continue, Pinned, Library, then Actions; advanced saved views are not promoted in the empty state.
 - With a query, results are grouped as Chats, Notes, Folders, Actions, and Saved views.
 - Retrieval ranking is deterministic: exact/prefix/label relevance beats context/content; pin and recency are tie-break signals rather than substitutes for relevance.
+- Distilled note content participates in the same deterministic local retrieval path; M19 does not introduce a second search system.
 
 ### Resume native ChatGPT
 
@@ -74,6 +78,7 @@ Advanced PKM capabilities must not compete visually or behaviorally with the pri
 - Opening a saved chat first focuses an already-open matching ChatGPT conversation tab when one exists.
 - Otherwise Chatspace reuses the active supported ChatGPT tab or opens a validated target when needed.
 - Resume records local activity and does not introduce an intermediate Chatspace confirmation surface.
+- A source conversation shown inside a durable note uses this same validated resume path.
 - Unsupported provider targets fail closed.
 
 ### Navigation and organization
@@ -94,17 +99,43 @@ More -> Graph
 - nested local folders retain explicit root/subfolder semantics;
 - local search/filters, pins, archive/restore, multi-select and bulk triage remain available;
 - archive is non-destructive; delete is explicit and destructive only for Chatspace-owned local data.
+- organizing or moving a note changes its folder placement without removing its canonical linked source conversations.
 
 ### Distill durable knowledge
 
+Distillation is an explicit user-authored workflow, not provider-content summarization.
+
+```text
+current/saved ChatGPT conversation
+-> Distill
+-> save local ChatReference first if needed
+-> create normal LocalNote
+-> seed editable title from Chatspace-owned local chat label
+-> persist source relation in LocalNote.linkedChatIds
+-> user writes durable Markdown knowledge
+-> find note later
+-> resume source conversation when deeper context is needed
+```
+
+Committed capabilities:
+
 - Markdown notes with editable title/content/tags;
-- explicit linked ChatGPT references;
+- first-class Distill action from current conversation context and saved conversation details;
+- unsaved conversation Distill chains through the existing Save contract rather than creating a parallel capture model;
+- explicit linked ChatGPT references stored through `LocalNote.linkedChatIds`;
+- linked source conversations are shown as actionable provenance inside the note editor;
+- source Resume uses the existing validated provider navigation;
+- saved conversation details derive the durable notes that reference that chat and expose them as a **Knowledge** projection;
+- reverse conversation-to-note navigation is derived from canonical notes and is not separately persisted;
+- when linked notes already exist, they are shown before the explicit **New note from conversation** action;
+- multiple durable notes may intentionally reference one conversation; there is no artificial one-note-per-chat constraint;
+- Inbox captures linked to a saved conversation retain that source relation when later organized outside Inbox;
 - `[[Title]]` links with deterministic missing/ambiguous behavior;
 - backlinks and deterministic related-local navigation;
 - lightweight typed note properties: text, number, boolean, tags, and date;
 - named saved views using AND-only equality filters over canonical notes.
 
-Properties, backlinks, related notes, and saved views remain contextual/advanced note-organization tools rather than primary global navigation. Do not expand them into a database/workflow suite without an explicit product outcome.
+Distillation never copies or infers provider conversation messages. Properties, backlinks, related notes, and saved views remain contextual/advanced note-organization tools rather than primary global navigation. Do not expand them into a database/workflow suite without an explicit product outcome.
 
 ### Advanced Graph projection
 
@@ -150,11 +181,13 @@ folder + pin/archive lifecycle
 timestamps
 ```
 
-Chatspace does not own provider conversation content.
+A ChatReference may be the source for zero, one, or many durable notes. Chatspace does not own provider conversation content.
 
 ### Note
 
-User-owned Markdown with title, tags, lightweight typed properties, explicit linked chat references, and explicit note links expressed as human-readable `[[Title]]` Markdown.
+User-owned Markdown with title, tags, lightweight typed properties, explicit linked chat references in `linkedChatIds`, and explicit note links expressed as human-readable `[[Title]]` Markdown.
+
+For conversation-derived knowledge, the Note is the canonical owner of the note-to-chat source relation. The reverse conversation-to-note list is derived at read time.
 
 ### Folder
 
@@ -180,9 +213,16 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - Browser tab title metadata may prefill a local conversation name without becoming provider conversation content.
 - Saving a chat requires only a local name; Why saved, folder, and pin are optional local decisions.
 - Why-saved annotation is user-authored local metadata, editable after save, searchable, exportable, and never inferred from provider content.
+- A current supported conversation exposes Distill; an unsaved target is first captured through the same validated Save path, then a source-linked normal Markdown note is created.
+- Distilled notes seed their editable title from the local ChatReference label only; Chatspace does not generate a summary, tags, or content from provider messages.
+- A linked source conversation is visible from the note and resumes through the normal validated native ChatGPT navigation path.
+- Saved conversation details derive linked durable notes from `LocalNote.linkedChatIds`; this reverse projection is not another persisted source of truth.
+- Existing linked notes are shown before an explicit additional note is created; multiple notes per conversation are supported intentionally.
+- Moving or organizing an Inbox-linked note preserves its source relation.
 - Home Continue combines active unpinned saved chats and non-Inbox notes by local activity; Inbox and Pinned remain explicit separate surfaces.
 - Pinned chat shortcuts are not duplicated in Continue.
 - Quick Open uses deterministic relevance and local context; empty state prioritizes daily work and explicit searching exposes advanced saved views.
+- Distilled note content is searchable through existing Quick Open note-content indexing.
 - opening a supported saved chat resumes the native ChatGPT target through validated navigation and reuses/focuses an already-open matching target when available.
 - primary navigation is Home / Library / Settings with Graph kept under advanced More access.
 - archive remains reversible and non-destructive; archived artifacts stay outside active retrieval/projection surfaces until restored.
@@ -198,12 +238,13 @@ Optional local integration used to manually write Chatspace notes beneath a user
 
 - Chatspace owns local workspace entities and metadata.
 - Native ChatGPT owns provider conversation content/runtime.
-- `WorkspaceSnapshot` schema **v4** is the canonical persisted workspace contract.
+- `WorkspaceSnapshot` schema **v4** remains the canonical persisted workspace contract after M19; no M19 schema migration is required.
 - Accepted schema v1, v2, and v3 state migrates deterministically to v4.
 - v4 adds `ChatReference.annotation: string`; legacy chat references migrate with `annotation: ""`.
 - v3 saved views, templates, manual relations, notes, tabs, layout, and lifecycle state are preserved during migration.
 - v1/v2 migration does not invent the deprecated Learning Note preset.
 - browser tab title/window metadata is ephemeral provider-boundary state and is not a new persisted provider-content contract.
+- `LocalNote.linkedChatIds` is canonical note-owned source/reference data; reverse chat-to-note Knowledge lists are derived from it.
 - `[[Title]]` relationships/backlinks and related-local similarity are derived, not separately persisted writable truth.
 - portable bundle versioning remains separate from workspace-schema versioning.
 - filesystem directory handles remain outside `WorkspaceSnapshot`.
@@ -212,8 +253,10 @@ Optional local integration used to manually write Chatspace notes beneath a user
 
 - Provider failure must not break local workspace use.
 - User-created local data must remain understandable, exportable, recoverable, and explicitly deletable.
-- No retrieval feature may silently begin reading provider conversation content.
+- No retrieval or distillation feature may silently begin reading provider conversation content.
 - Browser-tab metadata usage must stay inside the existing URL/tab trust boundary.
+- Distillation must remain explicitly user-authored; do not infer transcript content, summaries, titles, or tags from provider messages under the current product boundary.
+- Reverse conversation-to-note navigation must remain a projection over canonical notes rather than duplicated persisted truth.
 - Recency must not outrank a more relevant textual match.
 - Lightweight properties/views must not silently evolve into a database/workflow engine.
 - Graph renderer/session state must not become another persisted source of truth.
@@ -222,6 +265,8 @@ Optional local integration used to manually write Chatspace notes beneath a user
 ## Non-goals
 
 - provider history crawling, DOM/message extraction, semantic indexing of ChatGPT content;
+- automatic conversation summarization or transcript storage;
+- AI-generated note titles/tags/content from provider messages;
 - AI embeddings/vector DB/opaque automatic classification for core retrieval;
 - replacing native ChatGPT with a custom client;
 - database/table/Kanban/calendar/gallery/timeline products;
