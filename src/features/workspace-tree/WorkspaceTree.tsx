@@ -8,7 +8,7 @@ import {
   Folder,
   FolderOpen,
   FolderPlus,
-  House,
+  FolderTree,
   MoreHorizontal,
   Pencil,
   RotateCcw,
@@ -507,7 +507,7 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
   const contextNote = contextMenu?.target.kind === 'note'
     ? props.notes.find((note) => note.id === contextMenu.target.id)
     : undefined;
-  const menuLabel = contextFolder?.name ?? contextChat?.label ?? contextNote?.title ?? 'Workspace root';
+  const menuLabel = contextFolder?.name ?? contextChat?.label ?? contextNote?.title ?? 'All items';
 
   return (
     <div className="grid h-full min-h-0 grid-rows-[auto_auto_minmax(0,1fr)] overflow-hidden">
@@ -541,7 +541,7 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
             value=""
             options={[
               { value: '', label: 'Move…' },
-              { value: '__root__', label: 'Root' },
+              { value: '__root__', label: 'All items' },
               ...props.folders.map((folder) => ({ value: folder.id, label: folder.name })),
             ]}
             onValueChange={(value) => {
@@ -601,7 +601,7 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
             {filteredChats.map((chat) => chatLeaf(chat, chat.id))}
             {filteredNotes.map((note) => noteLeaf(note, note.id))}
             {filteredFolders.length + filteredChats.length + filteredNotes.length === 0 && (
-              <p className="px-2.5 py-3 text-[10px] leading-4 text-cs-subtle">No workspace matches.</p>
+              <p className="px-2.5 py-3 text-[10px] leading-4 text-cs-subtle">No library matches.</p>
             )}
           </section>
         ) : (
@@ -640,13 +640,13 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
                   className="flex h-full min-w-0 flex-1 items-center gap-1 rounded px-1.5 text-left outline-none hover:text-cs-text focus-visible:bg-cs-hover"
                   onClick={() => props.onSelectFolder(null)}
                 >
-                  <House size={11} strokeWidth={1.7} aria-hidden="true" />
-                  <span className="truncate whitespace-nowrap text-[10px] font-medium">Workspace root</span>
+                  <FolderTree size={11} strokeWidth={1.7} aria-hidden="true" />
+                  <span className="truncate whitespace-nowrap text-[10px] font-medium">All items</span>
                 </button>
                 {rootDropActive && <span className="shrink-0 text-[8px] font-medium text-cs-muted">Drop here</span>}
                 <IconButton
                   className="size-6 text-cs-subtle opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-                  aria-label="Actions for Workspace root"
+                  aria-label="Actions for All items"
                   title="Actions"
                   onClick={(event) => openMenuFromButton(event, { kind: 'root' })}
                 >
@@ -717,7 +717,7 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
                       className="h-7 w-full text-[10px]"
                       aria-label={`Move ${contextChat.label}`}
                       value={contextChat.folderId ?? ''}
-                      options={[{ value: '', label: 'Workspace root' }, ...props.folders.map((folder) => ({ value: folder.id, label: folder.name }))]}
+                      options={[{ value: '', label: 'All items' }, ...props.folders.map((folder) => ({ value: folder.id, label: folder.name }))]}
                       onValueChange={(value) => closeAndRun(() => props.onMoveChat(contextChat, value === '' ? null : value))}
                     />
                   </div>
@@ -743,7 +743,7 @@ export function WorkspaceTree(props: WorkspaceTreeProps) {
                       className="h-7 w-full text-[10px]"
                       aria-label={`Move ${contextNote.title}`}
                       value={contextNote.folderId ?? ''}
-                      options={[{ value: '', label: 'Workspace root' }, ...props.folders.map((folder) => ({ value: folder.id, label: folder.name }))]}
+                      options={[{ value: '', label: 'All items' }, ...props.folders.map((folder) => ({ value: folder.id, label: folder.name }))]}
                       onValueChange={(value) => closeAndRun(() => props.onMoveNote(contextNote, value === '' ? null : value))}
                     />
                   </div>
