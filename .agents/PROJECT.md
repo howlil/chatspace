@@ -83,17 +83,24 @@ Advanced PKM capabilities must not compete visually or behaviorally with the pri
 
 ### Navigation and organization
 
-Primary user-facing navigation expresses jobs rather than implementation modules:
+Primary user-facing navigation expresses jobs and surface ownership rather than implementation modules:
 
 ```text
-Home
-Library
-Settings
-More -> Graph
+Home = current / daily work
+Library sidebar = browse and organize local data
+Tabs = opened work
+Settings = data / configuration
+More -> Graph = advanced surface
+Ctrl/⌘ K = retrieval and command acceleration
 ```
 
 - Home owns current context and daily continuation.
-- Library is the deliberate browsing surface for nested folders, saved chats, notes, and archive lifecycle.
+- Library is the left browsing/organization sidebar for nested folders, saved chats, notes, search/filtering, and archive lifecycle; it is not duplicated as a permanent top-chrome destination while already visible.
+- The expanded Library owns its `Collapse library` affordance in the Library header. When collapsed, `Open library` appears at the leading edge of the workbench, spatially aligned with the panel it reveals.
+- The Library header exposes one compact `+` creation surface for **New note**, **New folder**, and **Quick capture** instead of a row of competing permanent actions.
+- Save and Distill remain contextual current-conversation actions; Quick Open may expose them as keyboard accelerators without becoming another visual information architecture.
+- Tabs own the central workbench space; Settings and More are trailing utility controls.
+- The unfiled/root Library scope is labeled **All items** and uses Library/folder semantics rather than a second Home/House semantic.
 - Settings owns data recovery/portability and optional integrations.
 - Workbench remains an internal implementation concept, not required user terminology.
 - nested local folders retain explicit root/subfolder semantics;
@@ -224,7 +231,9 @@ Optional local integration used to manually write Chatspace notes beneath a user
 - Quick Open uses deterministic relevance and local context; empty state prioritizes daily work and explicit searching exposes advanced saved views.
 - Distilled note content is searchable through existing Quick Open note-content indexing.
 - opening a supported saved chat resumes the native ChatGPT target through validated navigation and reuses/focuses an already-open matching target when available.
-- primary navigation is Home / Library / Settings with Graph kept under advanced More access.
+- primary navigation is Home + Library sidebar + tabs + trailing Settings/More utilities; Library is not duplicated as a permanent top-chrome destination, and Graph remains under More.
+- expanded Library owns collapse; collapsed workbench owns the leading reopen affordance; persisted Library width/layout state remains canonical.
+- Library creation uses one `+` menu for New note / New folder / Quick capture; current-conversation Save/Distill remain contextual actions and Quick Open remains acceleration.
 - archive remains reversible and non-destructive; archived artifacts stay outside active retrieval/projection surfaces until restored.
 - title-based note links fail visibly on missing/ambiguous targets instead of guessing.
 - saved views remain projections over canonical notes; deleting a view never deletes notes.
@@ -238,7 +247,7 @@ Optional local integration used to manually write Chatspace notes beneath a user
 
 - Chatspace owns local workspace entities and metadata.
 - Native ChatGPT owns provider conversation content/runtime.
-- `WorkspaceSnapshot` schema **v4** remains the canonical persisted workspace contract after M19; no M19 schema migration is required.
+- `WorkspaceSnapshot` schema **v4** remains the canonical persisted workspace contract after M19; M20 changes only interaction architecture and requires no workspace-schema migration.
 - Accepted schema v1, v2, and v3 state migrates deterministically to v4.
 - v4 adds `ChatReference.annotation: string`; legacy chat references migrate with `annotation: ""`.
 - v3 saved views, templates, manual relations, notes, tabs, layout, and lifecycle state are preserved during migration.
