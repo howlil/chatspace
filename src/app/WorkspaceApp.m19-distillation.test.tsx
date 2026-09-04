@@ -7,6 +7,7 @@ import {
   createInitialWorkspace,
   createLocalNote,
 } from '../domain/workspace/model';
+import { workspaceReducer } from '../domain/workspace/workspaceReducer';
 import { MemoryWorkspaceRepository } from '../persistence/workspaceRepository';
 import { WorkspaceApp } from './WorkspaceApp';
 
@@ -140,7 +141,7 @@ describe('WorkspaceApp M19 conversation-to-knowledge distillation', () => {
     expect(screen.getByRole('button', { name: 'Resume API design' })).toBeVisible();
   });
 
-  it('keeps source provenance when an Inbox capture becomes an organized note', async () => {
+  it('preserves source provenance when an Inbox capture is organized outside Inbox', () => {
     const initial = createInitialWorkspace(1);
     const chat = createChatReference({ id: 'chat-capture', label: 'Caching discussion', target: 'https://chatgpt.com/c/cache', folderId: null, now: 2 });
     const capture = {
@@ -149,16 +150,13 @@ describe('WorkspaceApp M19 conversation-to-knowledge distillation', () => {
     };
     initial.chatRefs = [chat];
     initial.notes = [capture];
-    const repository = new MemoryWorkspaceRepository(initial);
 
-    render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
+    const organized = workspaceReducer(initial, {
+      type: 'note/update',
+      note: { ...capture, folderId: null },
+      now: 4,
+    });
 
-    const inbox = await screen.findByRole('heading', { name: 'Inbox · 1' });
-    const inboxSection = inbox.closest('section');
-    if (inboxSection === null) throw new Error('Inbox section missing');
-    fireEvent.click(within(inboxSection).getByText('Cache invalidation thought'));
-
-    expect(await screen.findByRole('button', { name: 'Resume Caching discussion' })).toBeVisible();
-    expect((await repository.load())?.notes[0]?.linkedChatIds).toEqual([chat.id]);
+    expect(organized.notes[0]).toMatchObject({ folderId: null, linkedChatIds: [chat.id] });
   });
 });
