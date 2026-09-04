@@ -1,19 +1,35 @@
-import { FolderInput, MessageSquareText, Pencil, Pin, PinOff } from 'lucide-react';
+import { ArrowUpRight, FilePlus2, FileText, FolderInput, MessageSquareText, Pencil, Pin, PinOff } from 'lucide-react';
 
-import type { ChatReference, WorkspaceFolder } from '../../domain/workspace/model';
+import type { ChatReference, LocalNote, WorkspaceFolder } from '../../domain/workspace/model';
 import { Button, Panel, Select, Textarea } from '../../ui/primitives';
 
 interface ChatDetailsProps {
   chat: ChatReference;
   folder: WorkspaceFolder | undefined;
   folders: WorkspaceFolder[];
+  linkedNotes: LocalNote[];
+  onResume: () => void;
+  onDistill: () => void;
+  onOpenNote: (note: LocalNote) => void;
   onRename: () => void;
   onAnnotationChange: (annotation: string) => void;
   onTogglePin: () => void;
   onMove: (folderId: string | null) => void;
 }
 
-export function ChatDetails({ chat, folder, folders, onRename, onAnnotationChange, onTogglePin, onMove }: ChatDetailsProps) {
+export function ChatDetails({
+  chat,
+  folder,
+  folders,
+  linkedNotes,
+  onResume,
+  onDistill,
+  onOpenNote,
+  onRename,
+  onAnnotationChange,
+  onTogglePin,
+  onMove,
+}: ChatDetailsProps) {
   return (
     <section className="h-full min-h-0 overflow-y-auto">
       <div className="mx-auto grid w-full max-w-xl gap-4 px-4 py-5 sm:px-5">
@@ -28,6 +44,13 @@ export function ChatDetails({ chat, folder, folders, onRename, onAnnotationChang
             </p>
           </div>
         </div>
+
+        <Panel className="flex flex-wrap items-center gap-1.5 p-2">
+          <Button onClick={onResume}><ArrowUpRight size={11} aria-hidden="true" /> Resume conversation</Button>
+          {linkedNotes.length === 0 && (
+            <Button variant="ghost" onClick={onDistill}><FilePlus2 size={11} aria-hidden="true" /> Distill to note</Button>
+          )}
+        </Panel>
 
         <Panel className="grid gap-2 p-3">
           <label className="grid gap-1.5">
@@ -46,6 +69,26 @@ export function ChatDetails({ chat, folder, folders, onRename, onAnnotationChang
           </label>
           <p className="m-0 text-[9px] leading-4 text-cs-subtle">This is user-authored local metadata. Chatspace does not copy ChatGPT conversation content.</p>
         </Panel>
+
+        {linkedNotes.length > 0 && (
+          <Panel className="grid gap-2 p-2" aria-label="Knowledge from this conversation">
+            <div className="flex items-center justify-between gap-2 px-1 pt-0.5">
+              <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-cs-subtle">Knowledge</span>
+              <span className="text-[9px] tabular-nums text-cs-subtle">{linkedNotes.length} linked</span>
+            </div>
+            <div className="grid gap-0.5">
+              {linkedNotes.map((note) => (
+                <Button key={note.id} variant="ghost" className="h-8 min-w-0 justify-start px-2 text-[10px]" onClick={() => onOpenNote(note)}>
+                  <FileText size={10} className="shrink-0" aria-hidden="true" />
+                  <span className="truncate">{note.title}</span>
+                </Button>
+              ))}
+            </div>
+            <Button variant="ghost" className="justify-start" onClick={onDistill}>
+              <FilePlus2 size={11} aria-hidden="true" /> New note from conversation
+            </Button>
+          </Panel>
+        )}
 
         <Panel className="grid gap-3 p-3">
           <div className="grid gap-1">
