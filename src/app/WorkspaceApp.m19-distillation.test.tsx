@@ -136,7 +136,8 @@ describe('WorkspaceApp M19 conversation-to-knowledge distillation', () => {
 
     render(<WorkspaceApp repository={new MemoryWorkspaceRepository(initial)} currentUrl={() => chat.target} navigate={() => undefined} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'API design decisions' }));
+    const knowledge = await screen.findByLabelText('Knowledge from this conversation');
+    fireEvent.click(within(knowledge).getByRole('button', { name: 'API design decisions' }));
     expect(await screen.findByRole('textbox', { name: 'Note title' })).toHaveValue('API design decisions');
     expect(screen.getByRole('button', { name: 'Resume API design' })).toBeVisible();
   });
