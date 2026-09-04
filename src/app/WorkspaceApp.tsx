@@ -53,6 +53,7 @@ import { TextInputDialog } from '../ui/TextInputDialog';
 import { useWorkspacePersistence } from './controllers/useWorkspacePersistence';
 
 export type WorkspaceView = 'workspace' | 'markdown-sync';
+type SaveDialogIntent = 'save' | 'distill';
 
 interface WorkspaceAppProps {
   repository: WorkspaceRepository;
@@ -120,6 +121,7 @@ export function WorkspaceApp({
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [pendingTemplate, setPendingTemplate] = useState<NoteTemplate | null>(null);
   const [saveDialogTarget, setSaveDialogTarget] = useState<string | null>(null);
+  const [saveDialogIntent, setSaveDialogIntent] = useState<SaveDialogIntent>('save');
   const [pendingDelete, setPendingDelete] = useState<PendingDelete>(null);
   const [pendingRename, setPendingRename] = useState<PendingRename>(null);
   const [noteContextExpanded, setNoteContextExpanded] = useState(true);
@@ -255,6 +257,19 @@ export function WorkspaceApp({
     setStatus(`Moved “${note.title}”.`);
   }
 
+  function createDistilledNote(chat: ChatReference): void {
+    const now = Date.now();
+    const folderId = chat.folderId === INBOX_FOLDER_ID ? null : chat.folderId;
+    const note = {
+      ...createLocalNote({ id: createEntityId('note'), title: chat.label, folderId, now }),
+      linkedChatIds: [chat.id],
+    };
+    dispatch({ type: 'note/create', note });
+    dispatch({ type: 'tab/open', tab: noteTab(note), now });
+    setSelectedFolderId(folderId);
+    setStatus(`Created durable note from “${chat.label}”.`);
+  }
+
   function saveCurrentChat(): void {
     const capability = getChatGptCapability(currentUrl());
     if (capability.currentTarget === null) {
@@ -270,19 +285,41 @@ export function WorkspaceApp({
       setStatus(existing.archivedAt === null ? 'Conversation reference is already saved.' : 'Conversation reference restored from archive.');
       return;
     }
+    setSaveDialogIntent('save');
+    setSaveDialogTarget(capability.currentTarget);
+  }
+
+  function distillCurrentChat(): void {
+    const capability = getChatGptCapability(currentUrl());
+    if (capability.currentTarget === null) {
+      setStatus('Open a ChatGPT conversation before distilling knowledge.');
+      return;
+    }
+    const existing = workspace.chatRefs.find((chat) => chat.target === capability.currentTarget);
+    if (existing !== undefined) {
+      if (existing.archivedAt !== null) {
+        dispatch({ type: 'artifact/bulk-archive', refs: [{ kind: 'chat', id: existing.id }], archivedAt: null, now: Date.now() });
+      }
+      createDistilledNote(existing);
+      return;
+    }
+    setSaveDialogIntent('distill');
     setSaveDialogTarget(capability.currentTarget);
   }
 
   function confirmSaveCurrentChat(input: SaveConversationInput): void {
     if (saveDialogTarget === null) return;
+    const intent = saveDialogIntent;
     const existing = workspace.chatRefs.find((chat) => chat.target === saveDialogTarget);
     if (existing !== undefined) {
       setSaveDialogTarget(null);
+      setSaveDialogIntent('save');
       if (existing.archivedAt !== null) {
         dispatch({ type: 'artifact/bulk-archive', refs: [{ kind: 'chat', id: existing.id }], archivedAt: null, now: Date.now() });
       }
-      openSavedChat(existing);
-      setStatus(existing.archivedAt === null ? 'Conversation reference is already saved.' : 'Conversation reference restored from archive.');
+      if (intent === 'distill') createDistilledNote(existing);
+      else openSavedChat(existing);
+      setStatus(intent === 'distill' ? `Created durable note from “${existing.label}”.` : existing.archivedAt === null ? 'Conversation reference is already saved.' : 'Conversation reference restored from archive.');
       return;
     }
     const now = Date.now();
@@ -298,10 +335,14 @@ export function WorkspaceApp({
       pinned: input.pinned,
     };
     dispatch({ type: 'chat/create', chat });
-    dispatch({ type: 'tab/open', tab: chatTab(chat), now });
     setSelectedFolderId(input.folderId);
     setSaveDialogTarget(null);
-    setStatus(`Saved “${chat.label}”.`);
+    setSaveDialogIntent('save');
+    if (intent === 'distill') createDistilledNote(chat);
+    else {
+      dispatch({ type: 'tab/open', tab: chatTab(chat), now });
+      setStatus(`Saved “${chat.label}”.`);
+    }
   }
 
   function updateChatAnnotation(chat: ChatReference, annotation: string): void {
@@ -540,10 +581,11 @@ export function WorkspaceApp({
   const commands: WorkspaceCommand[] = [
     { id: 'capture-quick', label: 'Quick capture to Inbox', priority: 0, run: () => setCaptureOpen(true) },
     { id: 'chat-save', label: 'Save current chat', priority: 1, run: saveCurrentChat },
-    { id: 'note-create', label: 'Create note', priority: 2, run: () => addNote() },
-    { id: 'home-open', label: 'Open home', priority: 3, run: openHome },
-    { id: 'folder-create', label: 'Create folder at root', priority: 4, run: () => addFolder(null) },
-    { id: 'library-open', label: 'Open library', priority: 5, run: openLibrary },
+    { id: 'chat-distill', label: 'Distill current chat to note', priority: 2, run: distillCurrentChat },
+    { id: 'note-create', label: 'Create note', priority: 3, run: () => addNote() },
+    { id: 'home-open', label: 'Open home', priority: 4, run: openHome },
+    { id: 'folder-create', label: 'Create folder at root', priority: 5, run: () => addFolder(null) },
+    { id: 'library-open', label: 'Open library', priority: 6, run: openLibrary },
     { id: 'settings-open', label: 'Open settings', priority: 20, run: openSettings },
     { id: 'view-create', label: 'Create saved view', priority: 40, run: () => setViewDialogOpen(true) },
     { id: 'graph-open', label: 'Open graph', priority: 50, run: openGraph },
@@ -623,7 +665,7 @@ export function WorkspaceApp({
   } else if (activeNote !== undefined) {
     surfaceContent = (
       <div className={noteContextExpanded ? 'grid h-full min-h-0 min-[880px]:grid-cols-[minmax(0,1fr)_260px] max-[879px]:grid-rows-[minmax(0,1fr)_auto]' : 'h-full min-h-0'}>
-        <LocalNoteEditor note={activeNote} notes={activeNotes} chats={activeChatRefs} contextExpanded={noteContextExpanded} onChange={updateNote} onLinkChat={(chatId) => dispatch({ type: 'note/link-chat', noteId: activeNote.id, chatId, now: Date.now() })} onOpenNote={openNote} onToggleContext={() => setNoteContextExpanded((current) => !current)} />
+        <LocalNoteEditor note={activeNote} notes={activeNotes} chats={activeChatRefs} contextExpanded={noteContextExpanded} onChange={updateNote} onLinkChat={(chatId) => dispatch({ type: 'note/link-chat', noteId: activeNote.id, chatId, now: Date.now() })} onOpenChat={openSavedChat} onOpenNote={openNote} onToggleContext={() => setNoteContextExpanded((current) => !current)} />
         {noteContextExpanded && (
           <NoteContextRail
             note={activeNote}
@@ -638,11 +680,16 @@ export function WorkspaceApp({
     );
   } else if (activeChat !== undefined) {
     const folder = workspace.folders.find((item) => item.id === activeChat.folderId);
+    const linkedNotes = activeNotes.filter((note) => note.linkedChatIds.includes(activeChat.id));
     surfaceContent = (
       <ChatDetails
         chat={activeChat}
         folder={folder}
         folders={workspace.folders}
+        linkedNotes={linkedNotes}
+        onResume={() => openSavedChat(activeChat)}
+        onDistill={() => createDistilledNote(activeChat)}
+        onOpenNote={openNote}
         onRename={() => renameChat(activeChat)}
         onAnnotationChange={(annotation) => updateChatAnnotation(activeChat, annotation)}
         onTogglePin={() => togglePinChat(activeChat)}
@@ -661,6 +708,7 @@ export function WorkspaceApp({
           savedChat: currentLinkedChat ?? null,
         }}
         onSaveCurrentChat={saveCurrentChat}
+        onDistillCurrentChat={distillCurrentChat}
         onOpenChat={openSavedChat}
         onOpenNote={openNote}
       />
@@ -771,7 +819,15 @@ export function WorkspaceApp({
           <CreateKnowledgeViewDialog open={viewDialogOpen} notes={activeNotes} onSave={createKnowledgeView} onClose={() => setViewDialogOpen(false)} />
         </>
       )}
-      <SaveConversationDialog open={saveDialogTarget !== null} target={saveDialogTarget} folders={workspace.folders} defaultFolderId={selectedFolderId} defaultLabel={currentConversationLabel} onCancel={() => setSaveDialogTarget(null)} onSave={confirmSaveCurrentChat} />
+      <SaveConversationDialog
+        open={saveDialogTarget !== null}
+        target={saveDialogTarget}
+        folders={workspace.folders}
+        defaultFolderId={selectedFolderId}
+        defaultLabel={currentConversationLabel}
+        onCancel={() => { setSaveDialogTarget(null); setSaveDialogIntent('save'); }}
+        onSave={confirmSaveCurrentChat}
+      />
       <ConfirmDialog open={pendingDelete !== null} title={deleteTitle} description={deleteDescription} confirmLabel="Delete" danger onConfirm={confirmDelete} onCancel={() => setPendingDelete(null)} />
       <TextInputDialog
         open={pendingRename !== null}

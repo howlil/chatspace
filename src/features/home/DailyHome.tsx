@@ -1,4 +1,4 @@
-import { BookmarkPlus, Check, FileText, Inbox, MessageSquareText, Pin, Sparkles } from 'lucide-react';
+import { BookmarkPlus, Check, FilePlus2, FileText, Inbox, MessageSquareText, Pin, Sparkles } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { INBOX_FOLDER_ID, type ChatReference, type LocalNote } from '../../domain/workspace/model';
@@ -17,6 +17,7 @@ interface DailyHomeProps {
   status: string;
   currentConversation: CurrentConversationSummary;
   onSaveCurrentChat: () => void;
+  onDistillCurrentChat: () => void;
   onOpenChat: (chat: ChatReference) => void;
   onOpenNote: (note: LocalNote) => void;
 }
@@ -92,10 +93,12 @@ function HomeSection({ title, children }: { title: string; children: ReactNode }
 function CurrentConversationCard({
   current,
   onSave,
+  onDistill,
   onOpen,
 }: {
   current: CurrentConversationSummary;
   onSave: () => void;
+  onDistill: () => void;
   onOpen: (chat: ChatReference) => void;
 }) {
   if (!current.supported) {
@@ -124,21 +127,26 @@ function CurrentConversationCard({
             {saved === null ? 'Not saved yet' : saved.annotation || 'Saved locally'}
           </span>
         </div>
-        {saved === null ? (
-          <Button className="shrink-0" onClick={onSave}>
-            <BookmarkPlus size={11} aria-hidden="true" /> Save
+        <div className="flex shrink-0 items-center gap-1">
+          {saved === null ? (
+            <Button variant="ghost" onClick={onSave}>
+              <BookmarkPlus size={11} aria-hidden="true" /> Save
+            </Button>
+          ) : (
+            <Button variant="ghost" onClick={() => onOpen(saved)}>
+              <Check size={11} aria-hidden="true" /> Saved
+            </Button>
+          )}
+          <Button onClick={onDistill}>
+            <FilePlus2 size={11} aria-hidden="true" /> Distill
           </Button>
-        ) : (
-          <Button variant="ghost" className="shrink-0" onClick={() => onOpen(saved)}>
-            <Check size={11} aria-hidden="true" /> Saved
-          </Button>
-        )}
+        </div>
       </Panel>
     </section>
   );
 }
 
-export function DailyHome({ chats, notes, status, currentConversation, onSaveCurrentChat, onOpenChat, onOpenNote }: DailyHomeProps) {
+export function DailyHome({ chats, notes, status, currentConversation, onSaveCurrentChat, onDistillCurrentChat, onOpenChat, onOpenNote }: DailyHomeProps) {
   const allInboxNotes = notes.filter((note) => note.folderId === INBOX_FOLDER_ID);
   const inboxNotes = newest(allInboxNotes, 5);
   const continueItems = newest<ContinueItem>([
@@ -157,7 +165,7 @@ export function DailyHome({ chats, notes, status, currentConversation, onSaveCur
       <div className="mx-auto grid w-full max-w-3xl gap-5 px-4 py-5 sm:px-5">
         <WorkspaceHeader title="Home" description={status} />
 
-        <CurrentConversationCard current={currentConversation} onSave={onSaveCurrentChat} onOpen={onOpenChat} />
+        <CurrentConversationCard current={currentConversation} onSave={onSaveCurrentChat} onDistill={onDistillCurrentChat} onOpen={onOpenChat} />
 
         {empty && !currentConversation.supported ? (
           <Panel className="grid min-h-36 place-items-center px-6 py-8 text-center">

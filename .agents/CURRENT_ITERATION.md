@@ -1,92 +1,102 @@
 # Current Iteration
 
-Status: **READY_FOR_MILESTONE**
+Status: **READY_FOR_MERGE**
 
 ## Feature Compass
 
-**Shape:** Chatspace is a local-first companion beside native ChatGPT whose daily loop is contextual save, remember why, continue/find, and resume; Library, durable notes, advanced knowledge navigation, and portability support that loop without competing with it.
+**Shape:** Chatspace is a local-first companion beside native ChatGPT. Its core loop now continues beyond save/find/resume into explicit user-authored knowledge distillation without taking ownership of provider conversation content.
 
-**Position:** M18 — Core Navigation & Daily-Use Flow Simplification is complete and deterministically verified.
+**Position:** M19 — Conversation-to-Knowledge Distillation Loop is implemented and deterministically verified on PR #45.
 
-**Delta:** M18 translates the M17 product focus into information architecture and interaction flow: Home exposes current-conversation context and direct save; Continue no longer duplicates pinned shortcuts; empty Inbox is demoted; Quick Open groups daily retrieval before advanced objects; Home / Library / Settings are the primary user jobs; Graph is under More; vault/data maintenance is consolidated under Settings; and resume reuses/focuses matching ChatGPT tabs when possible.
+**Delta:** M19 turns the existing `ChatReference` ↔ `LocalNote.linkedChatIds` relationship into a coherent product workflow: current or saved conversations can be distilled into durable notes; unsaved conversations reuse the normal Save contract before note creation; notes expose actionable source provenance; conversation details derive linked knowledge notes; multiple notes per source remain explicit; Inbox organization preserves provenance; and existing Quick Open retrieves distilled note content.
 
-**Next Move:** Merge PR #44. After integration to `master`, select the next milestone from the highest-value missing core user capability rather than continuing M18 polish by default.
+**Next Move:** PR #45 is ready for Product Authority merge decision. Do not extend M19 with automatic summaries, provider-content access, semantic search, Graph work, richer properties/views, or sync work by default.
 
-## Completed milestone decomposition
+## Milestone decomposition
 
 ```text
-Product purpose: durable local context around native ChatGPT
-Core journey: current context -> save -> remember -> continue/find -> resume -> organize/distill -> own
-Milestone: M18 — Core Navigation & Daily-Use Flow Simplification
+Product purpose: durable local context and user-owned knowledge around native ChatGPT
+Core journey: current context -> save -> remember -> continue/find -> resume -> distill -> own
+Milestone: M19 — Conversation-to-Knowledge Distillation Loop
 
-Slice 1 — Contextual current-chat entry point
+Slice 1 — First-class Distill action
   COMPLETE
-  Home current-conversation state + direct Save + safe browser-tab-title prefill
+  current conversation + saved conversation entry points
 
-Slice 2 — Focused Home working set
+Slice 2 — Source-linked durable note creation
   COMPLETE
-  unpinned Continue + distinct Pinned shortcuts + non-empty-only Inbox prominence
+  existing LocalNote.linkedChatIds; no schema migration
 
-Slice 3 — Retrieval-oriented Quick Open
+Slice 3 — Actionable source provenance inside notes
   COMPLETE
-  grouped empty/search states + advanced Saved View demotion without removing searchability
+  From conversation -> Resume through validated provider navigation
 
-Slice 4 — Simplified primary navigation
+Slice 4 — Conversation -> linked knowledge projection
   COMPLETE
-  Home / Library / Settings + Graph behind More
-  Workbench retained only as an internal implementation concept
+  derived linked-note list; no duplicated reverse persisted truth
 
-Slice 5 — Advanced knowledge progressive disclosure
+Slice 5 — Duplicate-noise control
   COMPLETE
-  Graph advanced; Saved Views secondary; note properties/backlinks/related context remain note-scoped
+  existing linked notes visible before explicit New note from conversation
+  multiple durable notes per conversation remain allowed
 
-Slice 6 — Settings consolidation
+Slice 6 — Inbox continuity
   COMPLETE
-  Markdown vault + backup/import/export/recovery under Settings
+  organizing a linked Inbox note preserves linkedChatIds
 
-Slice 7 — Seamless resume
+Slice 7 — Retrieval + source round trip
   COMPLETE
-  focus matching validated ChatGPT tab -> reuse active supported tab -> create validated target
+  existing Quick Open note-content indexing retrieves distilled knowledge
 
 Slice 8 — Integrated deterministic verification
   COMPLETE
-  focused M18 flow/provider/retrieval coverage + full relevant repository CI
+  save -> distill, retrieval -> resume, reverse projection, multi-note, provenance preservation
 ```
 
-## M18 product outcome
+## M19 product outcome
 
-When the user opens Chatspace beside ChatGPT, the primary experience centers the current conversation and the next likely action instead of exposing the product as a list of PKM modules. Later retrieval starts from recent/pinned local work, and resume returns directly to the validated native ChatGPT target. Organization, Graph, saved views, metadata, portability, and vault integration remain available through deliberate secondary/contextual surfaces.
+A user can turn an important ChatGPT conversation into durable local knowledge without manually rebuilding source relationships. Distillation creates a normal editable Markdown note seeded from Chatspace-owned local metadata only. The note remembers its canonical local chat reference, exposes the source conversation as a direct resume action, and remains searchable through existing local retrieval.
+
+```text
+Native ChatGPT conversation
+-> Save if needed
+-> Distill
+-> user-authored durable Markdown note
+<-> source ChatReference
+-> find note later
+-> resume native ChatGPT source
+```
 
 ## Acceptance status
 
-- [x] Home shows current supported ChatGPT conversation context and saved/unsaved state;
-- [x] current conversation can be saved directly from Home;
-- [x] safe browser-tab title metadata can prefill the editable local name without provider DOM/message access;
-- [x] name remains the only required capture field; Why saved/folder/pin remain optional;
-- [x] Continue excludes pinned chats while retaining recent unpinned chats + non-Inbox notes;
-- [x] Inbox is not rendered as a prominent Home section when empty;
-- [x] Quick Open empty state groups Continue / Pinned / Library / Actions;
-- [x] explicit search groups Chats / Notes / Folders / Actions / Saved views;
-- [x] advanced Saved Views stay searchable but do not occupy empty-state attention;
-- [x] primary user-facing jobs are Home / Library / Settings; Graph is under More;
-- [x] user-facing accessibility terminology uses Library rather than Explorer/Workbench;
-- [x] note properties/backlinks/related context remain note-scoped;
-- [x] Markdown vault and data maintenance entry points live under Settings;
-- [x] resume first focuses an already-open matching validated ChatGPT conversation target;
-- [x] fallback resume reuses the active supported ChatGPT tab or opens a validated target;
-- [x] no provider DOM/history/message scraping, AI semantic search, embeddings, Graph/property/view expansion, template expansion, background sync, new provider, or schema change was introduced;
-- [x] deterministic M18 integration/provider/retrieval coverage is present;
-- [x] CI #303 passed frozen install, lint, strict TypeScript, 121 deterministic tests across 35 files, extension production build/ZIP, and final `verify`.
+- [x] current supported conversation exposes a first-class Distill action;
+- [x] an unsaved conversation uses the existing Save contract and immediately continues into note creation;
+- [x] a saved conversation can create a source-linked durable note directly;
+- [x] distilled note title is seeded from the editable local chat label, not inferred from provider messages;
+- [x] the existing `LocalNote.linkedChatIds` contract is reused; workspace schema remains v4;
+- [x] linked source conversations are visible and actionable from the note editor;
+- [x] source Resume uses the existing validated provider-navigation path;
+- [x] conversation details derive linked knowledge notes from canonical note state;
+- [x] existing linked notes are visible before explicit creation of another note;
+- [x] multiple notes may intentionally reference one conversation;
+- [x] organizing an Inbox-linked note preserves source provenance;
+- [x] distilled note content participates in existing deterministic Quick Open retrieval;
+- [x] no provider DOM/message/history scraping, automatic summary, embeddings, AI-generated tags/titles, transcript storage, schema change, Graph/property/view expansion, template expansion, background sync, or new provider was introduced;
+- [x] focused M19 deterministic coverage is present;
+- [x] full relevant repository CI is green.
 
 ## Verification evidence
 
-- CI #303 (`33800399837`) passed on implementation-complete head `f5ec753ef793c97562869c2ea917f4db718e9066`.
-- Test result: **35 test files passed / 121 tests passed**.
+- PR: #45 — `feat: close conversation-to-knowledge distillation loop (M19)`.
+- Verified head: `bc68ac917005507304d237abda1924a64587013b`.
+- CI #309 (`33919921480`) passed frozen install, lint, strict TypeScript, deterministic tests, extension production build/ZIP, and final `verify`.
+- Test result: **36 test files passed / 127 tests passed**.
+- M19-specific suite: **5/5 passed** covering unsaved save→distill, saved distill→retrieval→source resume, reverse linked-knowledge projection, explicit additional note creation, and Inbox provenance preservation.
+- `LocalNoteEditor` source-resume contract has focused component coverage.
 - Production Chromium MV3 package built successfully as `.output/chatspace-0.0.0-chrome.zip`.
-- Initial M18 CI failed at strict TypeScript because `exactOptionalPropertyTypes` rejected an explicitly propagated absent optional Settings integration callback. The callback contract was corrected without weakening strict TypeScript or CI.
-- A later deterministic test run exposed three legacy UX expectations that contradicted the approved M18 IA: `Command palette` vs `Quick open`, `Explorer` vs `Library`, and empty-state Saved View visibility. Production behavior was retained and the tests were updated to assert the approved user contract, including explicit Saved View searchability.
-- M18-specific deterministic coverage verifies contextual current-conversation capture/name prefill, Continue/Pinned separation, primary navigation + Settings vault entry, Quick Open grouping, and provider matching-tab reuse.
+- Initial CI failed only because legacy `LocalNoteEditor` tests did not provide the newly required `onOpenChat` callback; tests were aligned without weakening the production contract or TypeScript strictness.
+- A later M19 test failure came from a global selector matching the same note in both Library and the intentional conversation Knowledge projection; the test was scoped to the Knowledge surface rather than removing valid dual discoverability.
 
 ## Completion rule
 
-M18 is complete. Separate black-box/live-browser acceptance is not required. Do not extend M18 with nice-to-have polish by default; choose the next milestone from the highest-value missing core capability after PR #44 is integrated to `master`.
+M19 implementation and verification are complete. PR #45 remains unmerged until an explicit merge decision. Separate black-box/live-browser acceptance is not required. After integration, select the next milestone from observed remaining core-journey friction rather than expanding advanced PKM features by default.

@@ -21,6 +21,7 @@ describe('LocalNoteEditor', () => {
         contextExpanded
         onChange={onChange}
         onLinkChat={onLinkChat}
+        onOpenChat={vi.fn()}
         onOpenNote={vi.fn()}
         onToggleContext={vi.fn()}
       />,
@@ -46,6 +47,7 @@ describe('LocalNoteEditor', () => {
         contextExpanded
         onChange={vi.fn()}
         onLinkChat={vi.fn()}
+        onOpenChat={vi.fn()}
         onOpenNote={vi.fn()}
         onToggleContext={vi.fn()}
       />,
@@ -74,6 +76,7 @@ describe('LocalNoteEditor', () => {
         contextExpanded
         onChange={vi.fn()}
         onLinkChat={vi.fn()}
+        onOpenChat={vi.fn()}
         onOpenNote={onOpenNote}
         onToggleContext={vi.fn()}
       />,
@@ -96,6 +99,7 @@ describe('LocalNoteEditor', () => {
         contextExpanded
         onChange={onChange}
         onLinkChat={vi.fn()}
+        onOpenChat={vi.fn()}
         onOpenNote={vi.fn()}
         onToggleContext={vi.fn()}
       />,
@@ -124,6 +128,7 @@ describe('LocalNoteEditor', () => {
         contextExpanded={false}
         onChange={vi.fn()}
         onLinkChat={vi.fn()}
+        onOpenChat={vi.fn()}
         onOpenNote={vi.fn()}
         onToggleContext={onToggleContext}
       />,
@@ -133,5 +138,32 @@ describe('LocalNoteEditor', () => {
     expect(screen.queryByRole('button', { name: 'Link chat' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Expand note context' }));
     expect(onToggleContext).toHaveBeenCalledOnce();
+  });
+
+  it('keeps linked source conversations visible and lets the user resume one directly', () => {
+    const chat = createChatReference({ id: 'chat-source', label: 'TCP discussion', target: 'https://chatgpt.com/c/tcp', folderId: null, now: 1 });
+    const note = {
+      ...createLocalNote({ id: 'note-1', title: 'TCP notes', folderId: null, now: 1 }),
+      linkedChatIds: [chat.id],
+    };
+    const onOpenChat = vi.fn();
+
+    render(
+      <LocalNoteEditor
+        note={note}
+        notes={[note]}
+        chats={[chat]}
+        contextExpanded
+        onChange={vi.fn()}
+        onLinkChat={vi.fn()}
+        onOpenChat={onOpenChat}
+        onOpenNote={vi.fn()}
+        onToggleContext={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('Source conversations')).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Resume TCP discussion' }));
+    expect(onOpenChat).toHaveBeenCalledWith(chat);
   });
 });
