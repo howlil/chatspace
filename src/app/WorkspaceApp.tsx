@@ -1,4 +1,4 @@
-import { AlertTriangle, BookmarkPlus, FilePlus2, FolderPlus, Inbox } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
 
 import { projectWorkspaceGraph, type GraphNode } from '../domain/graph/projectGraph';
@@ -43,12 +43,13 @@ import { SaveConversationDialog, type SaveConversationInput } from '../features/
 import { SettingsPanel } from '../features/settings/SettingsPanel';
 import { WorkbenchChrome } from '../features/workbench/WorkbenchChrome';
 import { SpatialWorkspace } from '../features/workspace-layout/SpatialWorkspace';
+import { LibraryHeader } from '../features/workspace-tree/LibraryHeader';
 import { WorkspaceTree } from '../features/workspace-tree/WorkspaceTree';
 import type { LocalVault } from '../integrations/local-vault/BrowserLocalVault';
 import type { WorkspaceRepository } from '../persistence/workspaceRepository';
 import { getChatGptCapability, navigateToChatGptTarget } from '../providers/chatgpt/adapter';
 import { ConfirmDialog } from '../ui/ConfirmDialog';
-import { Button, IconButton } from '../ui/primitives';
+import { Button } from '../ui/primitives';
 import { TextInputDialog } from '../ui/TextInputDialog';
 import { useWorkspacePersistence } from './controllers/useWorkspacePersistence';
 
@@ -725,7 +726,6 @@ export function WorkspaceApp({
         providerLabel={compatibilityLabel}
         onToggleExplorer={() => updateLayout({ treeCollapsed: !workspace.layout.treeCollapsed })}
         onOpenHome={openHome}
-        onOpenLibrary={openLibrary}
         onOpenSettings={openSettings}
         onOpenMore={openGraph}
         onActivateTab={activateTab}
@@ -744,12 +744,12 @@ export function WorkspaceApp({
 
   const tree = (
     <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
-      <div className="flex h-9 items-center justify-start gap-0.5 border-b border-cs-border px-2 py-1">
-        <IconButton className="size-6 rounded-md text-cs-subtle" aria-label="Create folder" title="Create folder" onClick={() => addFolder(null)}><FolderPlus size={11} aria-hidden="true" /></IconButton>
-        <IconButton className="size-6 rounded-md text-cs-subtle" aria-label="Create note" title="Create note" onClick={() => addNote()}><FilePlus2 size={11} aria-hidden="true" /></IconButton>
-        <IconButton className="size-6 rounded-md text-cs-subtle" aria-label="Quick capture" title="Quick capture · Ctrl/Cmd+Shift+N" onClick={() => setCaptureOpen(true)}><Inbox size={11} aria-hidden="true" /></IconButton>
-        <IconButton className="size-6 rounded-md bg-cs-control text-cs-text" aria-label="Save current chat" title="Save current chat" onClick={saveCurrentChat}><BookmarkPlus size={11} aria-hidden="true" /></IconButton>
-      </div>
+      <LibraryHeader
+        onCreateNote={() => addNote()}
+        onCreateFolder={() => addFolder(null)}
+        onQuickCapture={() => setCaptureOpen(true)}
+        onCollapse={() => updateLayout({ treeCollapsed: true })}
+      />
       <WorkspaceTree
         folders={workspace.folders}
         chatRefs={workspace.chatRefs}

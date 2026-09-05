@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -59,7 +59,8 @@ describe('WorkspaceApp', () => {
     render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
 
     expect(await screen.findByText('Databases')).toBeVisible();
-    fireEvent.click(screen.getByRole('button', { name: 'Create folder' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create in library' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'New folder' }));
 
     await waitFor(async () => {
       const saved = await repository.load();
@@ -155,14 +156,16 @@ describe('WorkspaceApp', () => {
       />,
     );
 
-    fireEvent.click(await screen.findByTitle('Database'));
-    fireEvent.click(screen.getByRole('button', { name: 'Save current chat' }));
-    expect(screen.getByRole('dialog', { name: 'Save conversation' })).toBeVisible();
-    fireEvent.change(screen.getByRole('textbox', { name: 'Conversation name' }), {
+    fireEvent.click(await screen.findByRole('button', { name: 'Save' }));
+    const dialog = screen.getByRole('dialog', { name: 'Save conversation' });
+    expect(dialog).toBeVisible();
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Conversation name' }), {
       target: { value: 'PostgreSQL locking' },
     });
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Pin this conversation' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(within(dialog).getByRole('combobox', { name: 'Conversation folder' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Database' }));
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Pin this conversation' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
 
     await waitFor(async () => {
       const saved = await repository.load();
@@ -232,7 +235,8 @@ describe('WorkspaceApp', () => {
 
     render(<WorkspaceApp repository={repository} currentUrl={() => 'https://chatgpt.com/'} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Create note' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Create in library' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'New note' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Note title' }), {
       target: { value: 'Transactions' },
     });
@@ -389,7 +393,7 @@ describe('WorkspaceApp', () => {
       expect(saved?.layout.treeWidth).toBe(initialWidth + 16);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Toggle library' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse library' }));
 
     await waitFor(async () => {
       const saved = await repository.load();
