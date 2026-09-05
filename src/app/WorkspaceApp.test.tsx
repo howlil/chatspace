@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -156,14 +156,16 @@ describe('WorkspaceApp', () => {
       />,
     );
 
-    fireEvent.click(await screen.findByTitle('Database'));
-    fireEvent.click(screen.getByRole('button', { name: 'Save current chat' }));
-    expect(screen.getByRole('dialog', { name: 'Save conversation' })).toBeVisible();
-    fireEvent.change(screen.getByRole('textbox', { name: 'Conversation name' }), {
+    fireEvent.click(await screen.findByRole('button', { name: 'Save' }));
+    const dialog = screen.getByRole('dialog', { name: 'Save conversation' });
+    expect(dialog).toBeVisible();
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Conversation name' }), {
       target: { value: 'PostgreSQL locking' },
     });
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Pin this conversation' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.click(within(dialog).getByRole('combobox', { name: 'Conversation folder' }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Database' }));
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Pin this conversation' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
 
     await waitFor(async () => {
       const saved = await repository.load();
