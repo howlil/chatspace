@@ -6,15 +6,15 @@ const privacyUrl = `${repoUrl}/blob/master/PRIVACY.md`;
 const securityUrl = `${repoUrl}/blob/master/SECURITY.md`;
 
 const steps = [
-  ['01', 'Save a ChatGPT conversation reference', 'Keep a local reference to a supported conversation you want to return to.'],
-  ['02', 'Write or link a Markdown note', 'Add your own notes, tags, and links beside the saved conversation.'],
-  ['03', 'Return through Explorer or Graph', 'Navigate the local workspace without replacing the native ChatGPT conversation surface.'],
+  ['01', 'Open a long ChatGPT conversation', 'Chatspace detects the active rendered conversation in the browser tab.'],
+  ['02', 'Read the map', 'See turns in a spatial graph, search the live conversation, and focus the region that matters.'],
+  ['03', 'Jump back to source', 'Select a turn to scroll the native ChatGPT message into view.'],
 ];
 ---
 
 <BaseLayout
-  title="Chatspace — organize ChatGPT work without replacing ChatGPT"
-  description="A local-first Chromium Side Panel for saved ChatGPT conversation references, Markdown notes, workspace navigation, and graph relationships."
+  title="Chatspace — navigate long ChatGPT conversations spatially"
+  description="A local-first Chromium Side Panel that maps rendered ChatGPT conversations, focuses discussion threads, and jumps back to source messages."
 >
   <div class="site-shell">
     <header class="site-header">
@@ -54,9 +54,9 @@ const steps = [
       <section class="hero" id="top" aria-labelledby="hero-title">
         <div class="hero-copy">
           <div class="eyebrow"><span class="eyebrow-dot"></span> Chromium Side Panel · local-first</div>
-          <h1 id="hero-title">Organize ChatGPT work without replacing ChatGPT.</h1>
+          <h1 id="hero-title">Navigate long ChatGPT conversations spatially.</h1>
           <p class="hero-lede">
-            Chatspace keeps saved conversation references, Markdown notes, workspace navigation, and graph relationships in a local Side Panel. ChatGPT stays native.
+            See where a conversation went. Collapse noise, focus a thread, search the live map, and jump back to the exact message while ChatGPT stays native.
           </p>
           <div class="hero-actions">
             <a class="button button-primary" href="#install">Install from source</a>
@@ -68,7 +68,7 @@ const steps = [
           <p class="hero-status">Early development · install from source</p>
         </div>
 
-        <div class="hero-product" aria-label="Product model showing Chatspace beside native ChatGPT">
+        <div class="hero-product" aria-label="Product model showing a conversation map beside native ChatGPT">
           <div class="browser-frame">
             <div class="browser-chrome">
               <div class="window-dots" aria-hidden="true"><span></span><span></span><span></span></div>
@@ -81,37 +81,16 @@ const steps = [
                   <div class="mock-brand"><span class="mock-brand-dot"></span> Chatspace</div>
                   <span class="mock-kbd">⌘K</span>
                 </div>
-                <div class="mock-workspace">
-                  <div class="mock-explorer">
-                    <div class="mock-search"><span></span><em>Search workspace</em></div>
-                    <div class="mock-section-label">Pinned</div>
-                    <div class="mock-tree-row active"><i class="tree-chat"></i><span>Architecture notes</span></div>
-                    <div class="mock-tree-row"><i class="tree-chat"></i><span>Graph navigation</span></div>
-                    <div class="mock-section-label with-rule">Workspace</div>
-                    <div class="mock-tree-row folder"><i class="tree-folder"></i><span>Research</span><small>3</small></div>
-                    <div class="mock-tree-row nested"><i class="tree-note"></i><span>Local-first design</span></div>
-                    <div class="mock-tree-row folder"><i class="tree-folder"></i><span>Build</span><small>2</small></div>
-                  </div>
-                  <div class="mock-workbench">
-                    <div class="mock-tabs">
-                      <div class="mock-tab active">Local-first design</div>
-                      <div class="mock-tab">Graph</div>
-                    </div>
-                    <div class="mock-editor">
-                      <div class="editor-kicker">NOTE</div>
-                      <div class="editor-title">Local-first design</div>
-                      <div class="editor-meta"><span>#architecture</span><span>#privacy</span></div>
-                      <div class="editor-rule"></div>
-                      <div class="editor-line wide"></div>
-                      <div class="editor-line mid"></div>
-                      <div class="editor-line short"></div>
-                      <div class="editor-callout">
-                        <span class="callout-icon">↗</span>
-                        <div><b>Linked conversation</b><small>Architecture notes</small></div>
-                      </div>
-                      <div class="editor-line wide muted"></div>
-                      <div class="editor-line mid muted"></div>
-                    </div>
+                <div class="mock-conversation-map">
+                  <div class="mock-map-header"><span>Conversation map</span><small>42 turns · live</small></div>
+                  <div class="mock-map-canvas">
+                    <div class="mock-map-edge edge-one"></div>
+                    <div class="mock-map-edge edge-two"></div>
+                    <div class="mock-map-edge edge-three"></div>
+                    <div class="mock-map-node node-root"><strong>Project architecture</strong><small>Initial direction</small></div>
+                    <div class="mock-map-node node-database"><strong>Database schema</strong><small>8 turns</small></div>
+                    <div class="mock-map-node node-api"><strong>API design</strong><small>12 turns</small></div>
+                    <div class="mock-map-node node-selected"><strong>Redis caching</strong><small>Go to source ↗</small></div>
                   </div>
                 </div>
               </aside>
@@ -138,31 +117,34 @@ const steps = [
       <section class="product-section section" id="features" aria-labelledby="features-title">
         <div class="section-heading narrow-heading">
           <span class="section-kicker">Features</span>
-          <h2 id="features-title">What Chatspace adds beside ChatGPT</h2>
-          <p>Local structure for conversations you already use: notes, navigation, and explicit relationships.</p>
+          <h2 id="features-title">See the structure of a conversation you already use</h2>
+          <p>A local map for long discussions, with native ChatGPT still owning the actual conversation.</p>
         </div>
 
-        <div class="feature-stage feature-stage-notes">
+        <div class="feature-stage feature-stage-conversation">
           <div class="feature-copy">
-            <span class="feature-index">Notes</span>
-            <h3>Write Markdown notes beside saved conversations.</h3>
-            <p>Add tags, link a note to saved chats, and return to related local context without importing ChatGPT conversation content.</p>
+            <span class="feature-index">Graph</span>
+            <h3>Turn a long thread into a spatial map.</h3>
+            <p>Chatspace groups rendered prompts and responses into compact turn nodes so the shape of a discussion is visible at a glance.</p>
             <ul class="feature-list">
-              <li>Markdown Edit / Preview</li>
-              <li>Tags and linked chat references</li>
-              <li>Related-local navigation</li>
+              <li>Turn-first structure</li>
+              <li>Search and focus</li>
+              <li>Stable source anchors</li>
             </ul>
           </div>
-          <div class="note-demo" aria-hidden="true">
-            <div class="demo-toolbar"><span>local-first-design.md</span><div><i></i><i></i></div></div>
-            <div class="demo-note-body">
-              <span class="demo-overline">ARCHITECTURE NOTE</span>
-              <h4>Local-first design</h4>
-              <div class="demo-tags"><span>architecture</span><span>privacy</span><span>workspace</span></div>
-              <p>Keep notes, links, and relationships in the workspace while ChatGPT remains the conversation surface.</p>
-              <div class="demo-quote"><span>ChatGPT link</span><strong>Validated conversation URL</strong></div>
-              <div class="demo-linked"><i>↗</i><span><small>LINKED CHAT</small>Architecture notes</span><b>Open</b></div>
-            </div>
+          <div class="graph-demo" aria-hidden="true">
+            <div class="graph-toolbar"><span>Conversation graph</span><div><i></i><i></i><i></i></div></div>
+            <svg class="graph-canvas" viewBox="0 0 620 390" fill="none" preserveAspectRatio="xMidYMid meet">
+              <path class="graph-edge reference" d="M119 196C185 196 205 112 273 112" />
+              <path class="graph-edge reference" d="M119 196C185 196 203 274 273 274" />
+              <path class="graph-edge reference" d="M348 112C414 112 420 193 492 193" />
+              <path class="graph-edge reference" d="M348 274C416 274 420 193 492 193" />
+              <g class="graph-node conversation"><rect x="48" y="166" width="142" height="60" rx="12" /><circle cx="72" cy="196" r="6" /><text x="88" y="192">Conversation</text><text class="node-meta" x="88" y="208">42 turns</text></g>
+              <g class="graph-node"><rect x="246" y="81" width="152" height="62" rx="12" /><circle cx="270" cy="112" r="6" /><text x="286" y="108">Database schema</text><text class="node-meta" x="286" y="124">turn cluster</text></g>
+              <g class="graph-node"><rect x="246" y="243" width="152" height="62" rx="12" /><circle cx="270" cy="274" r="6" /><text x="286" y="270">API design</text><text class="node-meta" x="286" y="286">turn cluster</text></g>
+              <g class="graph-node selected"><rect x="464" y="160" width="128" height="66" rx="12" /><circle cx="488" cy="193" r="6" /><text x="504" y="189">Redis caching</text><text class="node-meta" x="504" y="205">source anchor</text></g>
+            </svg>
+            <div class="graph-legend"><span><i class="legend-reference"></i> Conversation sequence</span></div>
           </div>
         </div>
 
@@ -172,45 +154,40 @@ const steps = [
             <svg class="graph-canvas" viewBox="0 0 620 390" fill="none" preserveAspectRatio="xMidYMid meet">
               <path class="graph-edge reference" d="M119 196C185 196 205 112 273 112" />
               <path class="graph-edge reference" d="M119 196C185 196 203 274 273 274" />
-              <path class="graph-edge manual" d="M348 112C414 112 420 193 492 193" />
-              <path class="graph-edge manual" d="M348 274C416 274 420 193 492 193" />
-              <g class="graph-node workspace"><rect x="48" y="166" width="142" height="60" rx="12" /><circle cx="72" cy="196" r="6" /><text x="88" y="192">Workspace</text><text class="node-meta" x="88" y="208">local root</text></g>
-              <g class="graph-node note"><rect x="246" y="81" width="152" height="62" rx="12" /><circle cx="270" cy="112" r="6" /><text x="286" y="108">Local-first design</text><text class="node-meta" x="286" y="124">note</text></g>
-              <g class="graph-node chat"><rect x="246" y="243" width="152" height="62" rx="12" /><circle cx="270" cy="274" r="6" /><text x="286" y="270">Architecture notes</text><text class="node-meta" x="286" y="286">chat reference</text></g>
-              <g class="graph-node selected"><rect x="464" y="160" width="128" height="66" rx="12" /><circle cx="488" cy="193" r="6" /><text x="504" y="189">Privacy model</text><text class="node-meta" x="504" y="205">note</text></g>
+              <path class="graph-edge reference" d="M348 112C414 112 420 193 492 193" />
+              <path class="graph-edge reference" d="M348 274C416 274 420 193 492 193" />
+              <g class="graph-node conversation"><rect x="48" y="166" width="142" height="60" rx="12" /><circle cx="72" cy="196" r="6" /><text x="88" y="192">Conversation</text><text class="node-meta" x="88" y="208">42 turns</text></g>
+              <g class="graph-node"><rect x="246" y="81" width="152" height="62" rx="12" /><circle cx="270" cy="112" r="6" /><text x="286" y="108">Database schema</text><text class="node-meta" x="286" y="124">turn cluster</text></g>
+              <g class="graph-node"><rect x="246" y="243" width="152" height="62" rx="12" /><circle cx="270" cy="274" r="6" /><text x="286" y="270">API design</text><text class="node-meta" x="286" y="286">turn cluster</text></g>
+              <g class="graph-node selected"><rect x="464" y="160" width="128" height="66" rx="12" /><circle cx="488" cy="193" r="6" /><text x="504" y="189">Redis caching</text><text class="node-meta" x="504" y="205">source anchor</text></g>
             </svg>
-            <div class="graph-legend"><span><i class="legend-reference"></i> Reference</span><span><i class="legend-manual"></i> Manual relation</span></div>
+            <div class="graph-legend"><span><i class="legend-reference"></i> Conversation sequence</span></div>
           </div>
           <div class="feature-copy">
-            <span class="feature-index">Graph</span>
-            <h3>Navigate explicit relationships between notes and saved chats.</h3>
-            <p>Graph is built from local workspace state. Manual relationships stay explicit and layout remains derived.</p>
+            <span class="feature-index">Source navigation</span>
+            <h3>Jump from the map to the exact native message.</h3>
+            <p>Select a turn and Chatspace scrolls the matching rendered element into view with a temporary, non-destructive highlight.</p>
             <ul class="feature-list">
-              <li>Pan, zoom, fit, search, and focus</li>
-              <li>Manual relationships stay explicit</li>
-              <li>No AI-generated graph edges</li>
+              <li>Go to source</li>
+              <li>Bidirectional scroll context</li>
+              <li>No private API or network interception</li>
             </ul>
           </div>
         </div>
 
-        <div class="feature-stage feature-stage-sync">
+        <div class="feature-stage feature-stage-privacy">
           <div class="feature-copy">
-            <span class="feature-index">Markdown Sync</span>
-            <h3>Your notes can become ordinary files.</h3>
-            <p>Choose a local folder and write the active note beneath <code>Chatspace/</code> when you want to. Sync is manual and one-way.</p>
+            <span class="feature-index">Privacy</span>
+            <h3>The live map stays ephemeral by default.</h3>
+            <p>Rendered conversation text stays in memory. Only explicit pins and annotations are saved as Chatspace-owned metadata.</p>
             <ul class="feature-list">
-              <li>Direct selected-folder access</li>
-              <li>Manual one-way write</li>
-              <li>No companion server</li>
+              <li>Read-only rendered DOM</li>
+              <li>Existing host permission</li>
+              <li>No transcript persistence</li>
             </ul>
           </div>
-          <div class="sync-demo" aria-hidden="true">
-            <div class="sync-path"><span>Selected folder</span><strong>Knowledge Vault</strong><i>Connected</i></div>
-            <div class="sync-flow">
-              <div class="sync-source"><small>ACTIVE NOTE</small><b>Local-first design</b><span>1.8 KB Markdown</span></div>
-              <div class="sync-arrow"><span>Manual sync</span><i>→</i></div>
-              <div class="sync-target"><small>LOCAL FILE</small><b>Chatspace/local-first-design.md</b><span>Written on request</span></div>
-            </div>
+          <div class="privacy-demo" aria-hidden="true">
+            <span>Rendered ChatGPT DOM</span><strong>→</strong><span>Ephemeral map</span><strong>→</strong><span>Exact source navigation</span>
           </div>
         </div>
       </section>
@@ -218,7 +195,7 @@ const steps = [
       <section class="workflow-section section" aria-labelledby="workflow-title">
         <div class="section-heading narrow-heading">
           <h2 id="workflow-title">A simple daily workflow</h2>
-          <p>Save a conversation reference, add your own context, then return through the workspace when you need it.</p>
+          <p>Open ChatGPT, read the map, then return to the source message when you need it.</p>
         </div>
         <ol class="workflow-list">
           {steps.map(([number, title, copy]) => (
@@ -234,7 +211,7 @@ const steps = [
         <div class="trust-panel">
           <div class="trust-copy">
             <h2 id="trust-title">What stays local, and what stays with ChatGPT</h2>
-            <p>Local-first is a boundary, not a badge. Chatspace keeps workspace ownership explicit and limits ChatGPT integration to supported URL and tab navigation.</p>
+            <p>Local-first is a boundary, not a badge. Chatspace reads the rendered conversation only through one read-only bridge; ChatGPT remains the runtime and content owner.</p>
             <div class="trust-links">
               <a href={privacyUrl} target="_blank" rel="noreferrer">Privacy <span>↗</span></a>
               <a href={securityUrl} target="_blank" rel="noreferrer">Security <span>↗</span></a>
@@ -243,10 +220,10 @@ const steps = [
           <div class="boundary-table" role="table" aria-label="Chatspace data and access boundaries">
             <div class="boundary-row boundary-head" role="row"><span role="columnheader">Boundary</span><span role="columnheader">Current behavior</span></div>
             <div class="boundary-row" role="row"><span role="cell">Conversation content</span><strong role="cell">ChatGPT</strong></div>
-            <div class="boundary-row" role="row"><span role="cell">Workspace state</span><strong role="cell">Browser-local</strong></div>
+            <div class="boundary-row" role="row"><span role="cell">Graph annotations</span><strong role="cell">Explicit / local</strong></div>
             <div class="boundary-row" role="row"><span role="cell">ChatGPT navigation</span><strong role="cell">Validated URL / tab</strong></div>
-            <div class="boundary-row" role="row"><span role="cell">ChatGPT page scraping</span><strong role="cell">Not used</strong></div>
-            <div class="boundary-row" role="row"><span role="cell">Markdown sync</span><strong role="cell">Manual / one-way</strong></div>
+            <div class="boundary-row" role="row"><span role="cell">Rendered conversation map</span><strong role="cell">Ephemeral / read-only</strong></div>
+            <div class="boundary-row" role="row"><span role="cell">Conversation text</span><strong role="cell">Not persisted</strong></div>
             <div class="boundary-row" role="row"><span role="cell">Cloud account</span><strong role="cell">Not required</strong></div>
           </div>
         </div>
@@ -277,7 +254,7 @@ const steps = [
 
     <footer class="site-footer">
       <div class="footer-brand"><span class="brand-mark mini" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 7.5A3.5 3.5 0 0 1 8.5 4h7A3.5 3.5 0 0 1 19 7.5v5a3.5 3.5 0 0 1-3.5 3.5H12l-4.5 4v-4A3.5 3.5 0 0 1 5 12.5v-5Z" /></svg></span><span>Chatspace</span></div>
-      <p>Saved chats, Markdown notes, and graph navigation beside native ChatGPT.</p>
+      <p>Spatial conversation navigation beside native ChatGPT.</p>
       <nav aria-label="Footer navigation">
         <a href={repoUrl} target="_blank" rel="noreferrer">GitHub</a>
         <a href={privacyUrl} target="_blank" rel="noreferrer">Privacy</a>

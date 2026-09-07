@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint';
 
 export default defineConfig(
   {
-    ignores: ['.output/**', '.wxt/**', 'node_modules/**', 'coverage/**'],
+    ignores: ['.output/**', '.wxt/**', 'node_modules/**', 'coverage/**', 'landing/.astro/**'],
   },
   ...tseslint.configs.recommended,
   {

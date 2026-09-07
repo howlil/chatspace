@@ -3,5 +3,7 @@ node_modules/
 .output/
 coverage/
 landing/dist/
+landing/.astro/
+.codebase-memory/
 *.log
 .DS_Store

@@ -150,7 +150,7 @@ A persisted-contract change requires explicit approval before implementation.
 
 ## Provider boundary
 
-When provider integration changes, verify target normalization and owned-port decision behavior deterministically. Provider DOM/content automation remains outside the current approved architecture.
+When provider integration changes, verify target normalization, the owned content-bridge port, and reconnect decision behavior deterministically. Provider DOM access remains limited to the approved M21 rendered-DOM bridge; no other provider automation is allowed.
 
 ## Security-sensitive changes
 

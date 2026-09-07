@@ -1,64 +1,61 @@
 # Chatspace Privacy
 
-Chatspace is local-first. Canonical workspace data is stored in Chromium extension-local storage (`chrome.storage.local` / `browser.storage.local`).
+Chatspace is a local-first conversation map. It reads the rendered ChatGPT conversation on the active supported tab to build an ephemeral graph. Native ChatGPT remains the conversation runtime.
+
+## Data flow
+
+```text
+ChatGPT rendered DOM
+-> isolated-world bridge
+-> memory-only ConversationSnapshot
+-> graph / outline / search / focus
+```
+
+Rendered conversation content is not automatically written to `chrome.storage.local`, logs, exports, telemetry, or a remote service.
 
 ## Data stored locally
 
-- folder hierarchy and labels
-- validated ChatGPT conversation URLs explicitly saved by the user
-- local labels and optional user-authored **Why saved** annotations for saved conversation references
-- user-authored Markdown notes, tags, local properties, and note-to-chat/note-to-note relationships
-- saved local views and compatible explicit template records
-- workspace tabs, pins, archive lifecycle, and persisted local layout/theme state
-- existing local manual graph relationships
-- the user-selected vault directory handle, stored separately in integration-owned IndexedDB rather than in workspace state/export
+The active graph may store only explicit user-owned metadata:
 
-`Why saved` is written by the user. Chatspace does not derive or populate it by reading ChatGPT messages.
+- source pin state;
+- source annotation text;
+- conversation target and stable source key needed to reconnect that metadata.
 
-## Local retrieval
-
-Home, Explorer, and `Ctrl/⌘ K` retrieval operate on Chatspace-owned local data such as saved labels, Why-saved annotations, folders, note titles/tags/properties/content, pins, and timestamps.
-
-Provider conversation content is not an implicit search/indexing input.
-
-## Optional local filesystem writes
-
-When the user explicitly connects a local vault and invokes Markdown Sync, Chatspace writes the selected local note beneath `<vault>/Chatspace/` using the browser File System Access API.
-
-Sync is manual and one-way. The selected filesystem handle is not included in `WorkspaceSnapshot` or workspace export/import. Chatspace does not require or expose a localhost vault server.
-
-Explicit portable export may write Chatspace-owned saved-chat metadata, including local labels, Why-saved annotations, and validated target URLs. It does not automatically export native ChatGPT conversation messages/output.
-
-## Data Chatspace does not collect
-
-Chatspace does not collect, store, transmit, or reuse:
-
-- ChatGPT cookies, session tokens, authorization headers, or account credentials
-- automatically extracted ChatGPT messages or model output
-- private/undocumented provider API responses
-- provider browsing/conversation history
-- telemetry or analytics
-
-There is no Chatspace cloud backend. Workspace import/export and filesystem operations are explicitly user initiated.
+The legacy workspace runtime has been removed. This cleanup does not reset, migrate, or delete existing extension-local browser storage data; the active graph runtime does not interpret that old data.
 
 ## Provider access
 
-The core workflow uses validated ChatGPT URLs and browser tab navigation. It does not require a ChatGPT content script or provider DOM bridge.
+The only provider-content boundary is the isolated-world `entrypoints/chatgpt.content.ts` bridge. It may:
 
-Chatspace does not scrape the ChatGPT DOM, crawl conversations, intercept provider network traffic, or automatically extract provider content.
+- read rendered message role, text, structure, and stable source identity;
+- observe DOM mutations with a debounced refresh;
+- observe which source message is visible;
+- scroll to and temporarily highlight a source after explicit **Go to source**.
+
+If the active supported tab predates the extension load or has lost its receiver, the Side Panel may re-inject the same static bridge bundle with the scoped `scripting` permission. It does not reload the ChatGPT page.
+
+Chatspace does not read or use:
+
+- cookies, session tokens, authorization headers, or credentials;
+- private/undocumented provider APIs;
+- provider history outside the rendered active conversation;
+- network traffic or intercepted responses;
+- composer state for automation or message submission;
+- provider content mutation, cloning, moving, or rewriting.
 
 ## Permissions
 
-The current extension manifest requests:
+The extension requests:
 
-- `storage` for Chatspace-owned workspace persistence
-- `sidePanel` for the primary Chatspace UI
-- host access scoped to `https://chatgpt.com/*` for the supported provider navigation boundary
+- `storage` for explicit Chatspace-owned metadata;
+- `sidePanel` for the map UI;
+- `scripting` only to reconnect the same static bridge bundle in the active supported tab;
+- host access scoped to `https://chatgpt.com/*`.
 
-Chatspace does not request cookies, history, `webRequest`, `<all_urls>`, or localhost host access for the current product.
+Chatspace does not request cookies, history, `webRequest`, `<all_urls>`, or localhost access.
 
-## Deletion
+## User control
 
-Use **Settings → Reset local data** to delete Chatspace-owned canonical workspace data. Reset requires explicit confirmation and does not change ChatGPT data.
+The conversation map is created automatically when a supported conversation is open. Pins and annotations are persisted only after the user explicitly selects those actions. There is no setting that silently persists the full conversation transcript.
 
-Disconnecting the local vault removes Chatspace's stored vault connection handle; it does not delete the user's vault or provider data.
+See [SECURITY.md](SECURITY.md) and [.agents/ARCHITECTURE.md](.agents/ARCHITECTURE.md) for the security boundary and failure behavior.

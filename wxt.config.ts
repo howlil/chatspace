@@ -8,8 +8,8 @@ export default defineConfig({
   }),
   manifest: {
     name: 'Chatspace',
-    description: 'A local-first workspace layer that lives beside ChatGPT.',
-    permissions: ['storage', 'sidePanel'],
+    description: 'A local-first spatial conversation map that lives beside ChatGPT.',
+    permissions: ['storage', 'sidePanel', 'scripting'],
     host_permissions: ['https://chatgpt.com/*'],
     action: {
       default_title: 'Open Chatspace',

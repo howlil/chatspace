@@ -145,9 +145,7 @@ html[data-theme='light'] .browser-frame {
   margin-top: 21px;
 }
 
-.note-demo,
 .graph-demo,
-.sync-demo,
 .code-window {
   border-radius: 12px;
   box-shadow: none;
@@ -223,6 +221,130 @@ html[data-theme='light'] .browser-frame {
 
 .site-footer {
   min-height: 82px;
+}
+
+.mock-conversation-map {
+  height: 422px;
+  min-width: 0;
+  background: var(--bg);
+}
+
+.mock-map-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 30px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--subtle);
+  font-family: var(--font-mono);
+  font-size: 7px;
+}
+
+.mock-map-header small {
+  color: var(--focus);
+  font-size: 6px;
+}
+
+.mock-map-canvas {
+  position: relative;
+  height: calc(100% - 30px);
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 48%, var(--focus-muted), transparent 45%);
+}
+
+.mock-map-node {
+  position: absolute;
+  display: grid;
+  gap: 4px;
+  width: 110px;
+  padding: 9px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+  color: var(--text);
+  font-size: 7px;
+}
+
+.mock-map-node small {
+  color: var(--subtle);
+  font-family: var(--font-mono);
+  font-size: 5.5px;
+}
+
+.mock-map-node.node-root {
+  top: 45%;
+  left: 7%;
+  border-color: var(--focus);
+  background: var(--active);
+}
+
+.mock-map-node.node-database {
+  top: 15%;
+  left: 42%;
+}
+
+.mock-map-node.node-api {
+  top: 66%;
+  left: 42%;
+}
+
+.mock-map-node.node-selected {
+  top: 40%;
+  right: 5%;
+  border-color: var(--focus-strong);
+  background: var(--active);
+}
+
+.mock-map-edge {
+  position: absolute;
+  height: 1px;
+  background: var(--focus);
+  opacity: 0.7;
+  transform-origin: left center;
+}
+
+.mock-map-edge.edge-one {
+  top: 46%;
+  left: 28%;
+  width: 17%;
+  transform: rotate(-28deg);
+}
+
+.mock-map-edge.edge-two {
+  top: 57%;
+  left: 28%;
+  width: 18%;
+  transform: rotate(28deg);
+}
+
+.mock-map-edge.edge-three {
+  top: 46%;
+  left: 63%;
+  width: 16%;
+}
+
+.privacy-demo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 180px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-align: center;
+}
+
+.privacy-demo strong {
+  color: var(--focus);
+  font-size: 15px;
+  font-weight: 400;
 }
 
 @media (max-width: 1040px) {

@@ -1,150 +1,134 @@
-import { RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { browser } from 'wxt/browser';
 
-import { WorkspaceApp, type WorkspaceView } from '../../src/app/WorkspaceApp';
+import { ConversationController, type ConversationControllerPort, type ConversationControllerState } from '../../src/app/conversation/ConversationController';
 import { ChatspaceShell } from '../../src/app/shell/ChatspaceShell';
-import { WorkspaceErrorBoundary } from '../../src/app/shell/WorkspaceErrorBoundary';
-import { BrowserLocalVault } from '../../src/integrations/local-vault/BrowserLocalVault';
-import { createDefaultWorkspaceRepository } from '../../src/persistence/chromeStorageWorkspaceRepository';
-import { normalizeChatGptTarget } from '../../src/providers/chatgpt/adapter';
-import {
-  navigateActiveProvider,
-  readActiveProviderState,
-  type ProviderTabsPort,
-  type ProviderTabState,
-} from '../../src/providers/chatgpt/browserTabProvider';
+import { ErrorBoundary } from '../../src/app/shell/ErrorBoundary';
+import { getChatGptCapability } from '../../src/providers/chatgpt/adapter';
+import { CHATGPT_CONTENT_SCRIPT_PATH, type ChatGptBridgeRequest } from '../../src/providers/chatgpt/conversation/bridge';
 import '../../src/styles/tailwind.css';
+import type { ConversationAnnotation } from '../../src/domain/conversation/model';
+import { projectConversationGraph } from '../../src/domain/conversation/projection';
+import { loadConversationAnnotations, saveConversationAnnotation } from '../../src/persistence/conversationAnnotationStore';
 import { Button } from '../../src/ui/primitives';
+import { ConversationGraph } from '../../src/features/conversation-graph/ConversationGraph';
 
-const workspaceRepository = createDefaultWorkspaceRepository();
-const localVault = new BrowserLocalVault();
+const annotationStorage = browser.storage.local;
 
-const providerTabsPort: ProviderTabsPort = {
-  async getActive() {
-    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-    const tab = tabs[0];
-    if (tab === undefined) return undefined;
-    return { id: tab.id, url: tab.url, title: tab.title, windowId: tab.windowId };
-  },
-  async findByTarget(target) {
-    const tabs = await browser.tabs.query({});
-    const match = tabs.find((tab) => tab.url !== undefined && normalizeChatGptTarget(tab.url) === target);
-    if (match === undefined) return undefined;
-    return { id: match.id, url: match.url, title: match.title, windowId: match.windowId };
-  },
-  async focus(tab) {
-    if (tab.id !== undefined) await browser.tabs.update(tab.id, { active: true });
-    if (tab.windowId !== undefined) await browser.windows.update(tab.windowId, { focused: true });
-  },
-  async update(tabId, url) {
-    await browser.tabs.update(tabId, { url });
-  },
-  async create(url) {
-    await browser.tabs.create({ url });
-  },
-};
-
-function stateUrl(state: ProviderTabState): string {
-  return state.url ?? 'about:blank';
-}
-
-function SidepanelWorkspace({
-  view,
-  onBackToWorkspace,
-  onOpenMarkdownSync,
-}: {
-  view: WorkspaceView;
-  onBackToWorkspace: () => void;
-  onOpenMarkdownSync: () => void;
-}) {
-  const [providerState, setProviderState] = useState<ProviderTabState>({
-    kind: 'unavailable',
-    url: null,
-    title: null,
-  });
-  const [refreshing, setRefreshing] = useState(false);
-
-  const refreshProvider = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      setProviderState(await readActiveProviderState(providerTabsPort));
-    } catch {
-      setProviderState({ kind: 'unavailable', url: null, title: null });
-    } finally {
-      setRefreshing(false);
-    }
-  }, []);
+function ConversationMapApp() {
+  const conversationPort = useMemo<ConversationControllerPort>(() => ({
+    getActiveTab: async () => {
+      const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+      const tab = tabs[0];
+      return tab === undefined ? undefined : { id: tab.id, url: tab.url, title: tab.title };
+    },
+    sendMessage: (tabId, message: ChatGptBridgeRequest) => browser.tabs.sendMessage(tabId, message),
+    ensureContentScript: async (tabId) => {
+      await browser.scripting.executeScript({
+        target: { tabId },
+        files: [CHATGPT_CONTENT_SCRIPT_PATH],
+      });
+    },
+    subscribe: (listener) => {
+      const onMessage = (message: unknown, sender: { tab?: { id?: number | undefined } | undefined }) => listener(message, sender.tab?.id);
+      browser.runtime.onMessage.addListener(onMessage);
+      return () => browser.runtime.onMessage.removeListener(onMessage);
+    },
+  }), []);
+  const conversationController = useMemo(() => new ConversationController(conversationPort), [conversationPort]);
+  const [conversationState, setConversationState] = useState<ConversationControllerState>(conversationController.getState());
+  const [annotations, setAnnotations] = useState<ConversationAnnotation[]>([]);
 
   useEffect(() => {
-    void refreshProvider();
+    const stopConversation = conversationController.subscribe(setConversationState);
+    const stopRuntime = conversationController.start();
 
-    const onActivated = () => void refreshProvider();
-    const onUpdated = () => void refreshProvider();
-    const onFocus = () => void refreshProvider();
-    const interval = window.setInterval(() => void refreshProvider(), 1500);
+    const onActivated = () => void conversationController.refresh();
+    const onUpdated = (_tabId: number, changeInfo: { status?: string }) => {
+      if (changeInfo.status === 'complete') void conversationController.refresh();
+    };
 
     browser.tabs.onActivated.addListener(onActivated);
     browser.tabs.onUpdated.addListener(onUpdated);
-    window.addEventListener('focus', onFocus);
 
     return () => {
-      window.clearInterval(interval);
+      stopConversation();
+      stopRuntime();
       browser.tabs.onActivated.removeListener(onActivated);
       browser.tabs.onUpdated.removeListener(onUpdated);
-      window.removeEventListener('focus', onFocus);
     };
-  }, [refreshProvider]);
+  }, [conversationController]);
 
-  const providerUrl = useMemo(() => stateUrl(providerState), [providerState]);
+  useEffect(() => {
+    const target = conversationState.snapshot?.target;
+    if (target === undefined) {
+      setAnnotations([]);
+      return;
+    }
+    let cancelled = false;
+    void loadConversationAnnotations(annotationStorage, target).then((next) => {
+      if (!cancelled) setAnnotations(next);
+    });
+    return () => { cancelled = true; };
+  }, [conversationState.snapshot?.target]);
 
-  return (
-    <div className="h-full min-h-0 w-full">
-      {providerState.kind === 'unavailable' && view === 'workspace' && (
-        <div
-          className="flex min-w-0 items-center justify-between gap-3 border-b border-amber-200/10 bg-amber-200/[0.045] px-2.5 py-2"
-          role="status"
-        >
-          <div className="grid min-w-0 gap-0.5">
-            <strong className="truncate text-[11px] font-medium text-cs-text">ChatGPT tab not connected</strong>
-            <span className="truncate text-[10px] text-cs-muted">Open ChatGPT in the active tab, then reconnect.</span>
-          </div>
-          <Button onClick={() => void refreshProvider()} disabled={refreshing}>
-            <RefreshCw className={refreshing ? 'animate-spin' : ''} size={12} aria-hidden="true" />
-            {refreshing ? 'Checking' : 'Reconnect'}
-          </Button>
+  const liveSnapshot = conversationState.snapshot;
+
+  const updateAnnotation = useCallback((sourceKey: string, patch: { note?: string; pinned?: boolean }) => {
+    if (liveSnapshot === null) return;
+    const current = annotations.find((item) => item.sourceKey === sourceKey);
+    const now = Date.now();
+    const next: ConversationAnnotation = {
+      id: current?.id ?? `annotation:${liveSnapshot.target}:${sourceKey}`,
+      conversationTarget: liveSnapshot.target,
+      sourceKey,
+      note: patch.note ?? current?.note ?? '',
+      pinned: patch.pinned ?? current?.pinned ?? false,
+      createdAt: current?.createdAt ?? now,
+      updatedAt: now,
+    };
+    setAnnotations((items) => [...items.filter((item) => item.id !== next.id), ...(next.note.trim() !== '' || next.pinned ? [next] : [])]);
+    void saveConversationAnnotation(annotationStorage, next);
+  }, [annotations, liveSnapshot]);
+
+  if (liveSnapshot !== null && conversationState.phase === 'available') {
+    const graph = projectConversationGraph(liveSnapshot);
+    return (
+      <div className="h-full min-h-0 w-full">
+        <ConversationGraph
+          snapshot={liveSnapshot}
+          graph={graph}
+          annotations={annotations}
+          activeSourceId={conversationState.visibleSourceId}
+          onGoToSource={(sourceId) => { void conversationController.revealSource(sourceId); }}
+          onUpdateAnnotation={updateAnnotation}
+        />
+      </div>
+    );
+  }
+
+  const activeCapability = getChatGptCapability(conversationState.tab?.url ?? '');
+  if (activeCapability.canCaptureCurrentReference && (conversationState.phase === 'loading' || conversationState.phase === 'unsupported')) {
+    return (
+      <div className="grid h-full place-items-center overflow-y-auto p-6">
+        <div className="grid max-w-xs gap-2 text-center">
+          <strong className="text-sm font-medium">{conversationState.phase === 'loading' ? 'Reading conversation…' : 'Conversation map unavailable'}</strong>
+          <span className="text-[11px] leading-5 text-cs-muted">{conversationState.phase === 'loading' ? 'Chatspace is reading the rendered ChatGPT conversation in this tab.' : conversationState.error ?? 'Conversation structure changed. Reload the ChatGPT tab and try again.'}</span>
+          {conversationState.phase === 'unsupported' && <Button onClick={() => void conversationController.refresh()}>Retry reading</Button>}
+          <span className="text-[9px] text-cs-subtle">Content stays ephemeral; only pins and annotations are saved.</span>
         </div>
-      )}
-      <WorkspaceApp
-        view={view}
-        onBackToWorkspace={onBackToWorkspace}
-        onOpenMarkdownSync={onOpenMarkdownSync}
-        repository={workspaceRepository}
-        localVault={localVault}
-        currentUrl={() => providerUrl}
-        currentTitle={() => providerState.title}
-        navigate={(target) => {
-          void navigateActiveProvider(providerTabsPort, target)
-            .then(() => refreshProvider())
-            .catch(() => refreshProvider());
-        }}
-      />
-    </div>
-  );
-}
-
-function SidepanelApp() {
-  const [view, setView] = useState<WorkspaceView>('workspace');
+      </div>
+    );
+  }
 
   return (
-    <ChatspaceShell>
-      <SidepanelWorkspace
-        view={view}
-        onBackToWorkspace={() => setView('workspace')}
-        onOpenMarkdownSync={() => setView('markdown-sync')}
-      />
-    </ChatspaceShell>
+    <div className="grid h-full place-items-center overflow-y-auto p-6">
+      <div className="grid max-w-xs gap-2 text-center">
+        <strong className="text-sm font-medium">Open a ChatGPT conversation</strong>
+        <span className="text-[11px] leading-5 text-cs-muted">Chatspace maps the rendered conversation beside ChatGPT. Conversation text stays ephemeral.</span>
+      </div>
+    </div>
   );
 }
 
@@ -152,7 +136,9 @@ const rootElement = document.getElementById('root');
 if (rootElement === null) throw new Error('Chatspace side panel root is missing.');
 
 createRoot(rootElement).render(
-  <WorkspaceErrorBoundary>
-    <SidepanelApp />
-  </WorkspaceErrorBoundary>,
+  <ErrorBoundary>
+    <ChatspaceShell>
+      <ConversationMapApp />
+    </ChatspaceShell>
+  </ErrorBoundary>,
 );

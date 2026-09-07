@@ -4,8 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { IconButton } from '../../ui/primitives';
 
 interface ChatspaceShellProps {
-  children?: ReactNode;
-  headerActions?: ReactNode;
+  children: ReactNode;
 }
 
 type ThemeMode = 'light' | 'dark';
@@ -18,7 +17,7 @@ function initialTheme(): ThemeMode {
   return window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
 }
 
-export function ChatspaceShell({ children, headerActions }: ChatspaceShellProps) {
+export function ChatspaceShell({ children }: ChatspaceShellProps) {
   const [theme, setTheme] = useState<ThemeMode>(initialTheme);
 
   useEffect(() => {
@@ -31,7 +30,7 @@ export function ChatspaceShell({ children, headerActions }: ChatspaceShellProps)
   return (
     <section
       className="grid h-full w-full grid-rows-[40px_minmax(0,1fr)] overflow-hidden bg-cs-bg text-cs-text"
-      aria-label="Chatspace workspace"
+      aria-label="Chatspace conversation map"
     >
       <header className="flex min-w-0 items-center gap-2 border-b border-cs-border bg-cs-panel px-2.5">
         <div className="grid size-6 shrink-0 place-items-center rounded-md border border-cs-border bg-cs-control text-cs-muted">
@@ -39,10 +38,9 @@ export function ChatspaceShell({ children, headerActions }: ChatspaceShellProps)
         </div>
         <div className="grid min-w-0 flex-1 gap-0.5 leading-none">
           <strong className="truncate text-[11px] font-semibold tracking-[-0.01em]">Chatspace</strong>
-          <span className="truncate text-[9px] text-cs-subtle">Workspace beside ChatGPT</span>
+          <span className="truncate text-[9px] text-cs-subtle">Conversation map beside ChatGPT</span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {headerActions}
           <IconButton
             className="size-7 text-cs-subtle"
             aria-label={`Switch to ${nextTheme} theme`}
@@ -53,7 +51,7 @@ export function ChatspaceShell({ children, headerActions }: ChatspaceShellProps)
           </IconButton>
         </div>
       </header>
-      <div className="min-h-0 overflow-hidden">{children ?? <p className="p-3 text-cs-muted">Workspace ready</p>}</div>
+      <div className="min-h-0 overflow-hidden">{children}</div>
     </section>
   );
 }

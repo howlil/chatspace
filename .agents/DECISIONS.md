@@ -18,11 +18,11 @@ Record only durable material Chatspace decisions whose rationale would be expens
 
 **Decision:** Do not use private endpoints, session-cookie reuse, network replay, protection bypass, or automated/programmatic extraction of ChatGPT conversation data/output.
 
-## D-004 — URL/tab-only provider boundary
+## D-004 — Validated URL/tab provider navigation
 
 **Decision:** Provider presence/navigation uses provider-specific target validation plus an owned `ProviderTabsPort` backed by browser tab APIs.
 
-**Consequence:** No ChatGPT content script is required for the core workflow; provider breakage remains isolated from local workspace behavior.
+**Consequence:** Navigation remains URL/tab-owned and provider breakage is isolated from local workspace behavior. Conversation reading is governed separately by D-016.
 
 ## D-005 — Extension-owned canonical workspace persistence
 
@@ -46,11 +46,11 @@ Record only durable material Chatspace decisions whose rationale would be expens
 
 **Consequence:** Core workspace behavior must fit narrow Side Panel layouts and must not depend on modifying ChatGPT DOM.
 
-## D-009 — Remove obsolete ChatGPT content-script bridge
+## D-009 — Historical URL/tab-only content decision (superseded)
 
-**Decision:** Provider location/navigation uses `browser.tabs`; the obsolete ChatGPT content-script bridge is not part of the core runtime.
+**Decision:** The prior decision to exclude a ChatGPT content script is superseded by D-016 for the M21 conversation-map capability. URL/tab navigation still uses `browser.tabs`.
 
-**Consequence:** Reintroducing provider DOM/content access is a new material trust/provider-boundary decision.
+**Consequence:** Any provider content access outside the exact M21 rendered-DOM boundary remains a new material trust/provider-boundary decision.
 
 ## D-010 — Repository-owned deterministic verification is the completion gate
 
@@ -100,3 +100,23 @@ Superseded by direct selected-folder access. The temporary localhost bridge and 
 **Why:** Dialog focus management, portals, keyboard navigation, tabs, selects, checkbox state, and related interaction semantics should come from a maintained accessibility-oriented primitive layer rather than bespoke application plumbing.
 
 **Consequences:** Prefer Radix primitives/wrappers for matching interactive composites. Do not introduce Radix Themes as a competing visual system; app-specific layout/content and basic semantic controls may remain native where Radix has no behavior primitive.
+
+## D-016 — Chatspace owns the map, not the conversation
+
+**Decision:** M21 may read the rendered ChatGPT conversation through one isolated-world content script to create an ephemeral `ConversationSnapshot` and navigation projection. Native ChatGPT remains the provider-owned runtime/content.
+
+**Allowed:** rendered role/text/structure, stable source identity, DOM mutation observation, viewport visibility, and explicit source scroll + temporary highlight.
+
+**Forbidden:** cookies, auth/token extraction, private APIs, provider history crawling, network interception, composer automation, message submission, cloning, or modifying provider content.
+
+**Persistence:** live messages never enter `WorkspaceSnapshot` or annotation storage. Only explicit user-owned pins, annotations, and later explicit note extraction may persist.
+
+**Consequence:** `domain/conversation` is a separate projection domain; the existing workspace graph and v4 persistence contract are not expanded into a transcript store.
+
+## D-017 — Reconnect the rendered bridge without reloading ChatGPT
+
+**Decision:** When the Side Panel cannot reach the static M21 content-script receiver on the active supported ChatGPT tab, it may use the narrowly scoped `scripting` permission to re-inject the exact generated `chatgpt.content.ts` bundle. It must not reload the provider page as an automatic recovery action.
+
+**Why:** Extension reloads and already-open tabs can leave a valid ChatGPT page without a current content-script receiver. Re-injection restores the read-only bridge without interrupting streaming, losing viewport state, or making the user perform a manual reload.
+
+**Constraints:** Injection is limited to the active validated `https://chatgpt.com/*` conversation tab and the known static bridge path. The bridge retains D-016's read-only rendered-DOM boundary; no arbitrary script, private API, network, cookie, composer, or provider-content mutation path is introduced.

@@ -35,7 +35,7 @@ Distinctiveness should come primarily from composition, typography, proportion, 
 
 ## Product Experience
 
-Chatspace lives beside native ChatGPT in the browser Side Panel. The Side Panel should feel like a compact editor/workspace: dense enough for serious daily use, but visually calm and easy to scan.
+Chatspace lives beside native ChatGPT in the browser Side Panel. When a conversation is active, the primary surface is a compact conversation map: dense enough for long discussions, but visually calm and easy to scan.
 
 Native ChatGPT must remain visually and functionally independent. Chatspace must not simulate or visually compete with the provider conversation surface.
 
@@ -53,7 +53,7 @@ Use hierarchy through:
 
 Do not use color, glow, or blur to compensate for weak structure.
 
-Primary work content should dominate. Navigation, metadata, status, and secondary context should remain subordinate.
+Primary conversation structure should dominate. Navigation, metadata, status, and secondary knowledge context should remain subordinate.
 
 ## Navigation Principles
 
@@ -63,6 +63,8 @@ Primary work content should dominate. Navigation, metadata, status, and secondar
 - repeated actions should behave consistently across mouse, keyboard, and command surfaces;
 - global actions must have stable semantics independent of incidental selection;
 - secondary controls should appear when relevant rather than permanently occupying space.
+- active conversation hierarchy is `Conversation -> Graph / Outline / Search / Focus`; legacy knowledge/settings surfaces are not part of the active Side Panel route.
+- the map is a projection and navigation aid, not a replacement for the native ChatGPT conversation.
 
 ## Interaction Behavior
 
@@ -86,6 +88,7 @@ The browser may make the Side Panel narrow.
 - prefer overflow or stacking over multiple tiny permanent columns;
 - controls may wrap when necessary without dominating content;
 - secondary inspectors/context should remain bounded and scroll independently when appropriate.
+- narrow panels may prefer Outline when the graph canvas would make labels unreadable; both views address the same source key.
 
 Responsive behavior must preserve task completion, not merely fit pixels.
 

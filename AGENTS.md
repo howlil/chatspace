@@ -82,11 +82,11 @@ Before changing these, read the owning canonical document and obtain approval wh
 
 - native ChatGPT remains the provider-owned conversation runtime;
 - Chatspace remains the extension-owned Side Panel workspace;
-- provider integration is validated URL/tab-only;
+- provider integration is validated URL/tab navigation plus the single read-only rendered-DOM bridge documented in `.agents/ARCHITECTURE.md`;
 - `WorkspaceSnapshot` in extension-owned `chrome.storage.local` is canonical workspace persistence;
 - the selected local-vault directory handle remains integration-owned state outside `WorkspaceSnapshot`;
 - Graph renderer/session state does not become canonical persistence implicitly;
-- provider DOM/content access, new privileged permissions, destructive persisted-data behavior, or expanded filesystem/localhost trust boundaries are material changes.
+- provider DOM access is limited to rendered ChatGPT conversation structure through `entrypoints/chatgpt.content.ts`; cookies, auth material, private APIs, network interception, composer automation, content mutation, new privileged permissions, destructive persisted-data behavior, or expanded filesystem/localhost trust boundaries remain material changes.
 
 ## Authority Order
 
