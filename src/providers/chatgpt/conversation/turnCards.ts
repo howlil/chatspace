@@ -368,8 +368,11 @@ function streamingContinuation(node: GraphNode, snapshot: TurnSnapshot): boolean
 function commonPrefixLength(state: CanvasGraphState, path: string[], snapshots: TurnSnapshot[]): number {
   let index = 0;
   while (index < path.length && index < snapshots.length) {
-    const node = nodeById(state, path[index]);
-    if (node === null || (!exactSnapshotMatch(node, snapshots[index]) && !streamingContinuation(node, snapshots[index]))) break;
+    const pathId = path[index];
+    const snapshot = snapshots[index];
+    if (pathId === undefined || snapshot === undefined) break;
+    const node = nodeById(state, pathId);
+    if (node === null || (!exactSnapshotMatch(node, snapshot) && !streamingContinuation(node, snapshot))) break;
     index += 1;
   }
   return index;
@@ -397,8 +400,10 @@ function reconcileGraph(state: CanvasGraphState, target: string, snapshots: Turn
 
   let index = 0;
   while (index < path.length && index < snapshots.length) {
-    const node = nodeById(state, path[index]);
+    const pathId = path[index];
     const snapshot = snapshots[index];
+    if (pathId === undefined || snapshot === undefined) break;
+    const node = nodeById(state, pathId);
     if (node === null) break;
     if (exactSnapshotMatch(node, snapshot) || streamingContinuation(node, snapshot)) {
       updateNode(node, snapshot, target);
@@ -409,9 +414,11 @@ function reconcileGraph(state: CanvasGraphState, target: string, snapshots: Turn
   }
 
   const nextPath = path.slice(0, index);
-  let parentId = nextPath.length === 0 ? null : nextPath[nextPath.length - 1];
+  let parentId: string | null = nextPath[nextPath.length - 1] ?? null;
   for (let snapshotIndex = index; snapshotIndex < snapshots.length; snapshotIndex += 1) {
-    const node = createNode(state, snapshots[snapshotIndex], parentId, target);
+    const snapshot = snapshots[snapshotIndex];
+    if (snapshot === undefined) break;
+    const node = createNode(state, snapshot, parentId, target);
     nextPath.push(node.id);
     parentId = node.id;
   }
