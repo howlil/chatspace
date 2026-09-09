@@ -1,32 +1,57 @@
 # Design
 
-Chatspace augments native ChatGPT rather than creating a second workspace.
+Chatspace turns a linear rendered ChatGPT conversation into a spatial conversation graph while keeping ChatGPT as the execution runtime.
 
-## Primary surface
+## Product mental model
 
-The assistant response itself is the component. Keep native text, code blocks, citations, tool output, and controls intact; Chatspace supplies only the card surface around the rendered response.
+```text
+canvas = understand structure
+inspector = read full content
+composer dock = continue or fork
+```
 
-## Card language
+Cards are previews, not miniature scrollable chat windows.
 
-- restrained border and depth;
-- medium radius, not oversized pill geometry;
-- compact padding that still gives long answers breathing room;
-- neutral surface that works with ChatGPT light/dark themes;
-- one desaturated steel-blue accent only for streaming/visible variant state;
-- no gradients, glow, decorative badges, or extra permanent toolbar chrome.
+## Canvas
+
+- left-to-right chronological depth with vertical branch separation;
+- subtle dotted grid for spatial orientation;
+- unlimited pan within the viewport model;
+- normal wheel/trackpad movement pans;
+- Ctrl/Cmd+wheel zooms between 25% and 200%;
+- Fit and Center recover orientation quickly;
+- minimap shows graph shape and current viewport;
+- semantic zoom removes card actions/content detail at distant zoom levels.
+
+## Cards
+
+- compact fixed footprint with no nested scrolling;
+- two-line user prompt preview and four-line assistant preview;
+- one accent color for selected/current/streaming state;
+- inactive branches remain readable but visually quieter;
+- selected node opens the inspector for full rendered content;
+- historical structural-only nodes are explicitly labeled rather than pretending persisted content exists.
+
+## Branches
+
+Shared prefixes render once. A fork creates sibling children from the shared parent instead of duplicating the entire prefix. Active-path edges are emphasized; branch edges use restrained orthogonal routing.
+
+## Inspector
+
+The right inspector is the reading surface for full prompt/response content. Code and rich rendered content may scroll inside the inspector because it is explicitly the detail surface; preview cards must not.
+
+## Composer dock
+
+The bottom dock always communicates action context:
+
+- active leaf -> Continue from Turn N -> focus native ChatGPT composer;
+- historical node with native branch control -> Fork from Turn N -> delegate to native ChatGPT fork;
+- historical node without a rendered native branch action -> no fake continuation action.
 
 ## Motion
 
-Use Transitions.dev as the motion-quality reference, not as a runtime dependency.
-
-- new response: short rise + fade + very small blur resolve;
-- hover: at most a one-pixel lift with subtle shadow change;
-- streaming: stable card with restrained border emphasis, not token-by-token animation;
-- fork/newly rendered response: same entry transition as any other response;
-- all motion must be disabled by `prefers-reduced-motion`.
-
-Motion exists to show cause/effect and preserve continuity. It must not delay reading or change message meaning.
+Use short causal motion only: node appearance, selection/inspector transition, and restrained streaming status. Do not animate token arrival or continually move existing graph nodes while a response streams. Respect `prefers-reduced-motion`.
 
 ## Provider safety
 
-Design must never require moving, cloning, rewriting, hiding, or replacing native ChatGPT content. If Chatspace styling fails, the underlying conversation remains usable.
+Chatspace never moves or rewrites React-owned ChatGPT message nodes. Native turns may be visually hidden only after a valid canvas projection is ready and must be restored on mismatch/disconnect. If graph projection cannot be trusted, native ChatGPT wins.
