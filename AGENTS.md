@@ -8,15 +8,17 @@ Understand the requested outcome, make the smallest coherent change at the corre
 
 ## Current provider boundary
 
-Chatspace is a direct ChatGPT main-pane decorator. It may validate supported conversation routes, inspect rendered message structure, observe rendered DOM changes, add/remove `data-chatspace-*` presentation attributes, and inject/remove one scoped style element.
+Chatspace is a direct ChatGPT main-pane conversation canvas. It may validate supported conversation routes, inspect rendered message structure and rendered message ids, observe DOM changes, project rendered turns into Chatspace-owned cards/edges, persist structural graph metadata, add/remove `data-chatspace-*` presentation attributes, and inject/remove scoped canvas/style nodes.
 
-It must not alter provider message text, child order, controls, message identity, links, code blocks, tool output, or composer state. It also must not reconstruct provider data that is not rendered in the DOM.
+ChatGPT remains the authority for message generation, native branch actions, composer behavior, tools, auth, and navigation. Chatspace must not rewrite provider message text, child order, controls, message identity, links, code blocks, tool output, cookies/auth material, or composer state, and must not reconstruct hidden provider data that is not rendered in the DOM.
 
-Provider mismatch must fail closed to native ChatGPT: no decoration is better than guessed or destructive mutation.
+Native provider turns may be visually hidden only after a valid non-empty canvas projection is ready. Provider mismatch, unsupported routes, or disconnect must restore native ChatGPT. No decoration is better than guessed or destructive mutation.
+
+Persisted graph metadata may contain only structural ids/parent/path/route information unless the user explicitly authorizes a different data policy. Do not persist transcript text or rendered HTML by default.
 
 ## Verification
 
-Use static checks for syntax/type/style risk, focused deterministic tests for owned DOM-decoration behavior, and extension build/package verification before merge. Live browser inspection is useful for real selector/visual compatibility but is not a synthetic CI requirement.
+Use static checks for syntax/type/style risk, focused deterministic tests for owned graph/DOM behavior, and extension build/package verification before merge. Live browser inspection is useful for real selector/visual compatibility but is not a synthetic CI requirement.
 
 ## Authority order
 
