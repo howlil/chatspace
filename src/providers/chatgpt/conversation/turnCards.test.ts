@@ -58,4 +58,19 @@ describe('ChatGPT main-pane turn cards', () => {
     controller.disconnect();
     expect(response.hasAttribute('data-chatspace-card')).toBe(false);
   });
+
+  it('can mount while the document body is not available yet', () => {
+    const earlyDocument = document.implementation.createHTMLDocument('early');
+    earlyDocument.body.remove();
+
+    const controller = mountChatGptTurnCards({
+      doc: earlyDocument,
+      getHref: () => 'https://chatgpt.com/c/early-chat',
+    });
+
+    expect(earlyDocument.body).toBeNull();
+    expect(earlyDocument.getElementById('chatspace-turn-card-styles')).not.toBeNull();
+    controller.disconnect();
+    expect(earlyDocument.getElementById('chatspace-turn-card-styles')).toBeNull();
+  });
 });
