@@ -1,14 +1,13 @@
-import type { ConversationMessageRole } from '../../../domain/conversation/model';
-
+export type ChatGptMessageRole = 'user' | 'assistant' | 'system' | 'tool' | 'unknown';
 export type ConversationSelectorStrategy = 'semantic' | 'turn-container' | 'structural';
 
 export interface ConversationElementMatch {
   element: HTMLElement;
-  role: ConversationMessageRole;
+  role: ChatGptMessageRole;
   strategy: ConversationSelectorStrategy;
 }
 
-function roleFromValue(value: string | null): ConversationMessageRole {
+function roleFromValue(value: string | null): ChatGptMessageRole {
   const normalized = value?.toLocaleLowerCase() ?? '';
   if (normalized.includes('user')) return 'user';
   if (normalized.includes('assistant') || normalized.includes('chatgpt')) return 'assistant';
@@ -36,29 +35,21 @@ export function findConversationElements(root: ParentNode = document): { matches
   const semantic = uniqueMatches(messageRoleElements(root, 'semantic'));
   if (semantic.length > 0) return { matches: semantic, strategy: 'semantic' };
 
-  const turnContainers: Array<ConversationElementMatch | null> = Array.from(root.querySelectorAll<HTMLElement>('[data-testid^="conversation-turn-"]'))
+  const turnContainers = Array.from(root.querySelectorAll<HTMLElement>('[data-testid^="conversation-turn-"]'))
     .map((container): ConversationElementMatch | null => {
       const roleElement = container.querySelector<HTMLElement>('[data-message-author-role]');
       if (roleElement === null) return null;
       return { element: roleElement, role: roleFromValue(roleElement.getAttribute('data-message-author-role')), strategy: 'turn-container' };
     })
     .filter((match): match is ConversationElementMatch => match !== null);
-  const validTurnContainers = turnContainers.filter((match): match is ConversationElementMatch => match !== null);
-  if (validTurnContainers.length > 0) return { matches: uniqueMatches(validTurnContainers), strategy: 'turn-container' };
+  if (turnContainers.length > 0) return { matches: uniqueMatches(turnContainers), strategy: 'turn-container' };
 
-  const structural: Array<ConversationElementMatch | null> = Array.from(root.querySelectorAll<HTMLElement>('main article, [role="article"]'))
+  const structural = Array.from(root.querySelectorAll<HTMLElement>('main article, [role="article"]'))
     .map((element): ConversationElementMatch | null => {
       const value = element.getAttribute('data-role') ?? element.getAttribute('aria-label') ?? '';
       if (!/user|assistant|system|tool/i.test(value)) return null;
-      return { element, role: roleFromValue(value.toLocaleLowerCase()), strategy: 'structural' };
+      return { element, role: roleFromValue(value), strategy: 'structural' };
     })
     .filter((match): match is ConversationElementMatch => match !== null);
-  return { matches: uniqueMatches(structural.filter((match): match is ConversationElementMatch => match !== null)), strategy: 'structural' };
-}
-
-export function sourceIdentityForElement(element: HTMLElement): { value: string | null; strategy: 'provider-id' | 'dom-id' | null } {
-  const providerId = element.getAttribute('data-message-id') ?? element.closest<HTMLElement>('[data-message-id]')?.getAttribute('data-message-id');
-  if (providerId?.trim()) return { value: providerId.trim(), strategy: 'provider-id' };
-  if (element.id.trim()) return { value: element.id.trim(), strategy: 'dom-id' };
-  return { value: null, strategy: null };
+  return { matches: uniqueMatches(structural), strategy: 'structural' };
 }
