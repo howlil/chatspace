@@ -1,28 +1,39 @@
 # Current Iteration
 
-Status: **IN_PROGRESS**
+Status: **COMPLETE**
 
-## M22 — Main-pane response cards
+## M23 — Reliable Conversation Graph Engine
 
-**Outcome:** remove the Side Panel/graph runtime and make Chatspace a direct, low-friction visual augmentation of native ChatGPT.
+**Outcome:** make the conversation canvas reliable under streaming, native forks, longer conversations, reloads, and normal trackpad navigation without turning Chatspace into a second chat runtime.
 
-Implemented in the active branch:
+Delivered:
 
-- content script mounts the card decorator directly in the ChatGPT tab;
-- assistant responses are decorated in place as cards;
-- new/streaming responses are reconciled through a debounced MutationObserver;
-- visible variant controls produce a card variant state without inventing hidden branches;
-- forked/new conversation routes receive the same decoration;
-- motion uses restrained reveal/hover/streaming transitions and respects reduced motion;
-- Side Panel, graph, controller, annotation persistence, and bridge/reconnect runtime are removed;
-- `sidePanel`, `storage`, and `scripting` permissions are removed from the manifest.
+- rendered ChatGPT `data-message-id` is preferred as stable turn identity;
+- text/streaming continuity remains a fallback when provider identity is not rendered;
+- graph ownership moved out of the former `turnCards.ts` god file into DOM, graph, layout, persistence, style, and controller modules;
+- `nodesById`, `childrenByParent`, and provider-key indexes remove repeated whole-array parent/child scans;
+- reconciliation reports content-only vs topology/path changes;
+- streaming/final-content updates replace changed cards and inspector content without rebuilding layout/edges/minimap;
+- sanitized rich HTML is cached per changed node instead of cloning every rendered turn on each refresh;
+- branch layout is deterministic O(N), subtree-aware, left-to-right, and prevents sibling subtree overlap;
+- wheel/trackpad pans naturally while Ctrl/Cmd+wheel zooms around the pointer;
+- structural graph metadata survives reload through extension storage without persisting prompt/response text or HTML;
+- restored historical nodes are honest placeholders until their provider branch is rendered again;
+- provider mismatch still fails back to native ChatGPT;
+- deterministic coverage protects stable provider identity, streaming same-node updates, fork prefix reuse, structural persistence serialization, branch layout, viewport pan/zoom, native fork delegation, and early-document mount.
 
-## Verification required before merge
+## Verification
+
+Required:
 
 - lint;
 - strict typecheck;
 - deterministic tests;
-- extension build;
-- CI on the PR.
+- extension build/package;
+- final CI verify gate.
 
-Live ChatGPT inspection remains useful for selector/visual compatibility but is not a deterministic CI gate.
+The last implementation head before documentation synchronization passed all required gates. Documentation synchronization must also finish on a green final head.
+
+## Remaining measured-risk candidate
+
+The debounced provider adapter still scans rendered turn elements to reconcile a mutation. HTML cloning and full graph rendering are no longer on the token hot path, but if profiling on very long conversations shows the DOM scan itself dominates, add a mutation-target fast path keyed by rendered message elements. Do not add it speculatively without evidence.
