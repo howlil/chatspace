@@ -78,6 +78,22 @@ describe('ChatGPT main-pane conversation canvas', () => {
     controller.disconnect();
   });
 
+  it('uses ChatGPT message identity when final content changes outside streaming state', () => {
+    const pair = renderPair('Question', 'First answer', 'stable');
+    pair.response.setAttribute('data-message-id', 'assistant-stable-id');
+    const controller = mountChatGptTurnCards({
+      doc: document,
+      getHref: () => 'https://chatgpt.com/c/stable-chat',
+    });
+
+    pair.response.textContent = 'Edited final answer with the same provider identity';
+    controller.refresh();
+
+    expect(document.querySelectorAll('[data-chatspace-node-id]')).toHaveLength(1);
+    expect(document.querySelector('[data-chatspace-response]')?.textContent).toContain('Edited final answer');
+    controller.disconnect();
+  });
+
   it('keeps the old path and creates a sibling branch when a forked conversation shares the same prefix', () => {
     let href = 'https://chatgpt.com/c/original-chat';
     renderPair('Root prompt', 'Root answer', '1');
@@ -99,7 +115,7 @@ describe('ChatGPT main-pane conversation canvas', () => {
     const children = nodes.filter((node) => node.getAttribute('data-chatspace-depth') === '1');
     expect(nodes).toHaveLength(3);
     expect(children).toHaveLength(2);
-    expect(new Set(children.map((node) => node.getAttribute('data-chatspace-lane'))).size).toBe(2);
+    expect(new Set(children.map((node) => node.style.top)).size).toBe(2);
     expect(document.querySelectorAll('[data-chatspace-edge]')).toHaveLength(2);
     expect(document.getElementById('chatspace-conversation-canvas')?.textContent).toContain('Original follow-up');
     expect(document.getElementById('chatspace-conversation-canvas')?.textContent).toContain('Forked follow-up');
@@ -118,6 +134,28 @@ describe('ChatGPT main-pane conversation canvas', () => {
     });
 
     expect(document.querySelector<HTMLButtonElement>('[data-chatspace-fork]')?.textContent).toBe('Fork');
+    controller.disconnect();
+  });
+
+  it('pans with wheel and zooms only with a modifier', () => {
+    renderPair('Question', 'Answer', 'viewport');
+    const controller = mountChatGptTurnCards({
+      doc: document,
+      getHref: () => 'https://chatgpt.com/c/viewport-chat',
+    });
+    const viewport = document.querySelector<HTMLElement>('[data-chatspace-viewport]');
+    const scene = document.querySelector<HTMLElement>('[data-chatspace-scene]');
+    const readout = document.querySelector<HTMLElement>('[data-chatspace-zoom-readout]');
+    expect(viewport).not.toBeNull();
+    expect(scene).not.toBeNull();
+
+    const beforePan = scene?.style.transform;
+    viewport?.dispatchEvent(new WheelEvent('wheel', { deltaX: 30, deltaY: 40, cancelable: true }));
+    expect(scene?.style.transform).not.toBe(beforePan);
+
+    const beforeZoom = readout?.textContent;
+    viewport?.dispatchEvent(new WheelEvent('wheel', { deltaY: -120, ctrlKey: true, clientX: 100, clientY: 100, cancelable: true }));
+    expect(readout?.textContent).not.toBe(beforeZoom);
     controller.disconnect();
   });
 
