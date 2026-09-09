@@ -131,7 +131,8 @@ export function mountChatGptTurnCards(options: {
   getHref?: () => string;
 } = {}): TurnCardController {
   const doc = options.doc ?? document;
-  const getHref = options.getHref ?? (() => window.location.href);
+  const view = doc.defaultView ?? window;
+  const getHref = options.getHref ?? (() => view.location.href);
   let timer: number | undefined;
 
   const refresh = () => {
@@ -146,11 +147,11 @@ export function mountChatGptTurnCards(options: {
 
   const schedule = () => {
     if (timer !== undefined) return;
-    timer = window.setTimeout(refresh, REFRESH_DELAY_MS);
+    timer = view.setTimeout(refresh, REFRESH_DELAY_MS);
   };
 
-  const observer = new MutationObserver(schedule);
-  observer.observe(doc.body, {
+  const observer = new view.MutationObserver(schedule);
+  observer.observe(doc.documentElement, {
     childList: true,
     subtree: true,
     attributes: true,
@@ -162,7 +163,7 @@ export function mountChatGptTurnCards(options: {
     refresh,
     disconnect() {
       observer.disconnect();
-      if (timer !== undefined) window.clearTimeout(timer);
+      if (timer !== undefined) view.clearTimeout(timer);
       for (const element of Array.from(doc.querySelectorAll<HTMLElement>(`[${CARD_ATTRIBUTE}]`))) clearCard(element);
       doc.getElementById(STYLE_ID)?.remove();
     },
