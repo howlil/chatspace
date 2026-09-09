@@ -150,7 +150,7 @@ export function mountChatGptTurnCards(options: {
     timer = view.setTimeout(refresh, REFRESH_DELAY_MS);
   };
 
-  const observer = new view.MutationObserver(schedule);
+  const observer = new MutationObserver(schedule);
   observer.observe(doc.documentElement, {
     childList: true,
     subtree: true,
