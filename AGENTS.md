@@ -1,94 +1,24 @@
 # Agent Instructions
 
-This repository uses root `AGENTS.md` as the thin agent entrypoint and `.agents/` as the canonical project knowledge + active engineering state. Repository execution must be resumable from these files plus current code/tests; do not depend on chat history or hidden planning state.
+Use `.agents/PROJECT.md`, `.agents/ARCHITECTURE.md`, `.agents/CURRENT_ITERATION.md`, `.agents/CODE_PATTERNS.md`, `.agents/QUALITY.md`, `.agents/DECISIONS.md`, and `DESIGN.md` as the repository authorities. Always inspect `CURRENT_ITERATION.md` when continuing active work.
 
-## Canonical Sources
+## Working rule
 
-- `.agents/PROJECT.md` — WHY + WHAT: product purpose, core user journey, capability map, committed behavior, scope, contracts, ownership, constraints, non-goals, deferred/open decisions.
-- `.agents/ARCHITECTURE.md` — WHERE + HOW boundaries interact: responsibility placement, module/data/trust/infrastructure boundaries, major flows, invariants.
-- `.agents/CURRENT_ITERATION.md` — NOW + NEXT: current milestone outcome, active slice/logical change when present, completed evidence, blockers, and next meaningful action.
-- `.agents/CODE_PATTERNS.md` — Chatspace-specific implementation conventions, ownership patterns, commands, and known traps.
-- `.agents/QUALITY.md` — Chatspace-specific risk-based verification strategy, CI gates, release confidence, and evidence requirements.
-- `.agents/DECISIONS.md` — durable material decisions and rationale.
+Understand the requested outcome, make the smallest coherent change at the correct owner, verify actual changed risk, then ship. Avoid planning ceremony, speculative abstractions, unrelated refactors, and expensive tests that do not protect changed behavior.
 
-`DESIGN.md` is the separate root-level durable product-experience and visual-design authority. Read it for UI/UX, interaction, responsive, accessibility, visual-language, token, component-styling, and theme work.
+## Current provider boundary
 
-Read only the documents relevant to the requested change. Always inspect `.agents/CURRENT_ITERATION.md` when continuing active work.
+Chatspace is a direct ChatGPT main-pane decorator. It may validate supported conversation routes, inspect rendered message structure, observe rendered DOM changes, add/remove `data-chatspace-*` presentation attributes, and inject/remove one scoped style element.
 
-## Operating Rule
+It must not alter provider message text, child order, controls, message identity, links, code blocks, tool output, or composer state. It also must not reconstruct provider data that is not rendered in the DOM.
 
-Optimize for meaningful integrated product capability, correctness, maintainability, and short user-outcome lead time. Do not optimize for milestone count, PR count, tiny diffs, isolated layer completion, or verification ceremony.
+Provider mismatch must fail closed to native ChatGPT: no decoration is better than guessed or destructive mutation.
 
-Use this decomposition when planning or continuing product work:
+## Verification
 
-```text
-PRODUCT PURPOSE
--> CORE USER JOURNEY
--> CAPABILITY MAP
--> MILESTONE
--> SLICE
--> LOGICAL CHANGE
--> TASK
-```
+Use static checks for syntax/type/style risk, focused deterministic tests for owned DOM-decoration behavior, and extension build/package verification before merge. Live browser inspection is useful for real selector/visual compatibility but is not a synthetic CI requirement.
 
-Definitions:
-
-- **Milestone** — the smallest coherent product scope that delivers one meaningful integrated user capability or workflow end-to-end.
-- **Slice** — the smallest demonstrable vertical behavior/scenario that materially advances the milestone outcome.
-- **Logical Change** — a coherent technical modification required to realize a slice.
-- **Task** — a concrete implementation action inside a logical change.
-- Engineering enablers, migrations, reliability work, infrastructure changes, and bug fixes stay classified as such unless they independently deliver a product capability.
-
-Before proposing a new milestone, reconstruct the relevant core user journey and capability gap from `.agents/PROJECT.md` plus current code/evidence. Prefer the highest-value missing core behavior; do not promote nice-to-have polish or isolated technical work into a product milestone.
-
-Prefer the smallest coherent vertical change that preserves the intended user outcome. Do not create persistent sprint/task plans, retrospective archives, status files, workflow-rule files, or additional `.agents/*.md` authorities.
-
-## Authority and autonomy
-
-The user owns product purpose, observable product behavior, scope, acceptance criteria, material architecture boundaries, public/persisted contracts, data ownership, and security/privacy/permission/trust boundaries.
-
-The implementing agent owns repository inspection, local implementation design inside approved boundaries, coding, focused refactoring required by the change, testing, debugging, verification, and implementation-level decisions.
-
-Use this design preference order for implementation choices:
-
-```text
-reuse existing owner/pattern
--> extend existing owner/pattern
--> small local abstraction
--> new component/module
--> architecture change
-```
-
-Do not introduce unrelated refactors, speculative abstractions, future-proofing, dependency upgrades, or scope expansion. A material contract/boundary change requires explicit approval before implementation.
-
-Stop and surface the decision instead of guessing when the requested work requires a contradictory product rule, destructive migration, public/persisted contract change, security/trust-boundary change, or major architecture change that has not already been approved.
-
-## Verification Rule
-
-Verification is proportional to changed risk and remains repository-owned.
-
-- use static checks for syntax/type/style risks;
-- use focused deterministic tests for owned logic and observable behavior;
-- use integration tests when behavior crosses real repository-owned boundaries that isolated tests cannot establish;
-- use the repository CI gate for integration confidence before merge/release-ready state.
-
-Black-box/live-browser testing is not a required verification layer or milestone completion gate. Do not create synthetic browser suites merely to imitate Chromium runtime behavior.
-
-Do not add higher-cost verification layers merely because they exist. Do not weaken or skip a relevant existing deterministic gate to manufacture green status.
-
-## Material Chatspace Boundaries
-
-Before changing these, read the owning canonical document and obtain approval where required:
-
-- native ChatGPT remains the provider-owned conversation runtime;
-- Chatspace remains the extension-owned Side Panel workspace;
-- provider integration is validated URL/tab navigation plus the single read-only rendered-DOM bridge documented in `.agents/ARCHITECTURE.md`;
-- `WorkspaceSnapshot` in extension-owned `chrome.storage.local` is canonical workspace persistence;
-- the selected local-vault directory handle remains integration-owned state outside `WorkspaceSnapshot`;
-- Graph renderer/session state does not become canonical persistence implicitly;
-- provider DOM access is limited to rendered ChatGPT conversation structure through `entrypoints/chatgpt.content.ts`; cookies, auth material, private APIs, network interception, composer automation, content mutation, new privileged permissions, destructive persisted-data behavior, or expanded filesystem/localhost trust boundaries remain material changes.
-
-## Authority Order
+## Authority order
 
 ```text
 explicit current user instruction
@@ -96,8 +26,6 @@ explicit current user instruction
 -> .agents/ARCHITECTURE.md / DESIGN.md
 -> .agents/CURRENT_ITERATION.md
 -> .agents/CODE_PATTERNS.md / .agents/QUALITY.md
--> current code and tests
--> historical PRs / stale documentation
+-> current code/tests
+-> historical superseded decisions
 ```
-
-If code and canonical documentation disagree, determine which is stale and correct the inconsistency without inventing a new product or architecture decision.

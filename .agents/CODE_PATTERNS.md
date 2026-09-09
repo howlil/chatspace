@@ -1,88 +1,33 @@
 # Code Patterns
 
-Chatspace-specific implementation conventions for the graph-only M21 surface.
+## Runtime rule
 
-## Repository layout
+Keep provider-specific DOM code under `src/providers/chatgpt/`. `entrypoints/chatgpt.content.ts` is composition only.
 
-```text
-entrypoints/chatgpt.content.ts       isolated provider bridge
-entrypoints/sidepanel/main.tsx       graph-only composition root
-src/app/conversation/                active-tab orchestration
-src/app/shell/                       shell/error isolation
-src/domain/conversation/             pure live snapshot/projection logic
-src/features/conversation-graph/    graph, outline, inspector, layout
-src/providers/chatgpt/conversation/  DOM selectors, observer, bridge types
-src/persistence/conversationAnnotationStore.ts
-                                      explicit graph metadata persistence
-src/ui/                              small reusable primitives
-```
+## DOM mutation rule
 
-The active repository surface is conversation-focused. Do not reintroduce workspace/PKM runtime modules or compatibility persistence into the Side Panel.
-
-## TypeScript and dependency direction
-
-- strict TypeScript is the repository contract;
-- validate unknown browser/provider values at boundaries;
-- keep provider/browser APIs outside `src/domain/`;
-- use pure transformations for snapshot normalization and graph projection;
-- feature components depend on owned application/provider ports, not arbitrary browser calls.
+Use the smallest presentational mutation:
 
 ```text
-ConversationGraph UI
--> ConversationController
--> ChatGptDomPort / browser tab port
--> isolated ChatGPT content bridge
+read provider DOM
+-> add/remove data-chatspace-* attributes
+-> let scoped CSS style the existing element
 ```
 
-## Conversation model
+Do not clone, wrap, move, replace, or rewrite provider message children unless a later explicit product decision requires it.
 
-`ConversationSnapshot` is provider-derived, ephemeral, and memory-only. Never add raw message text to extension persistence, diagnostics, exports, or logs.
+## Observation
 
-Stable source identity follows:
+- observe `childList` plus provider attributes needed for card state;
+- debounce refresh;
+- never react to Chatspace's own attributes;
+- avoid token-by-token `characterData` work;
+- cleanup observers, attributes, timers, and injected styles on invalidation.
 
-```text
-provider id -> DOM id -> deterministic fingerprint
-```
+## Selectors
 
-Graph nodes store `sourceId`; they never store live DOM elements.
+Prefer semantic `data-message-author-role`, then known turn containers, then structural fallback. A selector failure should mean no decoration, not guessed content.
 
-## Provider bridge
+## Motion
 
-Keep selectors, `MutationObserver`, source lookup, and bridge messages inside the M21 provider boundary. The content script may read rendered DOM, observe mutations/visibility, and perform explicit source scroll/highlight.
-
-The Side Panel may re-inject the exact static bridge bundle with `scripting` when a receiver is missing. It must not reload ChatGPT, execute arbitrary provider code, access cookies/tokens/private APIs, intercept network traffic, automate the composer, or mutate provider content.
-
-Observer callbacks schedule cheap debounced refreshes. Normalize at roughly 5–10 Hz during streaming and suppress structurally identical snapshots. Do not update React state for every raw mutation.
-
-## Graph behavior
-
-Conversation graph is the only active graph surface. DOM sequence produces structural `next` relationships only; branch edges require provider evidence.
-
-Default nodes are turns with deterministic first-line labels. Layout, pan, zoom, focus, collapse, and selection are session/render state, not canonical persistence. Streaming content may update the current turn without resetting viewport or relaying the complete graph for every token.
-
-## UI composition
-
-- reuse semantic `cs-*` tokens and Lucide icons;
-- icon-only controls require accessible names;
-- keyboard and pointer paths should call the same application behavior;
-- keep graph, outline, search, focus, and source navigation visibly primary;
-- show provider/DOM failure states explicitly rather than as empty data;
-- do not reintroduce workspace chrome, generic PKM navigation, or broad feature menus into the active graph route.
-
-## Error handling
-
-Normalize browser/provider failures at owned adapters and preserve the distinction between unsupported page, missing bridge receiver, DOM structure failure, and available conversation.
-
-Never log provider conversation content, raw page HTML, tokens/cookies, or raw storage dumps.
-
-## Common commands
-
-```bash
-pnpm install --frozen-lockfile
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm verify
-pnpm build
-pnpm zip
-```
+Use short transitions on `transform`, `opacity`, and `filter`; include `prefers-reduced-motion`; do not animate layout for every streaming token.
