@@ -6,71 +6,94 @@
 Chromium
 └── ChatGPT tab
     └── entrypoints/chatgpt.content.ts
-        └── turnCards.ts
-            ├── validate conversation URL
-            ├── read rendered user/assistant turns
-            ├── keep ChatGPT DOM as the live source of truth
-            ├── project turns into a Chatspace canvas
-            ├── reconcile streaming and branch paths
-            └── render compact cards + SVG edges
+        └── conversation/canvas/controller.ts
+            ├── dom.ts          provider DOM adapter + sanitization
+            ├── graphEngine.ts  identity, paths, indexes, reconciliation
+            ├── layout.ts       compact layered layout
+            ├── persistence.ts  structural metadata only
+            └── styles.ts       scoped canvas presentation
 ```
 
-There is no Chatspace Side Panel or transcript persistence. The active product surface is an ephemeral conversation canvas inside the native ChatGPT main pane.
-
-## Ownership
-
-```text
-entrypoints/chatgpt.content.ts
-  content-script lifecycle only
-
-src/providers/chatgpt/adapter.ts
-  URL validation
-
-src/providers/chatgpt/conversation/selectors.ts
-  provider DOM discovery only
-
-src/providers/chatgpt/conversation/turnCards.ts
-  ephemeral graph reconciliation, canvas projection, motion, cleanup
-```
+The active product surface is a conversation canvas inside the native ChatGPT main pane. ChatGPT remains the authority for generated content, composer behavior, native branching, tools, auth, and navigation.
 
 ## Data flow
 
 ```text
 ChatGPT DOM mutation
--> debounce
--> validate current /c/... URL
+-> 80 ms debounce
 -> read rendered user + assistant turns
--> group prompt + response into one turn snapshot
--> reconcile active path with in-memory graph
--> update streaming node or create child/branch node
--> render compact cards + SVG edges
+-> prefer rendered data-message-id as stable identity
+-> reconcile against indexed graph
+-> classify change
+
+content-only change
+-> sanitize changed node only
+-> replace changed card / selected inspector only
+
+path/topology change
+-> update nodesById + childrenByParent + paths
+-> recompute linear-time layered positions
+-> rerender edges/cards/minimap/chrome
+-> persist structural graph metadata
 ```
 
-The native ChatGPT DOM remains the runtime source of truth. Chatspace visually hides rendered source turn containers while the canvas is active, but does not move or rewrite React-owned provider nodes. The projection copies sanitized rendered HTML into ephemeral card state only; it is not persisted.
+## Graph model
+
+```text
+nodesById:          Map<NodeId, GraphNode>
+childrenByParent:   Map<ParentId, NodeId[]>
+nodeIdByStableKey:  Map<ProviderMessageId, NodeId>
+paths:              Map<ConversationUrl, NodeId[]>
+```
+
+Parent and child lookups are O(1). A turn has at most one parent, so the visible conversation family is a tree/DAG-shaped branching sequence rather than a general arbitrary graph.
+
+`data-message-id` is preferred when ChatGPT renders it. If provider identity is unavailable, reconciliation falls back to the currently rendered prompt/response content and streaming continuity; hidden provider state is never invented.
 
 ## Streaming
 
-A generating assistant response updates its existing canvas node in place. Token-driven DOM mutations do not create a new node. When the response completes, the same node becomes stable.
+Streaming is a content update, not a topology update. A response with the same provider identity updates its existing graph node. Sanitized HTML is refreshed only for nodes whose rendered content/state changed; stable historical nodes are not recloned on every token batch.
 
-## Forks and variants
+The DOM adapter still performs a lightweight rendered-turn scan during debounced reconciliation. If future profiling shows this scan dominates very long conversations, the next optimization is a mutation-target fast path keyed by rendered message elements.
 
-Each normalized ChatGPT conversation URL owns an in-memory path. When navigation reaches another `/c/...` conversation with the same rendered prefix, Chatspace reuses that prefix and creates new children for the divergent turns. This produces sibling branches from the shared parent.
+## Branches
 
-When ChatGPT exposes a native branch/fork control, the corresponding card exposes a small **Fork** action that delegates to that native control. Chatspace does not call private ChatGPT APIs or invent hidden branch data.
+Each normalized ChatGPT conversation URL maps to an active path. On native navigation/fork, shared provider identities are reused directly. If IDs are unavailable, a rendered common-prefix fallback is used. Divergent suffixes become sibling children of the shared parent.
+
+Fork controls in Chatspace delegate to the rendered native ChatGPT control. Chatspace does not call private APIs.
 
 ## Layout
 
+The current graph invariant is one parent per turn, so layout uses a deterministic O(N) layered tree algorithm:
+
 ```text
-parent turn ───────────────> child turn ───────────────> child turn
-       └──────────────────> forked child
+shared root -> child -> child
+                  ├-> branch A
+                  └-> branch B -> child
 ```
 
-Depth maps to the horizontal axis. Sibling branches receive separate vertical lanes. SVG elbow edges connect card centers. The canvas owns horizontal/vertical scrolling and automatically follows newly appended nodes.
+Depth controls horizontal position. Subtree height controls vertical placement, preventing sibling subtree overlap without repeated whole-array scans. Edges use orthogonal/elbow routing.
 
-## Motion
+A general ELK solver is intentionally not a runtime dependency yet: for the current single-parent tree invariant it adds bundle/worker complexity without solving a problem the linear layout cannot. `layout.ts` is the ownership boundary where ELK can replace the current algorithm if future cross-links or layout constraints make the graph genuinely general.
 
-Cards use short causal transitions and respect `prefers-reduced-motion`. Streaming text updates do not re-run entrance motion on every token; only graph/card state changes trigger replacement.
+## Viewport
+
+The viewport state is independent from graph state. Empty-space drag pans the canvas. Normal wheel/trackpad deltas pan; Ctrl/Cmd+wheel zooms around the pointer. Fit/center, semantic zoom, minimap, search, selection, and inspector operate on the projected graph only.
+
+## Persistence
+
+The extension `storage` permission is used for structural metadata only:
+
+```text
+node id
+stable provider key
+parent id
+depth/order
+conversation target -> active path
+```
+
+Prompt text, response text, rendered HTML, cookies, auth/session material, and tool output are not written to storage. Restored historical nodes therefore appear as structural placeholders until that branch is rendered again and hydrated from ChatGPT DOM.
 
 ## Failure isolation
 
-If selectors no longer match, Chatspace leaves provider content untouched. Disconnect removes the canvas, injected styles, and source-hidden attributes so the native ChatGPT conversation becomes visible again. No provider text is written to storage, logs, exports, or telemetry by this runtime.
+Provider content is hidden only after a valid non-empty canvas projection is rendered. Unsupported routes, selector mismatches, disconnect, or cleanup restore native provider turns. Chatspace never moves React-owned message nodes or rewrites provider content.
