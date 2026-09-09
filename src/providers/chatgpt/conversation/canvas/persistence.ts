@@ -1,6 +1,7 @@
 import { browser } from 'wxt/browser';
 
 import {
+  graphNodes,
   nodeById,
   restoreGraphState,
   serializeGraphState,
@@ -71,7 +72,13 @@ export async function persistGraphStructure(
   const rootId = activePathIds[0];
   if (rootId === undefined) return;
   const root = nodeById(state, rootId);
-  const familyId = root?.stableKey ?? rootId;
+  if (root?.stableKey === null || root?.stableKey === undefined) return;
+
+  // Text fallback is safe for live reconciliation, but not durable identity.
+  // Persist only families whose nodes can be matched deterministically after reload.
+  if (graphNodes(state).some((node) => node.stableKey === null)) return;
+
+  const familyId = root.stableKey;
   const cache = await readCache();
   cache.families[familyId] = {
     graph: serializeGraphState(state),
