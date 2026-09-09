@@ -2,15 +2,30 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { mountChatGptTurnCards, refreshChatGptTurnCards } from './turnCards';
 
-function renderTurn(role: 'user' | 'assistant', text: string, suffix: string): HTMLElement {
+function main(): HTMLElement {
+  let element = document.querySelector<HTMLElement>('main');
+  if (element !== null) return element;
+  element = document.createElement('main');
+  document.body.append(element);
+  return element;
+}
+
+function renderMessage(role: 'user' | 'assistant', text: string, suffix: string): HTMLElement {
   const turn = document.createElement('article');
   turn.dataset.testid = `conversation-turn-${suffix}`;
   const message = document.createElement('div');
   message.setAttribute('data-message-author-role', role);
   message.textContent = text;
   turn.append(message);
-  document.body.append(turn);
+  main().append(turn);
   return message;
+}
+
+function renderPair(prompt: string, response: string, suffix: string): { prompt: HTMLElement; response: HTMLElement } {
+  return {
+    prompt: renderMessage('user', prompt, `${suffix}-user`),
+    response: renderMessage('assistant', response, `${suffix}-assistant`),
+  };
 }
 
 afterEach(() => {
@@ -18,45 +33,92 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('ChatGPT main-pane turn cards', () => {
-  it('decorates assistant responses without rewriting provider content', () => {
-    const user = renderTurn('user', 'Question', '1');
-    const response = renderTurn('assistant', 'Answer with code and text', '2');
-    const before = response.innerHTML;
+describe('ChatGPT main-pane conversation canvas', () => {
+  it('projects a prompt and response into one compact canvas node without rewriting provider content', () => {
+    const pair = renderPair('Question', 'Answer with code and text', '1');
+    const before = pair.response.innerHTML;
 
-    const cards = refreshChatGptTurnCards(document);
+    const responses = refreshChatGptTurnCards(document);
 
-    expect(cards).toEqual([response]);
-    expect(response.getAttribute('data-chatspace-card')).toBe('response');
-    expect(response.innerHTML).toBe(before);
-    expect(user.hasAttribute('data-chatspace-card')).toBe(false);
+    expect(responses).toEqual([pair.response]);
+    expect(pair.response.innerHTML).toBe(before);
+    expect(pair.prompt.closest('article')?.getAttribute('data-chatspace-source-hidden')).toBe('true');
+    expect(pair.response.closest('article')?.getAttribute('data-chatspace-source-hidden')).toBe('true');
+
+    const canvas = document.getElementById('chatspace-conversation-canvas');
+    const node = canvas?.querySelector<HTMLElement>('[data-chatspace-node-id]');
+    expect(canvas).not.toBeNull();
+    expect(node).not.toBeNull();
+    expect(node?.textContent).toContain('Question');
+    expect(node?.textContent).toContain('Answer with code and text');
   });
 
-  it('marks visible response variants as a card state without inventing hidden branches', () => {
-    const response = renderTurn('assistant', 'Alternative answer', '2');
-    const turn = response.closest('article');
-    const next = document.createElement('button');
-    next.setAttribute('aria-label', 'Next response');
-    turn?.append(next);
+  it('updates the same node while an assistant response streams', () => {
+    const pair = renderPair('Explain queues', 'A queue', '1');
+    const responseTurn = pair.response.closest<HTMLElement>('article');
+    responseTurn?.setAttribute('aria-busy', 'true');
 
-    refreshChatGptTurnCards(document);
-
-    expect(response.getAttribute('data-chatspace-has-variants')).toBe('true');
-  });
-
-  it('decorates responses that appear after mount, including responses rendered after a fork navigation', () => {
     const controller = mountChatGptTurnCards({
       doc: document,
-      getHref: () => 'https://chatgpt.com/c/forked-chat',
+      getHref: () => 'https://chatgpt.com/c/streaming-chat',
     });
-    const response = renderTurn('assistant', 'Forked conversation response', '9');
 
+    expect(document.querySelectorAll('[data-chatspace-node-id]')).toHaveLength(1);
+    expect(document.querySelector('[data-chatspace-node-id]')?.getAttribute('data-chatspace-streaming')).toBe('true');
+
+    pair.response.textContent = 'A queue preserves ordering while work waits.';
+    controller.refresh();
+    expect(document.querySelectorAll('[data-chatspace-node-id]')).toHaveLength(1);
+    expect(document.querySelector('[data-chatspace-response]')?.textContent).toContain('preserves ordering');
+
+    responseTurn?.setAttribute('aria-busy', 'false');
+    controller.refresh();
+    expect(document.querySelectorAll('[data-chatspace-node-id]')).toHaveLength(1);
+    expect(document.querySelector('[data-chatspace-node-id]')?.getAttribute('data-chatspace-streaming')).toBe('false');
+    controller.disconnect();
+  });
+
+  it('keeps the old path and creates a sibling branch when a forked conversation shares the same prefix', () => {
+    let href = 'https://chatgpt.com/c/original-chat';
+    renderPair('Root prompt', 'Root answer', '1');
+    renderPair('Original follow-up', 'Original answer', '2');
+
+    const controller = mountChatGptTurnCards({
+      doc: document,
+      getHref: () => href,
+    });
+    expect(document.querySelectorAll('[data-chatspace-node-id]')).toHaveLength(2);
+
+    main().innerHTML = '';
+    href = 'https://chatgpt.com/c/forked-chat';
+    renderPair('Root prompt', 'Root answer', '1-fork');
+    renderPair('Forked follow-up', 'Forked answer', '2-fork');
     controller.refresh();
 
-    expect(response.getAttribute('data-chatspace-card')).toBe('response');
-    expect(document.getElementById('chatspace-turn-card-styles')).not.toBeNull();
+    const nodes = Array.from(document.querySelectorAll<HTMLElement>('[data-chatspace-node-id]'));
+    const children = nodes.filter((node) => node.getAttribute('data-chatspace-depth') === '1');
+    expect(nodes).toHaveLength(3);
+    expect(children).toHaveLength(2);
+    expect(new Set(children.map((node) => node.getAttribute('data-chatspace-lane'))).size).toBe(2);
+    expect(document.querySelectorAll('[data-chatspace-edge]')).toHaveLength(2);
+    expect(document.getElementById('chatspace-conversation-canvas')?.textContent).toContain('Original follow-up');
+    expect(document.getElementById('chatspace-conversation-canvas')?.textContent).toContain('Forked follow-up');
     controller.disconnect();
-    expect(response.hasAttribute('data-chatspace-card')).toBe(false);
+  });
+
+  it('surfaces a fork action when ChatGPT exposes a native branch control', () => {
+    const pair = renderPair('Question', 'Answer', '1');
+    const nativeFork = document.createElement('button');
+    nativeFork.setAttribute('aria-label', 'Branch in new chat');
+    pair.response.closest('article')?.append(nativeFork);
+
+    const controller = mountChatGptTurnCards({
+      doc: document,
+      getHref: () => 'https://chatgpt.com/c/branchable-chat',
+    });
+
+    expect(document.querySelector<HTMLButtonElement>('[data-chatspace-fork]')?.textContent).toBe('Fork');
+    controller.disconnect();
   });
 
   it('can mount while the document body is not available yet', () => {
