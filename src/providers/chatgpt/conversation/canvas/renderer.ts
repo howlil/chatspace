@@ -18,6 +18,7 @@ export interface RenderContext {
   centerNode(nodeId: string): void;
   fitGraph(): void;
   zoomBy(factor: number): void;
+  arrangeGraph(): void;
 }
 
 function activeSet(ctx: RenderContext): Set<string> {
@@ -26,6 +27,16 @@ function activeSet(ctx: RenderContext): Set<string> {
 
 function positionOf(ctx: RenderContext, node: GraphNode): NodePosition {
   return ctx.view.positions.get(node.id) ?? { x: 0, y: 0 };
+}
+
+function edgePath(from: NodePosition, to: NodePosition): string {
+  const x1 = from.x + CARD_WIDTH;
+  const y1 = from.y + CARD_HEIGHT / 2;
+  const x2 = to.x;
+  const y2 = to.y + CARD_HEIGHT / 2;
+  const direction = x2 >= x1 ? 1 : -1;
+  const control = Math.max(52, Math.abs(x2 - x1) * 0.44);
+  return `M ${x1} ${y1} C ${x1 + direction * control} ${y1}, ${x2 - direction * control} ${y2}, ${x2} ${y2}`;
 }
 
 function searchMatches(ctx: RenderContext): GraphNode[] {
@@ -235,19 +246,28 @@ export function renderEdges(ctx: RenderContext): void {
   for (const node of graphNodes(ctx.state)) {
     const parent = nodeById(ctx.state, node.parentId);
     if (parent === null) continue;
-    const from = positionOf(ctx, parent);
-    const to = positionOf(ctx, node);
-    const x1 = from.x + CARD_WIDTH;
-    const y1 = from.y + CARD_HEIGHT / 2;
-    const x2 = to.x;
-    const y2 = to.y + CARD_HEIGHT / 2;
-    const mid = x1 + Math.max(38, (x2 - x1) / 2);
     const path = ctx.doc.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('data-chatspace-edge', `${parent.id}:${node.id}`);
+    path.setAttribute('data-chatspace-edge-from', parent.id);
+    path.setAttribute('data-chatspace-edge-to', node.id);
     path.setAttribute('data-chatspace-path', active.has(parent.id) && active.has(node.id) ? 'active' : 'inactive');
     path.setAttribute('data-chatspace-branch', String(childIds(ctx.state, parent.id).length > 1));
-    path.setAttribute('d', `M ${x1} ${y1} H ${mid} V ${y2} H ${x2}`);
+    path.setAttribute('d', edgePath(positionOf(ctx, parent), positionOf(ctx, node)));
     svg.append(path);
+  }
+}
+
+export function updateConnectedEdges(ctx: RenderContext, nodeId: string): void {
+  const svg = ctx.canvas.querySelector<SVGSVGElement>('[data-chatspace-edges]');
+  if (svg === null) return;
+  for (const path of svg.querySelectorAll<SVGPathElement>('[data-chatspace-edge]')) {
+    const fromId = path.getAttribute('data-chatspace-edge-from');
+    const toId = path.getAttribute('data-chatspace-edge-to');
+    if (fromId !== nodeId && toId !== nodeId) continue;
+    const from = nodeById(ctx.state, fromId);
+    const to = nodeById(ctx.state, toId);
+    if (from === null || to === null) continue;
+    path.setAttribute('d', edgePath(positionOf(ctx, from), positionOf(ctx, to)));
   }
 }
 
@@ -457,6 +477,7 @@ export function renderToolbar(ctx: RenderContext): void {
   const viewGroup = ctx.doc.createElement('div');
   viewGroup.setAttribute('data-chatspace-toolbar-group', 'true');
   viewGroup.append(
+    makeButton('Arrange', 'Arrange graph (A)', ctx.arrangeGraph),
     makeButton('Fit', 'Fit graph (F)', ctx.fitGraph),
     makeButton('Center', 'Center current turn (0)', () => { if (leaf !== null) ctx.centerNode(leaf); }),
   );
