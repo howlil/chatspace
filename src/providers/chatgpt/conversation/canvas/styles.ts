@@ -9,8 +9,25 @@ export const CANVAS_CSS = `
   --chatspace-border-strong: color-mix(in srgb, currentColor 19%, transparent);
   --chatspace-muted: color-mix(in srgb, currentColor 58%, transparent);
   --chatspace-surface: color-mix(in srgb, var(--main-surface-primary, Canvas) 97%, currentColor 3%);
-  --chatspace-panel: color-mix(in srgb, var(--main-surface-primary, Canvas) 96%, transparent);
+  --chatspace-panel: color-mix(in srgb, var(--main-surface-primary, Canvas) 98%, currentColor 2%);
   --chatspace-ease: cubic-bezier(.22, 1, .36, 1);
+  --chatspace-space-1: 4px;
+  --chatspace-space-2: 8px;
+  --chatspace-space-3: 12px;
+  --chatspace-space-4: 16px;
+  --chatspace-space-5: 20px;
+  --chatspace-radius-sm: 8px;
+  --chatspace-radius-md: 12px;
+  --chatspace-radius-lg: 16px;
+  --chatspace-control-height: 30px;
+  --chatspace-shadow-float: 0 8px 24px rgb(0 0 0 / .055);
+}
+
+html[data-chatspace-canvas-active="true"],
+html[data-chatspace-canvas-active="true"] body {
+  height: 100%;
+  overflow: hidden !important;
+  overscroll-behavior: none;
 }
 
 [${SOURCE_ATTRIBUTE}="true"] { display: none !important; }
@@ -18,9 +35,13 @@ export const CANVAS_CSS = `
 #${CANVAS_ID} {
   position: relative;
   width: 100%;
-  height: max(560px, calc(100vh - 96px));
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
   overflow: hidden;
+  overscroll-behavior: none;
   isolation: isolate;
+  contain: layout paint size;
   border-block: 1px solid var(--chatspace-border);
   background:
     radial-gradient(circle, color-mix(in srgb, currentColor 8%, transparent) 1px, transparent 1px),
@@ -34,6 +55,7 @@ export const CANVAS_CSS = `
   position: absolute;
   inset: 0;
   overflow: hidden;
+  overscroll-behavior: none;
   touch-action: none;
   cursor: grab;
 }
@@ -56,6 +78,8 @@ export const CANVAS_CSS = `
   fill: none;
   stroke: color-mix(in srgb, currentColor 20%, transparent);
   stroke-width: 1.35;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 #${CANVAS_ID} [data-chatspace-edge][data-chatspace-path="active"] {
@@ -75,15 +99,25 @@ export const CANVAS_CSS = `
   gap: 7px;
   padding: 12px 13px 11px;
   overflow: hidden;
+  contain: layout paint style;
+  content-visibility: auto;
+  contain-intrinsic-size: ${CARD_WIDTH}px ${CARD_HEIGHT}px;
   border: 1px solid var(--chatspace-border);
-  border-radius: 15px;
+  border-radius: var(--chatspace-radius-lg);
   background: var(--chatspace-surface);
   box-shadow: 0 1px 2px rgb(0 0 0 / .035), 0 8px 24px rgb(0 0 0 / .045);
   color: inherit;
-  cursor: pointer;
+  cursor: grab;
   user-select: text;
   transition: border-color 160ms ease, box-shadow 180ms ease, opacity 160ms ease;
-  animation: chatspace-node-enter 220ms var(--chatspace-ease) both;
+  animation: chatspace-node-enter 180ms var(--chatspace-ease) both;
+}
+#${CANVAS_ID} [${NODE_ATTRIBUTE}][data-chatspace-dragging="true"] {
+  z-index: 8;
+  cursor: grabbing;
+  transition: none;
+  animation: none;
+  box-shadow: 0 14px 34px rgb(0 0 0 / .09);
 }
 #${CANVAS_ID} [${NODE_ATTRIBUTE}][data-chatspace-path="inactive"] { opacity: .58; }
 #${CANVAS_ID} [${NODE_ATTRIBUTE}][data-chatspace-selected="true"] {
@@ -169,7 +203,7 @@ export const CANVAS_CSS = `
   font: inherit;
   cursor: pointer;
 }
-#${CANVAS_ID} [data-chatspace-card-action] { padding: 3px 7px; border-radius: 7px; font-size: 10px; }
+#${CANVAS_ID} [data-chatspace-card-action] { padding: 3px 7px; border-radius: var(--chatspace-radius-sm); font-size: 10px; }
 #${CANVAS_ID} [data-chatspace-card-action]:hover,
 #${CANVAS_ID} [data-chatspace-toolbar-button]:hover { background: color-mix(in srgb, currentColor 7%, transparent); }
 #${CANVAS_ID} button:focus-visible,
@@ -192,25 +226,24 @@ export const CANVAS_CSS = `
   z-index: 30;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--chatspace-space-2);
   max-width: calc(100% - 32px);
   transform: translateX(-50%);
 }
 #${CANVAS_ID} [data-chatspace-toolbar-group] {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--chatspace-space-1);
   min-height: 38px;
-  padding: 4px;
+  padding: var(--chatspace-space-1);
   border: 1px solid var(--chatspace-border);
-  border-radius: 12px;
+  border-radius: var(--chatspace-radius-md);
   background: var(--chatspace-panel);
-  box-shadow: 0 6px 24px rgb(0 0 0 / .055);
-  backdrop-filter: blur(16px);
+  box-shadow: var(--chatspace-shadow-float);
 }
 #${CANVAS_ID} [data-chatspace-search] {
   width: clamp(150px, 24vw, 310px);
-  height: 30px;
+  height: var(--chatspace-control-height);
   padding: 0 9px;
   border: 0;
   outline: 0;
@@ -226,7 +259,7 @@ export const CANVAS_CSS = `
   font-size: 10px;
   white-space: nowrap;
 }
-#${CANVAS_ID} [data-chatspace-toolbar-button] { min-width: 30px; height: 30px; padding: 0 9px; border-radius: 8px; font-size: 11px; }
+#${CANVAS_ID} [data-chatspace-toolbar-button] { min-width: 30px; height: var(--chatspace-control-height); padding: 0 9px; border-radius: var(--chatspace-radius-sm); font-size: 11px; }
 #${CANVAS_ID} [data-chatspace-zoom-readout] { min-width: 46px; text-align: center; font-size: 11px; font-variant-numeric: tabular-nums; }
 
 #${CANVAS_ID} [data-chatspace-inspector] {
@@ -242,7 +275,6 @@ export const CANVAS_CSS = `
   border-left: 1px solid var(--chatspace-border);
   background: var(--chatspace-panel);
   box-shadow: -14px 0 40px rgb(0 0 0 / .04);
-  backdrop-filter: blur(18px);
   transform: translateX(102%);
   transition: transform 220ms var(--chatspace-ease);
 }
@@ -251,14 +283,14 @@ export const CANVAS_CSS = `
 #${CANVAS_ID} [data-chatspace-inspector-title] { margin-right: auto; }
 #${CANVAS_ID} [data-chatspace-inspector-title] strong { display: block; font-size: 16px; }
 #${CANVAS_ID} [data-chatspace-inspector-title] span { display: block; margin-top: 4px; color: var(--chatspace-muted); font-size: 11px; }
-#${CANVAS_ID} [data-chatspace-inspector-close] { width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: inherit; font-size: 18px; cursor: pointer; }
-#${CANVAS_ID} [data-chatspace-inspector-body] { min-height: 0; overflow: auto; padding: 18px 20px 36px; user-select: text; }
+#${CANVAS_ID} [data-chatspace-inspector-close] { width: 30px; height: 30px; border: 0; border-radius: var(--chatspace-radius-sm); background: transparent; color: inherit; font-size: 18px; cursor: pointer; }
+#${CANVAS_ID} [data-chatspace-inspector-body] { min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 18px 20px 36px; user-select: text; }
 #${CANVAS_ID} [data-chatspace-inspector-section] + [data-chatspace-inspector-section] { margin-top: 24px; }
 #${CANVAS_ID} [data-chatspace-inspector-label] { margin-bottom: 8px; color: var(--chatspace-muted); font-size: 10px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; }
 #${CANVAS_ID} [data-chatspace-inspector-content] { font-size: 13px; line-height: 1.58; overflow-wrap: anywhere; }
 #${CANVAS_ID} [data-chatspace-inspector-content] pre { max-width: 100%; overflow: auto; border-radius: 10px; }
 #${CANVAS_ID} [data-chatspace-inspector-content] img { max-width: 100%; height: auto; }
-#${CANVAS_ID} [data-chatspace-inspector-actions] { display: flex; gap: 8px; padding: 14px 20px 20px; border-top: 1px solid var(--chatspace-border); }
+#${CANVAS_ID} [data-chatspace-inspector-actions] { display: flex; gap: var(--chatspace-space-2); padding: 14px 20px 20px; border-top: 1px solid var(--chatspace-border); }
 #${CANVAS_ID} [data-chatspace-primary-action],
 #${CANVAS_ID} [data-chatspace-secondary-action] { min-height: 34px; padding: 0 13px; border-radius: 9px; font: inherit; font-size: 11px; cursor: pointer; }
 #${CANVAS_ID} [data-chatspace-primary-action] { border: 1px solid var(--chatspace-accent); background: var(--chatspace-accent); color: white; }
@@ -266,18 +298,17 @@ export const CANVAS_CSS = `
 
 #${CANVAS_ID} [data-chatspace-minimap] {
   position: absolute;
-  left: 16px;
-  bottom: 16px;
+  left: var(--chatspace-space-4);
+  bottom: var(--chatspace-space-4);
   z-index: 22;
   width: 188px;
   height: 112px;
   overflow: hidden;
   border: 1px solid var(--chatspace-border);
-  border-radius: 12px;
+  border-radius: var(--chatspace-radius-md);
   background: var(--chatspace-panel);
-  box-shadow: 0 6px 24px rgb(0 0 0 / .05);
+  box-shadow: var(--chatspace-shadow-float);
   pointer-events: none;
-  backdrop-filter: blur(12px);
 }
 #${CANVAS_ID} [data-chatspace-minimap-node] { position: absolute; min-width: 8px; min-height: 5px; border-radius: 2px; background: color-mix(in srgb, currentColor 26%, transparent); }
 #${CANVAS_ID} [data-chatspace-minimap-node][data-chatspace-active="true"] { background: color-mix(in srgb, var(--chatspace-accent) 78%, transparent); }
@@ -301,13 +332,12 @@ export const CANVAS_CSS = `
   gap: 10px;
   padding: 10px 14px;
   border: 1px solid var(--chatspace-border);
-  border-radius: 16px;
+  border-radius: var(--chatspace-radius-lg);
   background: var(--chatspace-panel);
   box-shadow: 0 10px 34px rgb(0 0 0 / .08);
   color: inherit;
   text-align: left;
   cursor: pointer;
-  backdrop-filter: blur(18px);
 }
 #${CANVAS_ID} [data-chatspace-composer-button]:disabled { cursor: default; opacity: .55; }
 #${CANVAS_ID} [data-chatspace-composer-icon] { width: 30px; height: 30px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 999px; background: var(--chatspace-accent-soft); color: var(--chatspace-accent); }
@@ -315,8 +345,8 @@ export const CANVAS_CSS = `
 #${CANVAS_ID} [data-chatspace-composer-copy] span { display: block; margin-top: 3px; color: var(--chatspace-muted); font-size: 10px; }
 
 @keyframes chatspace-node-enter {
-  from { opacity: 0; transform: translateY(6px) scale(.99); filter: blur(2px); }
-  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  from { opacity: 0; transform: translateY(4px) scale(.995); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes chatspace-pulse {
   0%, 100% { opacity: .45; transform: scale(.92); }
