@@ -1,35 +1,37 @@
 # Current Iteration
 
-Status: **COMPLETE**
+Status: **VERIFYING**
 
-## M24 — Production Canvas Core
+## M25 — Spatial Canvas Interaction & Latency
 
-**Outcome:** make the conversation canvas stable, accessible, incremental, and release-trustworthy without changing ChatGPT's execution authority.
+**Outcome:** make Chatspace behave like a viewport-owned spatial graph rather than a scrolling document or continuously auto-laid-out flowchart, while keeping pointer interaction cheap.
 
-Delivered:
+Implemented:
 
-- prompt and response provider ids are aliases for one logical turn, including prompt-only -> completed response;
-- keyed topology rendering preserves unaffected card DOM instead of recreating the graph;
-- semantic zoom keeps the card geometry used by layout, edges, centering, and minimap constant;
-- topology changes preserve the selected/current node's screen anchor when possible;
-- known rendered-message mutations use a one-node refresh path, while topology/unknown changes fall back to a scoped main-conversation reconciliation;
-- conversation discovery prefers rendered turn containers and ignores message-like DOM outside the active main region;
-- inspector markup uses an explicit allowlist sanitizer and restricted URL schemes;
-- roving card focus supports parent/child/sibling keyboard navigation, with visible focus and inspector focus return;
-- persistence schema v2 stores structural metadata under independent family/target keys, avoiding unrelated multi-tab read-modify-write clobber;
-- README, Privacy, Security, Project, Architecture, Design, Decisions, Code Patterns, and Quality authorities match the active runtime;
-- unused React, React DOM, Lucide React, Tailwind, React testing/module/type dependencies were removed and the pnpm lockfile regenerated;
-- regression coverage includes logical turn aliases, pending->completed lifecycle, streaming stable DOM, topology DOM preservation, provider-region scoping, sanitizer safety, branch layout, viewport pan/zoom, spatial anchoring, keyboard navigation, native fork delegation, and early-document mount.
+- active canvas projection locks document scrolling; long content scrolls only inside the inspector;
+- cards can be dragged freely in world coordinates, including correctly under zoom;
+- existing card coordinates survive topology growth; automatic layout only seeds newly discovered nodes;
+- explicit `Arrange` / `A` restores the deterministic chronological tree layout;
+- smooth connectors follow arbitrary card geometry instead of assuming rigid orthogonal placement;
+- node-drag hot path updates one card directly and patches only incident edge paths per animation frame;
+- full edge bounds and minimap are reconciled once when dragging ends;
+- pan/zoom remains a single scene transform rather than graph re-render work;
+- card containment/content-visibility hints reduce offscreen layout/paint work;
+- moving-scene overlays no longer use backdrop blur, and node entrance motion no longer animates CSS filters;
+- canvas surfaces, spacing, radii, controls, and interaction states now share explicit design tokens;
+- focused regression coverage protects scroll-lock cleanup and manual-position stability across topology growth.
 
 ## Verification
 
-Implementation verification passed:
+Required before merge:
 
-- lint: green;
-- strict typecheck: green;
-- deterministic tests: green;
-- extension build/package: green;
-- landing build: green;
-- final relevant-gates verify: green.
+- lint;
+- strict typecheck;
+- deterministic tests;
+- extension build/package.
 
-M24 is complete. Further optimization of unknown provider mutations should be driven by profiling on long real conversations rather than speculative complexity.
+PR CI is the release gate because the current environment cannot fetch the repository into a local runner.
+
+## Previous baseline
+
+M24 — Production Canvas Core is complete and remains the behavioral baseline for provider safety, logical-turn identity, incremental rendering, sanitizer behavior, persistence, keyboard navigation, and native Continue/Fork delegation.
