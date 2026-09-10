@@ -1,12 +1,12 @@
 # Current Iteration
 
-Status: **VERIFYING**
+Status: **COMPLETE**
 
 ## M25 — Spatial Canvas Interaction & Latency
 
 **Outcome:** make Chatspace behave like a viewport-owned spatial graph rather than a scrolling document or continuously auto-laid-out flowchart, while keeping pointer interaction cheap.
 
-Implemented:
+Delivered:
 
 - active canvas projection locks document scrolling; long content scrolls only inside the inspector;
 - cards can be dragged freely in world coordinates, including correctly under zoom;
@@ -23,15 +23,14 @@ Implemented:
 
 ## Verification
 
-Required before merge:
+PR #48 release gates passed:
 
-- lint;
-- strict typecheck;
-- deterministic tests;
-- extension build/package.
-
-PR CI is the release gate because the current environment cannot fetch the repository into a local runner.
+- lint: green;
+- strict typecheck: green;
+- deterministic tests: green;
+- extension build/package: green;
+- final relevant-gates verify: green.
 
 ## Previous baseline
 
-M24 — Production Canvas Core is complete and remains the behavioral baseline for provider safety, logical-turn identity, incremental rendering, sanitizer behavior, persistence, keyboard navigation, and native Continue/Fork delegation.
+M24 — Production Canvas Core remains the behavioral baseline for provider safety, logical-turn identity, incremental rendering, sanitizer behavior, persistence, keyboard navigation, and native Continue/Fork delegation.
