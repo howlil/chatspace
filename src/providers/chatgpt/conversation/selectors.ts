@@ -32,9 +32,8 @@ function messageRoleElements(root: ParentNode, strategy: ConversationSelectorStr
 }
 
 export function findConversationElements(root: ParentNode = document): { matches: ConversationElementMatch[]; strategy: ConversationSelectorStrategy } {
-  const semantic = uniqueMatches(messageRoleElements(root, 'semantic'));
-  if (semantic.length > 0) return { matches: semantic, strategy: 'semantic' };
-
+  // A rendered conversation-turn container is a stronger boundary than a generic
+  // semantic role attribute because ChatGPT may reuse role markup in other UI.
   const turnContainers = Array.from(root.querySelectorAll<HTMLElement>('[data-testid^="conversation-turn-"]'))
     .map((container): ConversationElementMatch | null => {
       const roleElement = container.querySelector<HTMLElement>('[data-message-author-role]');
@@ -44,7 +43,10 @@ export function findConversationElements(root: ParentNode = document): { matches
     .filter((match): match is ConversationElementMatch => match !== null);
   if (turnContainers.length > 0) return { matches: uniqueMatches(turnContainers), strategy: 'turn-container' };
 
-  const structural = Array.from(root.querySelectorAll<HTMLElement>('main article, [role="article"]'))
+  const semantic = uniqueMatches(messageRoleElements(root, 'semantic'));
+  if (semantic.length > 0) return { matches: semantic, strategy: 'semantic' };
+
+  const structural = Array.from(root.querySelectorAll<HTMLElement>('article, [role="article"]'))
     .map((element): ConversationElementMatch | null => {
       const value = element.getAttribute('data-role') ?? element.getAttribute('aria-label') ?? '';
       if (!/user|assistant|system|tool/i.test(value)) return null;
