@@ -9,60 +9,43 @@ import {
   type PersistedGraphState,
 } from './graphEngine';
 
-const CACHE_KEY = 'chatspace.conversationGraph.v1';
-const MAX_FAMILIES = 12;
+const FAMILY_PREFIX = 'chatspace.graph.family.v2:';
+const TARGET_PREFIX = 'chatspace.graph.target.v2:';
 
-interface CachedFamily {
+interface StoredFamily {
+  version: 2;
   graph: PersistedGraphState;
   updatedAt: number;
 }
 
-interface GraphCache {
-  version: 1;
-  families: Record<string, CachedFamily>;
-  targetToFamily: Record<string, string>;
+function familyKey(familyId: string): string {
+  return `${FAMILY_PREFIX}${familyId}`;
 }
 
-function emptyCache(): GraphCache {
-  return { version: 1, families: {}, targetToFamily: {} };
+function targetKey(target: string): string {
+  return `${TARGET_PREFIX}${encodeURIComponent(target)}`;
 }
 
-function asCache(value: unknown): GraphCache {
-  if (typeof value !== 'object' || value === null) return emptyCache();
-  const candidate = value as Partial<GraphCache>;
-  if (candidate.version !== 1 || typeof candidate.families !== 'object' || typeof candidate.targetToFamily !== 'object') {
-    return emptyCache();
-  }
-  return candidate as GraphCache;
-}
-
-async function readCache(): Promise<GraphCache> {
-  try {
-    const result = await browser.storage.local.get(CACHE_KEY) as Record<string, unknown>;
-    return asCache(result[CACHE_KEY]);
-  } catch {
-    return emptyCache();
-  }
-}
-
-function prune(cache: GraphCache): void {
-  const entries = Object.entries(cache.families).sort((a, b) => b[1].updatedAt - a[1].updatedAt);
-  const keep = new Set(entries.slice(0, MAX_FAMILIES).map(([familyId]) => familyId));
-  for (const familyId of Object.keys(cache.families)) {
-    if (!keep.has(familyId)) delete cache.families[familyId];
-  }
-  for (const [target, familyId] of Object.entries(cache.targetToFamily)) {
-    if (!keep.has(familyId)) delete cache.targetToFamily[target];
-  }
+function asStoredFamily(value: unknown): StoredFamily | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const candidate = value as Partial<StoredFamily>;
+  if (candidate.version !== 2 || candidate.graph?.version !== 2 || typeof candidate.updatedAt !== 'number') return null;
+  return candidate as StoredFamily;
 }
 
 export async function loadGraphForTarget(target: string): Promise<CanvasGraphState | null> {
-  const cache = await readCache();
-  const familyId = cache.targetToFamily[target];
-  if (familyId === undefined) return null;
-  const family = cache.families[familyId];
-  if (family === undefined || family.graph.version !== 1) return null;
-  return restoreGraphState(family.graph);
+  try {
+    const targetStorageKey = targetKey(target);
+    const targetResult = await browser.storage.local.get(targetStorageKey) as Record<string, unknown>;
+    const familyId = targetResult[targetStorageKey];
+    if (typeof familyId !== 'string' || familyId === '') return null;
+    const graphStorageKey = familyKey(familyId);
+    const graphResult = await browser.storage.local.get(graphStorageKey) as Record<string, unknown>;
+    const family = asStoredFamily(graphResult[graphStorageKey]);
+    return family === null ? null : restoreGraphState(family.graph);
+  } catch {
+    return null;
+  }
 }
 
 export async function persistGraphStructure(
@@ -72,23 +55,32 @@ export async function persistGraphStructure(
   const rootId = activePathIds[0];
   if (rootId === undefined) return;
   const root = nodeById(state, rootId);
-  if (root?.stableKey === null || root?.stableKey === undefined) return;
+  if (root === null || root.providerAliases.size === 0) return;
 
-  // Text fallback is safe for live reconciliation, but not durable identity.
-  // Persist only families whose nodes can be matched deterministically after reload.
-  if (graphNodes(state).some((node) => node.stableKey === null)) return;
+  // Text fallback is useful in one live session but is not durable identity.
+  if (graphNodes(state).some((node) => node.providerAliases.size === 0)) return;
 
-  const familyId = root.stableKey;
-  const cache = await readCache();
-  cache.families[familyId] = {
-    graph: serializeGraphState(state),
-    updatedAt: Date.now(),
+  // The prompt id exists before the assistant response, so prefer it as the
+  // stable family key across the pending -> completed lifecycle.
+  const familyId = Array.from(root.providerAliases).find((alias) => alias.startsWith('user:'))
+    ?? root.stableKey
+    ?? Array.from(root.providerAliases)[0];
+  if (familyId === undefined) return;
+
+  const values: Record<string, unknown> = {
+    [familyKey(familyId)]: {
+      version: 2,
+      graph: serializeGraphState(state),
+      updatedAt: Date.now(),
+    } satisfies StoredFamily,
   };
-  for (const target of state.paths.keys()) cache.targetToFamily[target] = familyId;
-  prune(cache);
+  for (const target of state.paths.keys()) values[targetKey(target)] = familyId;
+
   try {
-    await browser.storage.local.set({ [CACHE_KEY]: cache });
+    // Per-family and per-target keys avoid read-modify-write clobber when
+    // multiple ChatGPT tabs persist unrelated graphs concurrently.
+    await browser.storage.local.set(values);
   } catch {
-    // Persistence is an optimization. Provider rendering must continue if storage is unavailable.
+    // Persistence is optional. Provider rendering must continue if storage fails.
   }
 }
