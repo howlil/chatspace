@@ -1,31 +1,35 @@
 # Current Iteration
 
-Status: **VERIFYING**
+Status: **COMPLETE**
 
 ## M24 — Production Canvas Core
 
 **Outcome:** make the conversation canvas stable, accessible, incremental, and release-trustworthy without changing ChatGPT's execution authority.
 
-Delivered implementation:
+Delivered:
 
-- prompt/response provider ids are aliases for one logical turn;
-- keyed topology rendering preserves existing card DOM and visual focus;
-- semantic zoom keeps graph geometry constant;
+- prompt and response provider ids are aliases for one logical turn, including prompt-only -> completed response;
+- keyed topology rendering preserves unaffected card DOM instead of recreating the graph;
+- semantic zoom keeps the card geometry used by layout, edges, centering, and minimap constant;
 - topology changes preserve the selected/current node's screen anchor when possible;
-- known provider message mutations use a one-node refresh path, with scoped full reconciliation only for topology/uncertain changes;
-- conversation discovery is scoped to the active main region;
-- canvas has roving keyboard navigation, visible focus, and inspector focus return;
-- persistence uses independent graph-family and conversation-target keys to avoid unrelated multi-tab read-modify-write clobber;
-- inspector markup uses an explicit allowlist sanitizer;
-- release/security/privacy/architecture/design docs match the active canvas runtime;
-- unused React, React DOM, Lucide React, Tailwind, React testing/module/type dependencies were removed and the pnpm lockfile regenerated.
+- known rendered-message mutations use a one-node refresh path, while topology/unknown changes fall back to a scoped main-conversation reconciliation;
+- conversation discovery prefers rendered turn containers and ignores message-like DOM outside the active main region;
+- inspector markup uses an explicit allowlist sanitizer and restricted URL schemes;
+- roving card focus supports parent/child/sibling keyboard navigation, with visible focus and inspector focus return;
+- persistence schema v2 stores structural metadata under independent family/target keys, avoiding unrelated multi-tab read-modify-write clobber;
+- README, Privacy, Security, Project, Architecture, Design, Decisions, Code Patterns, and Quality authorities match the active runtime;
+- unused React, React DOM, Lucide React, Tailwind, React testing/module/type dependencies were removed and the pnpm lockfile regenerated;
+- regression coverage includes logical turn aliases, pending->completed lifecycle, streaming stable DOM, topology DOM preservation, provider-region scoping, sanitizer safety, branch layout, viewport pan/zoom, spatial anchoring, keyboard navigation, native fork delegation, and early-document mount.
 
-## Verification in progress
+## Verification
 
-Required final head:
+Implementation verification passed:
 
-- lint;
-- strict typecheck;
-- deterministic regression tests;
-- extension build/package;
-- final CI verify on `master`.
+- lint: green;
+- strict typecheck: green;
+- deterministic tests: green;
+- extension build/package: green;
+- landing build: green;
+- final relevant-gates verify: green.
+
+M24 is complete. Further optimization of unknown provider mutations should be driven by profiling on long real conversations rather than speculative complexity.
