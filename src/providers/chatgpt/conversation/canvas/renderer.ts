@@ -17,6 +17,7 @@ export interface RenderContext {
   htmlCache: Map<string, HtmlSnapshot>;
   centerNode(nodeId: string): void;
   fitGraph(): void;
+  zoomBy(factor: number): void;
 }
 
 function activeSet(ctx: RenderContext): Set<string> {
@@ -25,6 +26,13 @@ function activeSet(ctx: RenderContext): Set<string> {
 
 function positionOf(ctx: RenderContext, node: GraphNode): NodePosition {
   return ctx.view.positions.get(node.id) ?? { x: 0, y: 0 };
+}
+
+function searchMatches(ctx: RenderContext): GraphNode[] {
+  const query = ctx.view.searchQuery.trim().toLocaleLowerCase();
+  if (query === '') return [];
+  return graphNodes(ctx.state).filter((node) =>
+    node.promptText.toLocaleLowerCase().includes(query) || node.responseText.toLocaleLowerCase().includes(query));
 }
 
 export function applySearchFilter(ctx: RenderContext): void {
@@ -37,6 +45,8 @@ export function applySearchFilter(ctx: RenderContext): void {
       || node.responseText.toLocaleLowerCase().includes(normalized);
     card.setAttribute('data-chatspace-search-match', String(matches));
   }
+  const count = ctx.canvas.querySelector<HTMLElement>('[data-chatspace-search-count]');
+  if (count !== null) count.textContent = normalized === '' ? '' : `${searchMatches(ctx).length} matches`;
 }
 
 export function renderSelection(ctx: RenderContext): void {
@@ -44,10 +54,12 @@ export function renderSelection(ctx: RenderContext): void {
   for (const node of graphNodes(ctx.state)) {
     const card = ctx.canvas.querySelector<HTMLElement>(`[${NODE_ATTRIBUTE}="${node.id}"]`);
     if (card === null) continue;
+    const selected = ctx.view.selectedNodeId === node.id;
     card.setAttribute('data-chatspace-active', String(active.has(node.id)));
     card.setAttribute('data-chatspace-path', active.has(node.id) ? 'active' : 'inactive');
-    card.setAttribute('data-chatspace-selected', String(ctx.view.selectedNodeId === node.id));
-    card.tabIndex = ctx.view.selectedNodeId === node.id ? 0 : -1;
+    card.setAttribute('data-chatspace-selected', String(selected));
+    card.setAttribute('aria-current', selected ? 'true' : 'false');
+    card.tabIndex = selected ? 0 : -1;
   }
   applySearchFilter(ctx);
 }
@@ -87,17 +99,14 @@ function cardBadge(ctx: RenderContext, node: GraphNode): string | null {
   return null;
 }
 
-export function createCard(ctx: RenderContext, node: GraphNode): HTMLElement {
+function renderCardContents(ctx: RenderContext, card: HTMLElement, node: GraphNode): void {
   const active = activeSet(ctx);
-  const card = ctx.doc.createElement('article');
-  card.setAttribute(NODE_ATTRIBUTE, node.id);
   card.setAttribute('data-chatspace-depth', String(node.depth));
   card.setAttribute('data-chatspace-streaming', String(node.streaming));
   card.setAttribute('data-chatspace-active', String(active.has(node.id)));
   card.setAttribute('data-chatspace-path', active.has(node.id) ? 'active' : 'inactive');
   card.setAttribute('data-chatspace-selected', String(ctx.view.selectedNodeId === node.id));
   card.setAttribute('aria-label', `Turn ${node.depth + 1}`);
-  card.tabIndex = ctx.view.selectedNodeId === node.id ? 0 : -1;
 
   const header = ctx.doc.createElement('div');
   header.setAttribute('data-chatspace-card-header', 'true');
@@ -150,7 +159,13 @@ export function createCard(ctx: RenderContext, node: GraphNode): HTMLElement {
     });
     actions.append(fork);
   }
+  card.replaceChildren(header, prompt, response, actions);
+}
 
+export function createCard(ctx: RenderContext, node: GraphNode): HTMLElement {
+  const card = ctx.doc.createElement('article');
+  card.setAttribute(NODE_ATTRIBUTE, node.id);
+  card.tabIndex = ctx.view.selectedNodeId === node.id ? 0 : -1;
   card.addEventListener('click', () => selectNode(ctx, node.id, true));
   card.addEventListener('dblclick', (event) => {
     event.stopPropagation();
@@ -174,7 +189,7 @@ export function createCard(ctx: RenderContext, node: GraphNode): HTMLElement {
       moveSelection(ctx, 'next-sibling');
     }
   });
-  card.append(header, prompt, response, actions);
+  renderCardContents(ctx, card, node);
   return card;
 }
 
@@ -185,16 +200,16 @@ export function patchCards(ctx: RenderContext, changedNodeIds: ReadonlySet<strin
   for (const node of graphNodes(ctx.state)) {
     const existing = scene.querySelector<HTMLElement>(`[${NODE_ATTRIBUTE}="${node.id}"]`);
     const point = positionOf(ctx, node);
-    if (existing === null || addedNodeIds.has(node.id) || changedNodeIds.has(node.id)) {
-      const replacement = createCard(ctx, node);
-      replacement.style.left = `${point.x}px`;
-      replacement.style.top = `${point.y}px`;
-      if (existing === null) scene.append(replacement);
-      else existing.replaceWith(replacement);
-    } else {
-      existing.style.left = `${point.x}px`;
-      existing.style.top = `${point.y}px`;
+    if (existing === null) {
+      const card = createCard(ctx, node);
+      card.style.left = `${point.x}px`;
+      card.style.top = `${point.y}px`;
+      scene.append(card);
+      continue;
     }
+    if (changedNodeIds.has(node.id) || addedNodeIds.has(node.id)) renderCardContents(ctx, existing, node);
+    existing.style.left = `${point.x}px`;
+    existing.style.top = `${point.y}px`;
   }
   renderSelection(ctx);
 }
@@ -333,7 +348,7 @@ export function renderComposerDock(ctx: RenderContext): void {
   const strong = ctx.doc.createElement('strong');
   strong.textContent = isLeaf ? `Continue from Turn ${selected.depth + 1}` : fork !== null ? `Fork from Turn ${selected.depth + 1}` : `Turn ${selected.depth + 1} is historical`;
   const detail = ctx.doc.createElement('span');
-  detail.textContent = isLeaf ? 'Continue in ChatGPT without leaving your canvas position' : fork !== null ? 'Create a native ChatGPT branch' : 'Open its conversation branch before continuing';
+  detail.textContent = isLeaf ? 'Continue in ChatGPT without losing your canvas position' : fork !== null ? 'Create a native ChatGPT branch' : 'Open its conversation branch before continuing';
   copy.append(strong, detail);
   button.append(icon, copy);
   button.disabled = !isLeaf && fork === null;
@@ -374,8 +389,8 @@ export function renderMinimap(ctx: RenderContext): void {
   if (minimap === null) return;
   minimap.replaceChildren();
   if (ctx.state.nodesById.size === 0) return;
-  minimap.tabIndex = 0;
-  minimap.setAttribute('aria-label', 'Conversation minimap');
+  minimap.tabIndex = -1;
+  minimap.setAttribute('aria-hidden', 'true');
   const metrics = minimapMetrics(ctx);
   const active = activeSet(ctx);
   for (const node of graphNodes(ctx.state)) {
@@ -400,6 +415,7 @@ export function renderToolbar(ctx: RenderContext): void {
   const toolbar = ctx.canvas.querySelector<HTMLElement>('[data-chatspace-toolbar]');
   if (toolbar === null) return;
   toolbar.replaceChildren();
+
   const searchGroup = ctx.doc.createElement('div');
   searchGroup.setAttribute('data-chatspace-toolbar-group', 'true');
   const search = ctx.doc.createElement('input');
@@ -408,17 +424,15 @@ export function renderToolbar(ctx: RenderContext): void {
   search.setAttribute('aria-label', 'Search conversation');
   search.placeholder = 'Search this conversation…';
   search.value = ctx.view.searchQuery;
+  const count = ctx.doc.createElement('span');
+  count.setAttribute('data-chatspace-search-count', 'true');
   search.addEventListener('input', () => {
     ctx.view.searchQuery = search.value;
     applySearchFilter(ctx);
   });
-  const matchingNodes = () => graphNodes(ctx.state).filter((node) => {
-    const query = ctx.view.searchQuery.trim().toLocaleLowerCase();
-    return query !== '' && (node.promptText.toLocaleLowerCase().includes(query) || node.responseText.toLocaleLowerCase().includes(query));
-  });
   search.addEventListener('keydown', (event) => {
     if (event.key !== 'Enter') return;
-    const matches = matchingNodes();
+    const matches = searchMatches(ctx);
     if (matches.length === 0) return;
     const currentIndex = matches.findIndex((node) => node.id === ctx.view.selectedNodeId);
     const step = event.shiftKey ? -1 : 1;
@@ -428,7 +442,7 @@ export function renderToolbar(ctx: RenderContext): void {
     selectNode(ctx, match.id, false);
     ctx.centerNode(match.id);
   });
-  searchGroup.append(search);
+  searchGroup.append(search, count);
 
   const makeButton = (label: string, title: string, onClick: () => void) => {
     const button = ctx.doc.createElement('button');
@@ -443,10 +457,21 @@ export function renderToolbar(ctx: RenderContext): void {
   const viewGroup = ctx.doc.createElement('div');
   viewGroup.setAttribute('data-chatspace-toolbar-group', 'true');
   viewGroup.append(
-    makeButton('Fit', 'Fit graph', ctx.fitGraph),
-    makeButton('Center', 'Center current turn', () => { if (leaf !== null) ctx.centerNode(leaf); }),
+    makeButton('Fit', 'Fit graph (F)', ctx.fitGraph),
+    makeButton('Center', 'Center current turn (0)', () => { if (leaf !== null) ctx.centerNode(leaf); }),
   );
-  toolbar.append(searchGroup, viewGroup);
+  const zoomGroup = ctx.doc.createElement('div');
+  zoomGroup.setAttribute('data-chatspace-toolbar-group', 'true');
+  const readout = ctx.doc.createElement('span');
+  readout.setAttribute('data-chatspace-zoom-readout', 'true');
+  readout.textContent = `${Math.round(ctx.view.zoom * 100)}%`;
+  zoomGroup.append(
+    makeButton('−', 'Zoom out', () => ctx.zoomBy(1 / 1.18)),
+    readout,
+    makeButton('+', 'Zoom in', () => ctx.zoomBy(1.18)),
+  );
+  toolbar.append(searchGroup, viewGroup, zoomGroup);
+  applySearchFilter(ctx);
 }
 
 export function renderChrome(ctx: RenderContext): void {
