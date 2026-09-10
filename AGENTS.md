@@ -1,6 +1,6 @@
 # Agent Instructions
 
-Use `.agents/PROJECT.md`, `.agents/ARCHITECTURE.md`, `.agents/CURRENT_ITERATION.md`, `.agents/CODE_PATTERNS.md`, `.agents/QUALITY.md`, `.agents/DECISIONS.md`, and `DESIGN.md` as the repository authorities. Always inspect `CURRENT_ITERATION.md` when continuing active work.
+Use `.agents/PROJECT.md`, `.agents/ARCHITECTURE.md`, `.agents/CURRENT_ITERATION.md`, `.agents/CODE_PATTERNS.md`, `.agents/QUALITY.md`, `.agents/DECISIONS.md`, and `DESIGN.md` as repository authorities. Always inspect `CURRENT_ITERATION.md` when continuing active work.
 
 ## Working rule
 
@@ -8,17 +8,24 @@ Understand the requested outcome, make the smallest coherent change at the corre
 
 ## Current provider boundary
 
-Chatspace is a direct ChatGPT main-pane conversation canvas. It may validate supported conversation routes, inspect rendered message structure and rendered message ids, observe DOM changes, project rendered turns into Chatspace-owned cards/edges, persist structural graph metadata, add/remove `data-chatspace-*` presentation attributes, and inject/remove scoped canvas/style nodes.
+Chatspace is a conversation-canvas projection inside the ChatGPT main pane. It may:
 
-ChatGPT remains the authority for message generation, native branch actions, composer behavior, tools, auth, and navigation. Chatspace must not rewrite provider message text, child order, controls, message identity, links, code blocks, tool output, cookies/auth material, or composer state, and must not reconstruct hidden provider data that is not rendered in the DOM.
+- validate supported conversation routes;
+- inspect the rendered active conversation region and visible provider state;
+- use rendered message ids as local graph aliases;
+- inject/remove Chatspace-owned canvas/style DOM and `data-chatspace-*` presentation markers;
+- copy rendered markup into the Chatspace inspector only through the owned allowlist sanitizer;
+- visually hide native turn containers only after a valid projection exists;
+- persist structural graph metadata that contains no prompt/response content;
+- after explicit user action, focus/reveal the native composer or click a rendered native fork control.
 
-Native provider turns may be visually hidden only after a valid non-empty canvas projection is ready. Provider mismatch, unsupported routes, or disconnect must restore native ChatGPT. No decoration is better than guessed or destructive mutation.
+It must not alter provider message text, child order, message identity, links, code blocks, tool output, native control state, or composer content; call private APIs; inspect cookies/auth material; intercept network traffic; automatically submit messages; or invent hidden branch state.
 
-Persisted graph metadata may contain only structural ids/parent/path/route information unless the user explicitly authorizes a different data policy. Do not persist transcript text or rendered HTML by default.
+Provider mismatch must fail back to native ChatGPT. No canvas is better than guessed or destructive projection.
 
 ## Verification
 
-Use static checks for syntax/type/style risk, focused deterministic tests for owned graph/DOM behavior, and extension build/package verification before merge. Live browser inspection is useful for real selector/visual compatibility but is not a synthetic CI requirement.
+Use static checks for syntax/type/style risk, focused deterministic tests for graph/DOM/interaction behavior, and extension build/package verification before considering work complete. Live browser inspection is useful for real selector/visual compatibility but is not synthetic CI ceremony by default.
 
 ## Authority order
 
