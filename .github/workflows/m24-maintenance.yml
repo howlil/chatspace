@@ -1,0 +1,72 @@
+name: M24 maintenance
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - .m24-maintenance-run
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.23.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Apply M24 cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          controller = Path('src/providers/chatgpt/conversation/canvas/controller.ts')
+          text = controller.read_text()
+          old = "  let ctx: RenderContext;\n  ctx = {"
+          if old not in text:
+              raise SystemExit('expected controller lint pattern not found')
+          controller.write_text(text.replace(old, "  const ctx: RenderContext = {", 1))
+
+          package_path = Path('package.json')
+          package = json.loads(package_path.read_text())
+          package.pop('dependencies', None)
+          dev = package['devDependencies']
+          for name in [
+              '@tailwindcss/vite',
+              '@testing-library/react',
+              '@types/react',
+              '@types/react-dom',
+              '@wxt-dev/module-react',
+              'tailwindcss',
+          ]:
+              dev.pop(name, None)
+          package_path.write_text(json.dumps(package, indent=2) + '\n')
+
+          tsconfig_path = Path('tsconfig.json')
+          tsconfig = json.loads(tsconfig_path.read_text())
+          tsconfig['compilerOptions'].pop('jsx', None)
+          tsconfig_path.write_text(json.dumps(tsconfig, indent=2) + '\n')
+          PY
+          pnpm install --lockfile-only --no-frozen-lockfile
+          rm -f .m24-maintenance-run .github/workflows/m24-maintenance.yml
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: finish M24 dependency cleanup"
+          git push origin HEAD:master
