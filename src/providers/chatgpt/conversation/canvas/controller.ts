@@ -118,8 +118,7 @@ function createRenderContext(
   activePathIds: readonly string[],
   htmlCache: Map<string, HtmlSnapshot>,
 ): RenderContext {
-  let ctx: RenderContext;
-  ctx = {
+  const ctx: RenderContext = {
     doc,
     canvas,
     state,
