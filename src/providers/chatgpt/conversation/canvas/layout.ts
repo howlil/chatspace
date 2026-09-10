@@ -26,9 +26,9 @@ export function fallbackPosition(depth: number, order: number): NodePosition {
 }
 
 /**
- * Compact deterministic tree layout for the currently rendered conversation graph.
- * The graph invariant is one parent per turn, so a linear-time layered layout is
- * sufficient and avoids running a general graph solver while tokens stream.
+ * Compact deterministic tree layout for initial placement and explicit Arrange.
+ * Runtime topology growth must not keep re-owning geometry after the user has
+ * built spatial memory, so existing positions are merged separately below.
  */
 export function computeLayeredLayout(state: CanvasGraphState): Map<string, NodePosition> {
   const positions = new Map<string, NodePosition>();
@@ -81,6 +81,28 @@ export function computeLayeredLayout(state: CanvasGraphState): Map<string, NodeP
     if (!positions.has(node.id)) positions.set(node.id, fallbackPosition(node.depth, node.order));
   }
 
+  return positions;
+}
+
+/**
+ * Auto-layout seeds only nodes that do not have a position yet. Existing nodes
+ * keep their coordinates so branch discovery and streaming never fight manual
+ * placement or unexpectedly move the user's workspace.
+ */
+export function mergeStableLayout(
+  state: CanvasGraphState,
+  current: ReadonlyMap<string, NodePosition>,
+  computed: ReadonlyMap<string, NodePosition>,
+): Map<string, NodePosition> {
+  const positions = new Map<string, NodePosition>();
+  for (const node of graphNodes(state)) {
+    positions.set(
+      node.id,
+      current.get(node.id)
+        ?? computed.get(node.id)
+        ?? fallbackPosition(node.depth, node.order),
+    );
+  }
   return positions;
 }
 
