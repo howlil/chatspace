@@ -2,8 +2,21 @@
 
 Chatspace runs locally in the browser on `https://chatgpt.com/*`.
 
-The active runtime does not persist, export, transmit, or log ChatGPT conversation text. It reads rendered message structure only to identify assistant responses and applies local presentation attributes/styles to those existing DOM elements.
+## What Chatspace reads
 
-Chatspace does not access cookies, auth/session material, private APIs, network traffic, or the ChatGPT composer.
+Chatspace reads the rendered ChatGPT conversation DOM needed to build the local canvas: user/assistant role, rendered message ids when present, visible text/markup, streaming state, and visible native branch controls.
 
-The extension requires only host access for `https://chatgpt.com/*`; the previous `storage`, `sidePanel`, and `scripting` permissions are not required by the main-pane card runtime.
+## What Chatspace stores
+
+The extension uses Chromium `storage` for structural graph metadata only:
+
+- local node ids;
+- rendered provider message-id aliases;
+- parent relationships;
+- conversation target -> known path references.
+
+Prompt text, assistant response text, rendered HTML, cookies, credentials, auth/session material, and tool output are not persisted.
+
+## What Chatspace does not do
+
+Chatspace does not call private ChatGPT APIs, intercept network traffic, export conversation content, add telemetry, or automatically submit messages. The Continue action may focus/reveal the existing native ChatGPT composer; ChatGPT remains the owner of composer content and submission.
