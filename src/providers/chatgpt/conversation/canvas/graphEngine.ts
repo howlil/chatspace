@@ -1,3 +1,5 @@
+import { responseIdentity, snapshotIdentityAliases } from './turnIdentity';
+
 export interface TurnSnapshot {
   stableKey: string | null;
   promptKey: string | null;
@@ -18,12 +20,13 @@ export interface GraphNode extends TurnSnapshot {
   order: number;
   hydrated: boolean;
   targets: Set<string>;
+  providerAliases: Set<string>;
 }
 
 export interface CanvasGraphState {
   nodesById: Map<string, GraphNode>;
   childrenByParent: Map<string | null, string[]>;
-  nodeIdByStableKey: Map<string, string>;
+  nodeIdByProviderAlias: Map<string, string>;
   paths: Map<string, string[]>;
   activeTarget: string | null;
   nextNodeId: number;
@@ -33,6 +36,8 @@ export interface CanvasGraphState {
 export interface ReconcileResult {
   activePathIds: string[];
   changedNodeIds: Set<string>;
+  addedNodeIds: Set<string>;
+  removedNodeIds: Set<string>;
   topologyChanged: boolean;
   activePathChanged: boolean;
 }
@@ -43,11 +48,12 @@ export interface PersistedGraphNode {
   depth: number;
   order: number;
   stableKey: string | null;
+  providerAliases: string[];
   targets: string[];
 }
 
 export interface PersistedGraphState {
-  version: 1;
+  version: 2;
   nodes: PersistedGraphNode[];
   paths: Array<[string, string[]]>;
   activeTarget: string | null;
@@ -59,7 +65,7 @@ export function createGraphState(): CanvasGraphState {
   return {
     nodesById: new Map(),
     childrenByParent: new Map(),
-    nodeIdByStableKey: new Map(),
+    nodeIdByProviderAlias: new Map(),
     paths: new Map(),
     activeTarget: null,
     nextNodeId: 1,
@@ -68,8 +74,7 @@ export function createGraphState(): CanvasGraphState {
 }
 
 export function nodeById(state: CanvasGraphState, id: string | null): GraphNode | null {
-  if (id === null) return null;
-  return state.nodesById.get(id) ?? null;
+  return id === null ? null : state.nodesById.get(id) ?? null;
 }
 
 export function graphNodes(state: CanvasGraphState): GraphNode[] {
@@ -82,34 +87,34 @@ export function childIds(state: CanvasGraphState, parentId: string | null): read
 
 function addChild(state: CanvasGraphState, parentId: string | null, childId: string): void {
   const children = state.childrenByParent.get(parentId);
-  if (children === undefined) {
-    state.childrenByParent.set(parentId, [childId]);
-    return;
-  }
-  if (!children.includes(childId)) children.push(childId);
+  if (children === undefined) state.childrenByParent.set(parentId, [childId]);
+  else if (!children.includes(childId)) children.push(childId);
 }
 
 function samePath(a: readonly string[] | undefined, b: readonly string[]): boolean {
-  if (a === undefined || a.length !== b.length) return false;
-  return a.every((id, index) => id === b[index]);
+  return a !== undefined && a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
+function aliasesMatch(node: GraphNode, snapshot: TurnSnapshot): boolean {
+  const aliases = snapshotIdentityAliases(snapshot);
+  return aliases.some((alias) => node.providerAliases.has(alias));
 }
 
 function exactSnapshotMatch(node: GraphNode, snapshot: TurnSnapshot): boolean {
-  if (node.stableKey !== null && snapshot.stableKey !== null) return node.stableKey === snapshot.stableKey;
+  if (aliasesMatch(node, snapshot)) return true;
+  if (node.providerAliases.size > 0 && snapshotIdentityAliases(snapshot).length > 0) return false;
   return node.signature === snapshot.signature;
 }
 
 function streamingContinuation(node: GraphNode, snapshot: TurnSnapshot): boolean {
   if (!(node.streaming || snapshot.streaming)) return false;
+  if (aliasesMatch(node, snapshot)) return true;
   if (node.promptKey !== null && snapshot.promptKey !== null) return node.promptKey === snapshot.promptKey;
   return node.promptText === snapshot.promptText;
 }
 
 function sameRenderedTurn(node: GraphNode, snapshot: TurnSnapshot): boolean {
-  if (exactSnapshotMatch(node, snapshot)) return true;
-  if (streamingContinuation(node, snapshot)) return true;
-  if (node.responseKey !== null && snapshot.responseKey !== null) return node.responseKey === snapshot.responseKey;
-  return false;
+  return exactSnapshotMatch(node, snapshot) || streamingContinuation(node, snapshot);
 }
 
 function commonPrefixLength(state: CanvasGraphState, path: readonly string[], snapshots: readonly TurnSnapshot[]): number {
@@ -125,14 +130,16 @@ function commonPrefixLength(state: CanvasGraphState, path: readonly string[], sn
   return index;
 }
 
-function resetGraph(state: CanvasGraphState): void {
+function resetGraph(state: CanvasGraphState): Set<string> {
+  const removed = new Set(state.nodesById.keys());
   state.nodesById.clear();
   state.childrenByParent.clear();
-  state.nodeIdByStableKey.clear();
+  state.nodeIdByProviderAlias.clear();
   state.paths.clear();
   state.activeTarget = null;
   state.nextNodeId = 1;
   state.nextOrder = 1;
+  return removed;
 }
 
 function contentChanged(node: GraphNode, snapshot: TurnSnapshot): boolean {
@@ -145,19 +152,24 @@ function contentChanged(node: GraphNode, snapshot: TurnSnapshot): boolean {
     || node.responseSource !== snapshot.responseSource
     || node.promptKey !== snapshot.promptKey
     || node.responseKey !== snapshot.responseKey
-    || node.stableKey !== snapshot.stableKey
     || !node.hydrated;
 }
 
-function registerStableKey(state: CanvasGraphState, node: GraphNode, stableKey: string | null): void {
-  if (stableKey === null) return;
-  const existing = state.nodeIdByStableKey.get(stableKey);
-  if (existing === undefined || existing === node.id) state.nodeIdByStableKey.set(stableKey, node.id);
+function registerAliases(state: CanvasGraphState, node: GraphNode, snapshot: Pick<TurnSnapshot, 'promptKey' | 'responseKey'>): void {
+  for (const alias of snapshotIdentityAliases(snapshot)) {
+    const existing = state.nodeIdByProviderAlias.get(alias);
+    if (existing === undefined || existing === node.id) {
+      state.nodeIdByProviderAlias.set(alias, node.id);
+      node.providerAliases.add(alias);
+    }
+  }
 }
 
 function updateNode(state: CanvasGraphState, node: GraphNode, snapshot: TurnSnapshot, target: string): boolean {
   const changed = contentChanged(node, snapshot);
-  if (node.stableKey === null && snapshot.stableKey !== null) node.stableKey = snapshot.stableKey;
+  registerAliases(state, node, snapshot);
+  const responseAlias = responseIdentity(snapshot);
+  node.stableKey = responseAlias ?? node.stableKey ?? snapshotIdentityAliases(snapshot)[0] ?? null;
   node.promptKey = snapshot.promptKey;
   node.responseKey = snapshot.responseKey;
   node.promptText = snapshot.promptText;
@@ -169,16 +181,10 @@ function updateNode(state: CanvasGraphState, node: GraphNode, snapshot: TurnSnap
   node.responseSource = snapshot.responseSource;
   node.hydrated = true;
   node.targets.add(target);
-  registerStableKey(state, node, node.stableKey);
   return changed;
 }
 
-function createNode(
-  state: CanvasGraphState,
-  snapshot: TurnSnapshot,
-  parentId: string | null,
-  target: string,
-): GraphNode {
+function createNode(state: CanvasGraphState, snapshot: TurnSnapshot, parentId: string | null, target: string): GraphNode {
   const parent = nodeById(state, parentId);
   const node: GraphNode = {
     ...snapshot,
@@ -188,45 +194,41 @@ function createNode(
     order: state.nextOrder++,
     hydrated: true,
     targets: new Set([target]),
+    providerAliases: new Set(),
   };
   state.nodesById.set(node.id, node);
   addChild(state, parentId, node.id);
-  registerStableKey(state, node, node.stableKey);
+  registerAliases(state, node, snapshot);
+  node.stableKey = responseIdentity(snapshot) ?? snapshotIdentityAliases(snapshot)[0] ?? null;
   return node;
 }
 
-function reusableNodeForSnapshot(
-  state: CanvasGraphState,
-  snapshot: TurnSnapshot,
-  parentId: string | null,
-): GraphNode | null {
-  if (snapshot.stableKey === null) return null;
-  const id = state.nodeIdByStableKey.get(snapshot.stableKey);
-  if (id === undefined) return null;
-  const node = nodeById(state, id);
-  if (node === null || node.parentId !== parentId) return null;
-  return node;
+function reusableNodeForSnapshot(state: CanvasGraphState, snapshot: TurnSnapshot, parentId: string | null): GraphNode | null {
+  for (const alias of snapshotIdentityAliases(snapshot)) {
+    const id = state.nodeIdByProviderAlias.get(alias);
+    if (id === undefined) continue;
+    const node = nodeById(state, id);
+    if (node !== null && node.parentId === parentId) return node;
+  }
+  return null;
 }
 
-export function reconcileGraph(
-  state: CanvasGraphState,
-  target: string,
-  snapshots: readonly TurnSnapshot[],
-): ReconcileResult {
+export function reconcileGraph(state: CanvasGraphState, target: string, snapshots: readonly TurnSnapshot[]): ReconcileResult {
   const previousActiveTarget = state.activeTarget;
   const previousActivePath = previousActiveTarget === null ? undefined : state.paths.get(previousActiveTarget);
   const previousTargetPath = state.paths.get(target);
   let path = previousTargetPath;
   let topologyChanged = false;
   const changedNodeIds = new Set<string>();
+  const addedNodeIds = new Set<string>();
+  const removedNodeIds = new Set<string>();
 
   if (path === undefined) {
     if (previousActivePath !== undefined) {
       const prefixLength = commonPrefixLength(state, previousActivePath, snapshots);
-      if (prefixLength > 0) {
-        path = previousActivePath.slice(0, prefixLength);
-      } else if (snapshots.length > 0) {
-        resetGraph(state);
+      if (prefixLength > 0) path = previousActivePath.slice(0, prefixLength);
+      else if (snapshots.length > 0) {
+        for (const id of resetGraph(state)) removedNodeIds.add(id);
         topologyChanged = true;
       }
     }
@@ -256,9 +258,9 @@ export function reconcileGraph(
       parentId = reusable.id;
       continue;
     }
-
     const node = createNode(state, snapshot, parentId, target);
     changedNodeIds.add(node.id);
+    addedNodeIds.add(node.id);
     nextPath.push(node.id);
     parentId = node.id;
     topologyChanged = true;
@@ -267,24 +269,19 @@ export function reconcileGraph(
   state.paths.set(target, nextPath);
   state.activeTarget = target;
   const activePathChanged = previousActiveTarget !== target || !samePath(previousTargetPath, nextPath);
-
-  return {
-    activePathIds: nextPath,
-    changedNodeIds,
-    topologyChanged,
-    activePathChanged,
-  };
+  return { activePathIds: nextPath, changedNodeIds, addedNodeIds, removedNodeIds, topologyChanged, activePathChanged };
 }
 
 export function serializeGraphState(state: CanvasGraphState): PersistedGraphState {
   return {
-    version: 1,
+    version: 2,
     nodes: graphNodes(state).map((node) => ({
       id: node.id,
       parentId: node.parentId,
       depth: node.depth,
       order: node.order,
       stableKey: node.stableKey,
+      providerAliases: Array.from(node.providerAliases),
       targets: Array.from(node.targets),
     })),
     paths: Array.from(state.paths.entries()).map(([target, path]) => [target, [...path]]),
@@ -296,8 +293,7 @@ export function serializeGraphState(state: CanvasGraphState): PersistedGraphStat
 
 export function restoreGraphState(value: PersistedGraphState): CanvasGraphState {
   const state = createGraphState();
-  if (value.version !== 1) return state;
-
+  if (value.version !== 2) return state;
   for (const saved of value.nodes) {
     const node: GraphNode = {
       id: saved.id,
@@ -316,12 +312,12 @@ export function restoreGraphState(value: PersistedGraphState): CanvasGraphState 
       responseSource: null,
       hydrated: false,
       targets: new Set(saved.targets),
+      providerAliases: new Set(saved.providerAliases),
     };
     state.nodesById.set(node.id, node);
     addChild(state, node.parentId, node.id);
-    registerStableKey(state, node, node.stableKey);
+    for (const alias of node.providerAliases) state.nodeIdByProviderAlias.set(alias, node.id);
   }
-
   state.paths = new Map(value.paths.map(([target, path]) => [target, [...path]]));
   state.activeTarget = value.activeTarget;
   state.nextNodeId = Math.max(value.nextNodeId, value.nodes.length + 1);
