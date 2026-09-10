@@ -96,8 +96,7 @@ function samePath(a: readonly string[] | undefined, b: readonly string[]): boole
 }
 
 function aliasesMatch(node: GraphNode, snapshot: TurnSnapshot): boolean {
-  const aliases = snapshotIdentityAliases(snapshot);
-  return aliases.some((alias) => node.providerAliases.has(alias));
+  return snapshotIdentityAliases(snapshot).some((alias) => node.providerAliases.has(alias));
 }
 
 function exactSnapshotMatch(node: GraphNode, snapshot: TurnSnapshot): boolean {
@@ -182,6 +181,14 @@ function updateNode(state: CanvasGraphState, node: GraphNode, snapshot: TurnSnap
   node.hydrated = true;
   node.targets.add(target);
   return changed;
+}
+
+export function refreshKnownNode(state: CanvasGraphState, target: string, nodeId: string, snapshot: TurnSnapshot): boolean {
+  const node = nodeById(state, nodeId);
+  if (node === null) return false;
+  if (!aliasesMatch(node, snapshot) && snapshotIdentityAliases(snapshot).length > 0) return false;
+  updateNode(state, node, snapshot, target);
+  return true;
 }
 
 function createNode(state: CanvasGraphState, snapshot: TurnSnapshot, parentId: string | null, target: string): GraphNode {
