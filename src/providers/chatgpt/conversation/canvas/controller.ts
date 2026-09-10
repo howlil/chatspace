@@ -16,7 +16,7 @@ import {
   refreshKnownNode,
   type CanvasGraphState,
 } from './graphEngine';
-import { computeLayeredLayout } from './layout';
+import { computeLayeredLayout, mergeStableLayout } from './layout';
 import { loadGraphForTarget, persistGraphStructure } from './persistence';
 import {
   patchCards,
@@ -26,6 +26,7 @@ import {
   renderInspector,
   renderMinimap,
   renderSelection,
+  updateConnectedEdges,
   updateMinimapViewport,
   type HtmlSnapshot,
   type RenderContext,
@@ -59,7 +60,10 @@ function ensureStyles(doc: Document): void {
 
 function ensureCanvas(doc: Document): HTMLElement | null {
   const existing = doc.getElementById(CANVAS_ID);
-  if (existing instanceof HTMLElement) return existing;
+  if (existing instanceof HTMLElement) {
+    doc.documentElement.setAttribute('data-chatspace-canvas-active', 'true');
+    return existing;
+  }
   const host = doc.querySelector<HTMLElement>('main') ?? doc.body;
   if (host === null) return null;
 
@@ -91,12 +95,14 @@ function ensureCanvas(doc: Document): HTMLElement | null {
 
   canvas.append(viewport, toolbar, minimap, inspector, dock);
   host.prepend(canvas);
+  doc.documentElement.setAttribute('data-chatspace-canvas-active', 'true');
   return canvas;
 }
 
 function cleanupView(doc: Document): void {
   clearNativeSources(doc);
   doc.getElementById(CANVAS_ID)?.remove();
+  doc.documentElement.removeAttribute('data-chatspace-canvas-active');
 }
 
 function hydrateHtml(doc: Document, state: CanvasGraphState, cache: Map<string, HtmlSnapshot>, nodeIds: Iterable<string>): void {
@@ -141,6 +147,15 @@ function createRenderContext(
       zoomAround(canvas, view, rect.left + rect.width / 2, rect.top + rect.height / 2, view.zoom * factor);
       updateMinimapViewport(ctx);
     },
+    arrangeGraph() {
+      view.positions = computeLayeredLayout(state);
+      view.followLatest = false;
+      patchCards(ctx, new Set(), new Set(), new Set());
+      renderEdges(ctx);
+      renderMinimap(ctx);
+      fitGraph(canvas, state, view);
+      updateMinimapViewport(ctx);
+    },
   };
   return ctx;
 }
@@ -159,7 +174,10 @@ function renderTopology(
   const canvas = ensureCanvas(doc);
   if (canvas === null) return null;
   const anchorId = view.selectedNodeId ?? activePathIds[activePathIds.length - 1] ?? null;
-  const nextPositions = computeLayeredLayout(state);
+  const computedPositions = computeLayeredLayout(state);
+  const nextPositions = firstRender || view.positions.size === 0
+    ? computedPositions
+    : mergeStableLayout(state, view.positions, computedPositions);
   if (firstRender || view.positions.size === 0) view.positions = nextPositions;
   else preserveNodeAnchor(state, view, nextPositions, anchorId);
   if (view.selectedNodeId === null) view.selectedNodeId = activePathIds[activePathIds.length - 1] ?? null;
@@ -168,7 +186,15 @@ function renderTopology(
   patchCards(ctx, changedNodeIds, addedNodeIds, removedNodeIds);
   renderEdges(ctx);
   renderChrome(ctx);
-  setupViewportInteractions(canvas, state, view, () => updateMinimapViewport(ctx));
+  setupViewportInteractions(canvas, state, view, {
+    onViewChange: () => updateMinimapViewport(ctx),
+    onNodeMove: (nodeId) => updateConnectedEdges(ctx, nodeId),
+    onNodeMoveEnd: () => {
+      renderEdges(ctx);
+      renderMinimap(ctx);
+    },
+    onArrange: ctx.arrangeGraph,
+  });
   applyViewport(canvas, view);
   return canvas;
 }
