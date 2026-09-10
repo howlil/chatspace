@@ -1,39 +1,28 @@
 # Current Iteration
 
-Status: **COMPLETE**
+Status: **IN_PROGRESS**
 
-## M23 — Reliable Conversation Graph Engine
+## M24 — Production Canvas Core
 
-**Outcome:** make the conversation canvas reliable under streaming, native forks, longer conversations, reloads, and normal trackpad navigation without turning Chatspace into a second chat runtime.
+**Outcome:** make the conversation canvas stable, accessible, incremental, and release-trustworthy without changing ChatGPT's execution authority.
 
-Delivered:
+In scope:
 
-- rendered ChatGPT `data-message-id` is preferred as stable turn identity;
-- text/streaming continuity remains a fallback when provider identity is not rendered;
-- graph ownership moved out of the former `turnCards.ts` god file into DOM, graph, layout, persistence, style, and controller modules;
-- `nodesById`, `childrenByParent`, and provider-key indexes remove repeated whole-array parent/child scans;
-- reconciliation reports content-only vs topology/path changes;
-- streaming/final-content updates replace changed cards and inspector content without rebuilding layout/edges/minimap;
-- sanitized rich HTML is cached per changed node instead of cloning every rendered turn on each refresh;
-- branch layout is deterministic O(N), subtree-aware, left-to-right, and prevents sibling subtree overlap;
-- wheel/trackpad pans naturally while Ctrl/Cmd+wheel zooms around the pointer;
-- structural graph metadata survives reload through extension storage without persisting prompt/response text or HTML;
-- restored historical nodes are honest placeholders until their provider branch is rendered again;
-- provider mismatch still fails back to native ChatGPT;
-- deterministic coverage protects stable provider identity, streaming same-node updates, fork prefix reuse, structural persistence serialization, branch layout, viewport pan/zoom, native fork delegation, and early-document mount.
+- prompt/response provider ids are aliases for one logical turn;
+- keyed topology rendering preserves existing card DOM and visual focus;
+- semantic zoom never changes graph geometry behind the layout engine;
+- topology changes preserve the selected/current node's screen anchor;
+- provider mutations update one known turn when safe and fall back to a scoped conversation scan only when topology is uncertain;
+- conversation discovery is scoped to the active conversation region and fails back to native ChatGPT on suspicious structure;
+- canvas keyboard navigation and inspector focus lifecycle;
+- persistence keys are isolated per graph family/target to avoid cross-tab cache clobber;
+- release docs match actual storage/composer/canvas behavior;
+- unused React/Tailwind runtime baggage is removed if no source consumer exists.
 
 ## Verification
 
-Required:
-
 - lint;
 - strict typecheck;
-- deterministic tests;
+- deterministic regression tests for changed risks;
 - extension build/package;
-- final CI verify gate.
-
-The last implementation head before documentation synchronization passed all required gates. Documentation synchronization must also finish on a green final head.
-
-## Remaining measured-risk candidate
-
-The debounced provider adapter still scans rendered turn elements to reconcile a mutation. HTML cloning and full graph rendering are no longer on the token hot path, but if profiling on very long conversations shows the DOM scan itself dominates, add a mutation-target fast path keyed by rendered message elements. Do not add it speculatively without evidence.
+- final CI verify on `master`.
